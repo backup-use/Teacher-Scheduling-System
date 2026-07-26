@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Teacher Info | Scheduler Pro</title>
+    <link rel="stylesheet" href="..//css/edit-teacher.css">
+</head>
+<body>
+
+<div class="form-card">
+    <h2>✏️ Edit Instructor Profile</h2>
+    <form id="editTeacherForm">
+        <div class="form-row">
+            <div class="form-group">
+                <label>First Name</label>
+                <input type="text" id="firstName" required>
+            </div>
+            <div class="form-group">
+                <label>Last Name</label>
+                <input type="text" id="lastName" required>
+            </div>
+        </div>
+
+        <div class="form-group style-group">
+            <label>Email Address</label>
+            <input type="email" id="email" required>
+        </div>
+
+        <div class="form-group style-group">
+            <label>Subjects</label>
+            <input type="text" id="subjects" required>
+            <span class="info-note">Separate multiple subjects with commas (e.g., math, science, ICT)</span>
+        </div>
+
+        <div class="form-group style-group-large">
+            <label>Target Grade</label>
+            <input type="text" id="targetGrade" placeholder="e.g., Grade 7">
+        </div>
+
+        <div class="availability-section">
+            <label class="section-title">Availability Settings</label>
+            
+            <div class="days-container">
+                <label class="day-label"><input type="checkbox" value="Monday" class="day-checkbox"> Mon</label>
+                <label class="day-label"><input type="checkbox" value="Tuesday" class="day-checkbox"> Tue</label>
+                <label class="day-label"><input type="checkbox" value="Wednesday" class="day-checkbox"> Wed</label>
+                <label class="day-label"><input type="checkbox" value="Thursday" class="day-checkbox"> Thu</label>
+                <label class="day-label"><input type="checkbox" value="Friday" class="day-checkbox"> Fri</label>
+                <label class="day-label"><input type="checkbox" value="Saturday" class="day-checkbox"> Sat</label>
+            </div>
+
+            <div class="form-row align-center">
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="text" id="startTime" placeholder="e.g., 08:00 am" required>
+                </div>
+                <div class="time-separator">to</div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="text" id="endTime" placeholder="e.g., 04:00 pm" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-container">
+            <a href="teacher-list.html" class="btn-cancel">Cancel</a>
+            <button type="submit" class="btn-save">Save Changes</button>
+        </div>
+    </form>
+</div>
+
+<script src="..//js/edit-teacher.js"></script>
+</body>
+</html>

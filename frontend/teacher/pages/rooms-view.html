@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduScheduler Pro | View Rooms</title>
+    <link rel="stylesheet" href="../css/rooms-view.css">
+
+</head>
+<body>
+        <aside class="sidebar">
+            <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold;">
+            🗓️ Scheduler Pro
+        </div>
+        <nav class="nav-links-wrapper">
+            <button onclick="window.location.href='index.html'" class="nav-item " id="btn-teachers">📊 Dashboard Home</button>
+            <button onclick="window.location.href='my-schedule.html'" class="nav-item " id="btn-subjects">📅 My Timetable</button>
+            <button onclick="window.location.href='rooms-view.html'" class="nav-item active" id="btn-database">🏫 View Rooms</button>
+            <button onclick="window.location.href='cohorts-view.html'" class="nav-item" id="btn-rooms">👥 My Cohorts</button>
+        </nav>        
+            <a href="../../shared/logout.html" class="nav-item logout-btn">
+                🚪 Logout
+            </a>
+        
+        </aside>
+
+        <main class="main-content">
+            
+            <div class="rooms-header">
+                <h1>🏫 School Rooms Directory</h1>
+                <p style="color: #aaa; font-size: 0.9rem;">View available campus spaces, capacities, and designations.</p>
+            </div>
+
+            <div class="search-bar-container">
+                <input type="text" id="room-search" class="search-input" placeholder="🔍 Search room name or type...">
+            </div>
+
+            <div class="card-glass" style="padding: 0;">
+                <table class="rooms-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Room Name / Number</th>
+                            <th style="width: 30%;">Room Type / Building</th>
+                            <th style="width: 30%;">Seating Capacity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rooms-rows">
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: #aaa; padding: 2rem;">Loading facilities directory...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </main>
+    <script src="../js/rooms-view.js"></script>
+</body>
+</html>

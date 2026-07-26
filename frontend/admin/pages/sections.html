@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduScheduler Pro | Sections Configuration</title>
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/subject.css">
+    <link rel="stylesheet" href="../../shared/css/base.css">
+    <link rel="stylesheet" href="../css/sections.css">
+    
+</head>
+<body>
+        <aside class="sidebar">
+            <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold; color: white;">
+                🗓️ Scheduler Pro
+            </div>
+            
+            <nav class="nav-links-wrapper">
+                <button onclick="window.location.href='Addteacher.html'" class="nav-item " id="btn-teachers">👤 Teachers</button>
+                <button onclick="window.location.href='subject.html'" class="nav-item" id="btn-subjects">📚 Manage Subjects</button>
+                <button onclick="window.location.href='teacher-list.html'" class="nav-item" id="btn-database">📋 Teacher List</button>
+                <button onclick="window.location.href='rooms.html'" class="nav-item" id="btn-rooms">🏠 Rooms</button>
+                <button onclick="window.location.href='sections.html'" class="nav-item active" id="btn-schedule">📅 Sections</button>
+                <button onclick="window.location.href='generate.html'" class="nav-item" id="btn-generate">⚡ Generate Timetable</button>
+            </nav>
+
+            <a href="../../shared/logout.html" class="nav-item logout-btn">
+                🚪 Logout
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="content-header" style="margin-bottom: 30px;">
+                <div class="header-title-area">
+                    <h1 style="color: #ffffff; margin-bottom: 5px;">Academic Sections Configuration</h1>
+                    <p style="color: #94a3b8; margin: 0;">Configure school classes, student enrollment sizes, and active section cohorts.</p>
+                </div>
+            </header>
+
+            <div class="dashboard-card-panel">
+                <div class="subject-workspace-grid">
+                    
+                    <div class="subject-panel-col">
+                        <div class="form-group">
+                            <label class="input-label" style="color: #94a3b8; font-size: 0.9rem;">Section Name Label</label>
+                            <input type="text" id="section-name" placeholder="e.g., Grade 7 - Diamond" class="custom-input-box">
+                        </div>
+                        <div class="form-group">
+                            <label class="input-label" style="color: #94a3b8; font-size: 0.9rem;">Total Student Count Enrolled</label>
+                            <input type="number" id="section-students" placeholder="e.g., 42" class="custom-input-box">
+                        </div>
+                        <button type="button" class="btn-add-subject" onclick="addNewSection()">CREATE COHORT SECTION 👥</button>
+                    </div>
+                    
+                    <div class="subject-panel-col">
+                        <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; display: block; margin-bottom: 8px;">Active Academic Sections</label>
+                        <div class="subject-display-box" id="sections-list">
+                            </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+
+    <script src="../js/section.js"></script>
+</body>
+</html>

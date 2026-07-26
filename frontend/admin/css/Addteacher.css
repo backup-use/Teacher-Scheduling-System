@@ -1,0 +1,188 @@
+:root {
+    --glass-bg: rgba(23, 23, 33, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --accent-glow: rgba(124, 77, 255, 0.3);
+    --input-bg: rgba(0, 0, 0, 0.25);
+    --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+body {
+    background: radial-gradient(circle at top left, #1b2735, #090a0f);
+    color: #ffffff;
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    display: flex;
+    height: 100vh;
+}
+
+/* Glass Sidebar */
+.sidebar {
+    width: 280px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--glass-border);
+    padding: 2rem 1.2rem; /* Bahagyang binawasan ang padding para lumuwang ang button tracks inside */
+    box-sizing: border-box; /* Pinipigilan nitong lumampas ang laman sa labas ng 280px perimeter */
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    z-index: 1000;
+}
+
+.nav-links-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    width: 100%; /* Kakainin ang eksaktong natitirang espasyo sa loob ng sidebar padding framework */
+    padding: 14px 18px;
+    margin: 6px 0;
+    border-radius: 12px;
+    color: #a0a0c0;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+    box-sizing: border-box; /* Tinitiyak na hindi luluwang ang lapad kahit may hover padding transformations */
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--glass-border);
+    color: white;
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    padding-left: 22px; /* Banayad na slide movement nang hindi sumisira sa alignment boundaries */
+}
+
+.logout-btn {
+    margin-top: auto; /* Awtomatikong ipapako sa pinaka-ilalim ng display panel bounding matrix */
+    color: #ff5f5f !important;
+    background: transparent;
+    border: 1px solid transparent;
+    border-top: 1px solid var(--glass-border) !important; /* Divider lines */
+    padding-top: 18px !important;
+    border-radius: 0 0 12px 12px;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 95, 95, 0.1) !important;
+    color: #ff8585 !important;
+    padding-left: 22px !important;
+}
+
+/* Main Content Glass Cards */
+.main-content {
+    flex: 1;
+    padding: 3rem;
+    padding-top: 0px;
+    overflow-y: auto;
+   
+}
+/* Tanggalin ang default margin ng mismong pamagat sa loob ng main-content */
+.main-content h1 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+.card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 2.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Professional Inputs */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.input-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: #a0a0c0;
+}
+
+input[type="text"], input[type="email"], input[type="time"] {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 14px;
+    color: white;
+    box-sizing: border-box;
+    transition: border 0.3s ease;
+}
+
+input:focus {
+    border-color: #4facfe;
+    outline: none;
+}
+
+/* Gradient Action Button */
+.btn-generate {
+    width: 100%;
+    background: var(--primary-gradient);
+    border: none;
+    padding: 18px;
+    border-radius: 15px;
+    color: #000;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-generate:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(79, 172, 254, 0.4);
+}
+
+/* Base Button Style */
+.btn-generate {
+    width: 100%;
+    background: #00d2ff; /* Your bright cyan color */
+    border: none;
+    padding: 18px;
+    border-radius: 15px;
+    color: #000;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
+}
+
+/* Hover Effect - This triggers when the cursor moves over the button */
+.btn-generate:hover {
+    background: #00f2fe; /* Slightly brighter blue on hover */
+    transform: translateY(-3px); /* Lift the button up slightly */
+    box-shadow: 0 10px 25px rgba(0, 210, 255, 0.4); /* Glow effect */
+}
+
+/* Active Effect - This triggers when the button is clicked */
+.btn-generate:active {
+    transform: translateY(-1px); /* Push down slightly when clicked */
+    box-shadow: 0 5px 10px rgba(0, 210, 255, 0.3);
+}
+

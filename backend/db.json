@@ -1,0 +1,1062 @@
+{
+  "users": [
+    {
+      "id": "admin-001",
+      "username": "admin",
+      "password": "2311e673dd307d08d6cca4c34732edb9a78402caa0886e03af7e16e50ae2e1a1",
+      "role": "admin",
+      "name": "Administrator"
+    },
+    {
+      "id": "5e1d9ee1e8444208",
+      "username": "sab.rina",
+      "password": "057f6c3f1d159cb96fc81dd86eeebf483972cff531796fb4cd849f346534fc73",
+      "role": "teacher",
+      "name": "sab  rina",
+      "teacherId": "5e1d9ee1e8444208"
+    },
+    {
+      "id": "b3ec1cbfc4d8f4e6",
+      "username": "john.rey",
+      "password": "a0d8d9bf6526700f178da60b79b70cac4ab416c9203141251f9dc91b2d8e4ff9",
+      "role": "teacher",
+      "name": "john rey",
+      "teacherId": "b3ec1cbfc4d8f4e6"
+    },
+    {
+      "id": "eb5ff844aba9847a",
+      "username": "bea.tryz",
+      "password": "769d820a4978e188a752fed4cf2054b58ba1ed98ba2faf82da840e6bb5c1236a",
+      "role": "teacher",
+      "name": "bea tryz",
+      "teacherId": "eb5ff844aba9847a"
+    },
+    {
+      "id": "95262164f8bc2061",
+      "username": "alvin.nery",
+      "password": "0ad290b398b84533b100ae167d529a388d5f70bd452cf20cfe09d29e5b0f37dc",
+      "role": "teacher",
+      "name": "alvin nery",
+      "teacherId": "95262164f8bc2061"
+    },
+    {
+      "id": "755dc104321757ca",
+      "username": "bhen.dash",
+      "password": "f4d094abef91fb848457d1de6bd815501b8bc44e325fb460450d6390a6dfeb2e",
+      "role": "teacher",
+      "name": "bhen dash",
+      "teacherId": "755dc104321757ca"
+    },
+    {
+      "id": "23c68156fbe18994",
+      "username": "ren.ald",
+      "password": "ac13150061bc97537ff2a675e37be457e7790f3a5444fa950a85bcf173617269",
+      "role": "teacher",
+      "name": "ren ald",
+      "teacherId": "23c68156fbe18994"
+    },
+    {
+      "id": "e9f3c42fdf0d23fa",
+      "username": "zai.ra",
+      "password": "eea2240dc9f74213af5b7ba3bbf2497b3fcf7af1f9dabb5baf30b150c7bf722b",
+      "role": "teacher",
+      "name": "zai ra",
+      "teacherId": "e9f3c42fdf0d23fa"
+    },
+    {
+      "id": "18db6127716559dd",
+      "username": "jhon.job",
+      "password": "22b66be923bd785fd3f85101a554670045851d901266faeca7de46acc097a31e",
+      "role": "teacher",
+      "name": "jhon job",
+      "teacherId": "18db6127716559dd"
+    },
+    {
+      "id": "8635c7f69b1b946e",
+      "username": "neil.tejones",
+      "password": "98c7e9ea613c17748c60684e2901811df301f2cd3db088464942345786eb6502",
+      "role": "teacher",
+      "name": "neil tejones",
+      "teacherId": "8635c7f69b1b946e"
+    }
+  ],
+  "schoolSubjects": [
+    "Math",
+    "Science",
+    "ICT",
+    "filipino",
+    "mapeh",
+    "english",
+    "AP",
+    "History"
+  ],
+  "teachers": [
+    {
+      "id": "5e1d9ee1e8444208",
+      "firstName": "sab",
+      "lastName": "rina",
+      "email": "edustudentsetup@gmail.com",
+      "subjects": [
+        "math",
+        "science"
+      ],
+      "targetGrade": "Grade 10",
+      "workDays": [
+        "Monday",
+        "Tuesday",
+        "Wednesday"
+      ],
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "availability": [
+        {
+          "day": "Monday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Tuesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Wednesday",
+          "from": "08:00",
+          "to": "16:00"
+        }
+      ],
+      "employeeId": "EMP-7268",
+      "createdAt": "2026-05-19T08:25:00.159Z"
+    },
+    {
+      "id": "b3ec1cbfc4d8f4e6",
+      "firstName": "john",
+      "lastName": "rey",
+      "email": "edustudentsetup@gmail.com",
+      "subjects": [
+        "filipino",
+        "english"
+      ],
+      "targetGrade": "Grade 10",
+      "workDays": [
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ],
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "availability": [
+        {
+          "day": "Thursday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Friday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Saturday",
+          "from": "08:00",
+          "to": "16:00"
+        }
+      ],
+      "employeeId": "EMP-5070",
+      "createdAt": "2026-05-19T08:25:28.647Z",
+      "shift": "08:00 - 16:00"
+    },
+    {
+      "id": "eb5ff844aba9847a",
+      "firstName": "bea",
+      "lastName": "tryz",
+      "email": "edustudentsetup@gmail.com",
+      "subjects": [
+        "ICT"
+      ],
+      "targetGrade": "Grade 9",
+      "workDays": [
+        "Tuesday",
+        "Wednesday",
+        "Thursday"
+      ],
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "availability": [
+        {
+          "day": "Tuesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Wednesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Thursday",
+          "from": "08:00",
+          "to": "16:00"
+        }
+      ],
+      "employeeId": "EMP-1852",
+      "createdAt": "2026-05-19T10:43:39.200Z"
+    },
+    {
+      "id": "95262164f8bc2061",
+      "firstName": "alvin",
+      "lastName": "nery",
+      "email": "edustudentsetup@gmail.com",
+      "subjects": [
+        "mapeh"
+      ],
+      "targetGrade": "Grade 8",
+      "workDays": [
+        "Tuesday",
+        "Thursday",
+        "Saturday"
+      ],
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "availability": [
+        {
+          "day": "Tuesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Thursday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Saturday",
+          "from": "08:00",
+          "to": "16:00"
+        }
+      ],
+      "employeeId": "EMP-3239",
+      "createdAt": "2026-05-19T10:44:04.629Z"
+    },
+    {
+      "id": "755dc104321757ca",
+      "firstName": "bhen",
+      "lastName": "dash",
+      "email": "edustudentsetup@gmail.com",
+      "subjects": [
+        "history"
+      ],
+      "targetGrade": "Grade 9",
+      "workDays": [
+        "Monday",
+        "Tuesday",
+        "Thursday"
+      ],
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "availability": [
+        {
+          "day": "Monday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Tuesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Thursday",
+          "from": "08:00",
+          "to": "16:00"
+        }
+      ],
+      "employeeId": "EMP-4278",
+      "createdAt": "2026-05-20T06:06:40.463Z"
+    },
+    {
+      "id": "23c68156fbe18994",
+      "firstName": "ren",
+      "lastName": "ald",
+      "email": "edustudentsetup@gmail.com",
+      "subjects": [
+        "AP"
+      ],
+      "targetGrade": "Grade 7",
+      "workDays": [
+        "Monday",
+        "Wednesday",
+        "Thursday"
+      ],
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "availability": [
+        {
+          "day": "Monday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Wednesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Thursday",
+          "from": "08:00",
+          "to": "16:00"
+        }
+      ],
+      "employeeId": "EMP-3971",
+      "createdAt": "2026-05-20T06:07:11.431Z"
+    },
+    {
+      "id": "e9f3c42fdf0d23fa",
+      "firstName": "zai",
+      "lastName": "ra",
+      "email": "edustudentsetup@gmail.com",
+      "subjects": [
+        "english"
+      ],
+      "targetGrade": "Grade 8",
+      "workDays": [
+        "Monday",
+        "Wednesday",
+        "Saturday"
+      ],
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "availability": [
+        {
+          "day": "Monday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Wednesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Saturday",
+          "from": "08:00",
+          "to": "16:00"
+        }
+      ],
+      "employeeId": "EMP-5430",
+      "createdAt": "2026-05-20T06:16:33.134Z"
+    },
+    {
+      "id": "18db6127716559dd",
+      "firstName": "jhon",
+      "lastName": "job",
+      "email": "edustudentsetup@gmail.com",
+      "subjects": [
+        "science"
+      ],
+      "targetGrade": "Grade 10",
+      "workDays": [
+        "Tuesday",
+        "Wednesday",
+        "Friday"
+      ],
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "availability": [
+        {
+          "day": "Tuesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Wednesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Friday",
+          "from": "08:00",
+          "to": "16:00"
+        }
+      ],
+      "employeeId": "EMP-8790",
+      "createdAt": "2026-05-20T06:17:47.064Z"
+    },
+    {
+      "id": "8635c7f69b1b946e",
+      "firstName": "neil",
+      "lastName": "tejones",
+      "email": "edustudentsetup@gmail.com",
+      "subjects": [
+        "ICT"
+      ],
+      "targetGrade": "Grade 10",
+      "workDays": [
+        "Monday",
+        "Tuesday",
+        "Wednesday"
+      ],
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "availability": [
+        {
+          "day": "Monday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Tuesday",
+          "from": "08:00",
+          "to": "16:00"
+        },
+        {
+          "day": "Wednesday",
+          "from": "08:00",
+          "to": "16:00"
+        }
+      ],
+      "employeeId": "EMP-9982",
+      "createdAt": "2026-05-21T09:36:50.504Z"
+    }
+  ],
+  "schedules": [
+    {
+      "teacherId": "5e1d9ee1e8444208",
+      "slots": [
+        {
+          "id": "0165066f",
+          "day": "Monday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "Math",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "cf7d4009",
+          "day": "Monday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "Science",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "1d8ef4ba",
+          "day": "Tuesday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "Math",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "0cbeda4e",
+          "day": "Wednesday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "Math",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "7c669dea",
+          "day": "Monday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "Math",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "83164300",
+          "day": "Monday",
+          "startTime": "10:30 AM",
+          "endTime": "11:30 AM",
+          "subject": "Science",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "05d8ae25",
+          "day": "Tuesday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "Math",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "4ce183da",
+          "day": "Wednesday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "Math",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        }
+      ],
+      "generatedAt": "2026-06-17T13:08:10.937Z"
+    },
+    {
+      "teacherId": "b3ec1cbfc4d8f4e6",
+      "slots": [
+        {
+          "id": "1a0e7d35",
+          "day": "Thursday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "filipino",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "853837c1",
+          "day": "Thursday",
+          "startTime": "10:30 AM",
+          "endTime": "11:30 AM",
+          "subject": "english",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "60592e0e",
+          "day": "Friday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "filipino",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "8ef192cb",
+          "day": "Friday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "english",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "5c6dfe16",
+          "day": "Saturday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "filipino",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "5c54dc92",
+          "day": "Saturday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "english",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "4fdc92b1",
+          "day": "Thursday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "filipino",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "2a354998",
+          "day": "Thursday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "english",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "1da7645b",
+          "day": "Friday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "filipino",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "3050714d",
+          "day": "Friday",
+          "startTime": "10:30 AM",
+          "endTime": "11:30 AM",
+          "subject": "english",
+          "room": "lab",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "7ab308a2",
+          "day": "Saturday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "filipino",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        }
+      ],
+      "generatedAt": "2026-06-17T13:08:10.938Z"
+    },
+    {
+      "teacherId": "eb5ff844aba9847a",
+      "slots": [
+        {
+          "id": "f592b201",
+          "day": "Tuesday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "ICT",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "73ce5b0b",
+          "day": "Wednesday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "ICT",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "72ecc9f5",
+          "day": "Thursday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "ICT",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "19543bb3",
+          "day": "Thursday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "ICT",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        }
+      ],
+      "generatedAt": "2026-06-17T13:08:10.938Z"
+    },
+    {
+      "teacherId": "95262164f8bc2061",
+      "slots": [
+        {
+          "id": "2ddaec6a",
+          "day": "Tuesday",
+          "startTime": "10:30 AM",
+          "endTime": "11:30 AM",
+          "subject": "mapeh",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "29b652ca",
+          "day": "Thursday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "mapeh",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "8b2d45eb",
+          "day": "Saturday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "mapeh",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "c1fd741b",
+          "day": "Tuesday",
+          "startTime": "01:00 PM",
+          "endTime": "02:00 PM",
+          "subject": "mapeh",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "dcefb995",
+          "day": "Thursday",
+          "startTime": "10:30 AM",
+          "endTime": "11:30 AM",
+          "subject": "mapeh",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "4a78e661",
+          "day": "Saturday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "mapeh",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        }
+      ],
+      "generatedAt": "2026-06-17T13:08:10.938Z"
+    },
+    {
+      "teacherId": "755dc104321757ca",
+      "slots": [
+        {
+          "id": "b603fd96",
+          "day": "Monday",
+          "startTime": "02:00 PM",
+          "endTime": "03:00 PM",
+          "subject": "History",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "6a367a1e",
+          "day": "Tuesday",
+          "startTime": "01:00 PM",
+          "endTime": "02:00 PM",
+          "subject": "History",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "303a570c",
+          "day": "Thursday",
+          "startTime": "02:00 PM",
+          "endTime": "03:00 PM",
+          "subject": "History",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "c5b1a119",
+          "day": "Monday",
+          "startTime": "01:00 PM",
+          "endTime": "02:00 PM",
+          "subject": "History",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "b10d9745",
+          "day": "Tuesday",
+          "startTime": "10:30 AM",
+          "endTime": "11:30 AM",
+          "subject": "History",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "a722a007",
+          "day": "Thursday",
+          "startTime": "01:00 PM",
+          "endTime": "02:00 PM",
+          "subject": "History",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        }
+      ],
+      "generatedAt": "2026-06-17T13:08:10.938Z"
+    },
+    {
+      "teacherId": "23c68156fbe18994",
+      "slots": [
+        {
+          "id": "6d6dfbc4",
+          "day": "Monday",
+          "startTime": "01:00 PM",
+          "endTime": "02:00 PM",
+          "subject": "AP",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "b834e862",
+          "day": "Wednesday",
+          "startTime": "01:00 PM",
+          "endTime": "02:00 PM",
+          "subject": "AP",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "ed4290a5",
+          "day": "Thursday",
+          "startTime": "01:00 PM",
+          "endTime": "02:00 PM",
+          "subject": "AP",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "1f4d070f",
+          "day": "Monday",
+          "startTime": "02:00 PM",
+          "endTime": "03:00 PM",
+          "subject": "AP",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "4f3a2ce1",
+          "day": "Wednesday",
+          "startTime": "10:30 AM",
+          "endTime": "11:30 AM",
+          "subject": "AP",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "5dbbda77",
+          "day": "Thursday",
+          "startTime": "02:00 PM",
+          "endTime": "03:00 PM",
+          "subject": "AP",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        }
+      ],
+      "generatedAt": "2026-06-17T13:08:10.938Z"
+    },
+    {
+      "teacherId": "e9f3c42fdf0d23fa",
+      "slots": [
+        {
+          "id": "dff993a6",
+          "day": "Monday",
+          "startTime": "10:30 AM",
+          "endTime": "11:30 AM",
+          "subject": "english",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "5e6918da",
+          "day": "Wednesday",
+          "startTime": "10:30 AM",
+          "endTime": "11:30 AM",
+          "subject": "english",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "ff2a3e4f",
+          "day": "Monday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "english",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "d0e4da4a",
+          "day": "Wednesday",
+          "startTime": "01:00 PM",
+          "endTime": "02:00 PM",
+          "subject": "english",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "a297da01",
+          "day": "Saturday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "english",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        }
+      ],
+      "generatedAt": "2026-06-17T13:08:10.938Z"
+    },
+    {
+      "teacherId": "18db6127716559dd",
+      "slots": [
+        {
+          "id": "c63bcf0f",
+          "day": "Tuesday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "Science",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "b1235e7b",
+          "day": "Wednesday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "Science",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "425fa5b9",
+          "day": "Friday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "Science",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "ab9f9ab2",
+          "day": "Tuesday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "Science",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "59684d56",
+          "day": "Wednesday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "Science",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "a22e5df3",
+          "day": "Friday",
+          "startTime": "08:30 AM",
+          "endTime": "09:30 AM",
+          "subject": "Science",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        }
+      ],
+      "generatedAt": "2026-06-17T13:08:10.938Z"
+    },
+    {
+      "teacherId": "8635c7f69b1b946e",
+      "slots": [
+        {
+          "id": "49be5d0b",
+          "day": "Monday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "ICT",
+          "room": "lab",
+          "section": "grade 7-diamond",
+          "status": "scheduled"
+        },
+        {
+          "id": "f3006a86",
+          "day": "Monday",
+          "startTime": "07:30 AM",
+          "endTime": "08:30 AM",
+          "subject": "ICT",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "5f677297",
+          "day": "Tuesday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "ICT",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        },
+        {
+          "id": "b551dd29",
+          "day": "Wednesday",
+          "startTime": "09:30 AM",
+          "endTime": "10:30 AM",
+          "subject": "ICT",
+          "room": "science",
+          "section": "grade 7-ruby",
+          "status": "scheduled"
+        }
+      ],
+      "generatedAt": "2026-06-17T13:08:10.938Z"
+    }
+  ],
+  "sections": [
+    {
+      "id": "sec-id-1779340307859",
+      "name": "grade 7-diamond",
+      "students": 43
+    },
+    {
+      "id": "sec-id-1779341046345",
+      "name": "grade 7-ruby",
+      "students": 24
+    }
+  ],
+  "rooms": [
+    {
+      "id": "rm-id-1779340314849",
+      "name": "lab",
+      "capacity": 34
+    },
+    {
+      "id": "rm-id-1779341035173",
+      "name": "science",
+      "capacity": 35
+    }
+  ]
+}

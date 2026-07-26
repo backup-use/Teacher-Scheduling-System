@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logging Out...</title>
+    <link rel="stylesheet" href="css/base.css">
+    <style>
+        .logout-wrapper {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: var(--bg1, #0f0f0f);
+            color: white;
+        }
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid #10b981;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="logout-wrapper">
+        <div class="loader"></div>
+        <h1>Successfully Logged Out</h1>
+        <p>Redirecting you to the login page...</p>
+    </div>
+
+    <script>
+        // 1. Clear all session data immediately
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // 2. Wait 2 seconds so the user can see the "Success" message
+        setTimeout(() => {
+            window.location.href = "index.html?logout=success";
+        }, 2000);
+    </script>
+</body>
+</html>

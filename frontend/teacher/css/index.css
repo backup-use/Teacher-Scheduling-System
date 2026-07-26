@@ -1,0 +1,142 @@
+
+        /* Quick custom helper styles for layout spacing */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .welcome-card {
+            background: rgba(30, 41, 59, 0.7);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 2rem;
+            backdrop-filter: blur(4px);
+        }
+        .stat-card {
+            background: rgba(30, 41, 59, 0.5);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00bcd4; /* Reusing your bright cyan color */
+            margin-top: 0.5rem;
+        }
+        .hidden { display: none; }
+
+        :root {
+    --glass-bg: rgba(23, 23, 33, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --accent-glow: rgba(124, 77, 255, 0.3);
+    --input-bg: rgba(0, 0, 0, 0.25);
+    --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+body {
+    background: radial-gradient(circle at top left, #1b2735, #090a0f);
+    color: #ffffff;
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    display: flex;
+    height: 100vh;
+}
+
+.card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 2.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================
+   SOLIDIFIED GLASS SIDEBAR (PINAKAMALINIS NA VERSION)
+   ========================================== */
+.sidebar {
+    width: 280px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--glass-border);
+    padding: 2rem 1.2rem; 
+    box-sizing: border-box; /* Pinipigilan nitong lumampas ang lapad sa 280px perimeter */
+    
+    /* 🛠️ MGA KRITIKAL NA LINYA PARA MAPILITANG BUMABA ANG LOGOUT */
+    display: flex;
+    flex-direction: column;
+    height: 100vh;       /* Kinukuha ang buong taas ng monitor screen view window */
+    position: fixed;     /* Naka-lock sa gilid para maging flexible container ang height layout */
+    left: 0;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Links array container block spacing rules */
+.nav-links-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+/* Master Button & Anchor Structural Node Grid */
+.nav-item {
+    display: flex;
+    align-items: center;
+    width: 100%; 
+    padding: 14px 18px;
+    margin: 6px 0;
+    border-radius: 12px;
+    color: #a0a0c0;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+    box-sizing: border-box; /* Tinitiyak na hindi luluwang kahit may text animations transformations */
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--glass-border);
+    color: white;
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    padding-left: 22px; /* Banayad na pakanan slide animation style rules */
+}
+
+/* 🛑 PINAKAMATATAG NA POSITIONING RULES PARA SA LOGOUT BUTTON ELEMENT */
+.logout-btn {
+    margin-top: auto !important; /* Pinupwersang gamitin ang natitirang vertical flex alignment tracks */
+    color: #ff5f5f !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-top: 1px solid var(--glass-border) !important; /* Manipis na divider boundaries separator */
+    padding-top: 18px !important;
+    border-radius: 0 0 12px 12px;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 95, 95, 0.1) !important;
+    color: #ff8585 !important;
+    padding-left: 22px !important;
+}
+
+/* ⚠️ ADJUSTMENT PARA SA MAIN CONTENT (Para hindi matakpan ng fixed sidebar) */
+.main-content {
+    flex: 1;
+    padding: 3rem;
+    margin-left: 280px; /* Iurong pakanan ang workspace para lapat sa tabi ng nakapakong sidebar natin */
+    overflow-y: auto;
+    box-sizing: border-box;
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduScheduler Pro | Teacher Dashboard</title>
+    <link rel="stylesheet" href="../css/index.css">
+
+</head>
+<body>
+        <aside class="sidebar">
+            <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold;">
+            🗓️ Scheduler Pro
+        </div>
+        <nav class="nav-links-wrapper">
+            <button onclick="window.location.href='index.html'" class="nav-item active" id="btn-teachers">📊 Dashboard Home</button>
+            <button onclick="window.location.href='my-schedule.html'" class="nav-item " id="btn-subjects">📅 My Timetable</button>
+            <button onclick="window.location.href='rooms-view.html'" class="nav-item " id="btn-database">🏫 View Rooms</button>
+            <button onclick="window.location.href='cohorts-view.html'" class="nav-item" id="btn-rooms">👥 My Cohorts</button>
+        </nav>        
+            <a href="../../shared/logout.html" class="nav-item logout-btn">
+                🚪 Logout
+            </a>
+        
+        </aside>
+
+        
+        <main class="main-content">
+            
+            <div class="welcome-card">
+                <h1 id="welcome-text">Welcome back, Instructor!</h1>
+                <p>Here is your schedule breakdown and class performance targets for today.</p>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>Assigned Classes</h3>
+                    <div id="stat-slots" class="stat-number">--</div>
+                    <p style="font-size: 0.85rem; color: #aaa;">Periods this week</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Handled Competencies</h3>
+                    <div id="stat-subjects" class="stat-number">--</div>
+                    <p style="font-size: 0.85rem; color: #aaa;">Registered subjects</p>
+                </div>
+            </div>
+
+            <section class="card-glass">
+                <h3>📅 Overview Quick Summary</h3>
+                <p style="color: #aaa; margin-bottom: 1rem;">Your active assignments loaded from the master schedule database engine.</p>
+                
+                <div id="quick-summary-box">
+                    <p>Loading your profile details...</p>
+                </div>
+            </section>
+
+        </main>
+    <script src="../js/dashboard-home.js"></script>
+</body>
+</html>

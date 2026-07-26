@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EduScheduler Pro | Admin</title>
+    <link rel="stylesheet" href="../css/Addteacher.css">
+    <link rel="stylesheet" href="../css/teacher-list.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold; color: white;">
+            🗓️ Scheduler Pro
+        </div>
+        
+        <nav class="nav-links-wrapper">
+            <button onclick="window.location.href='Addteacher.html'" class="nav-item active" id="btn-teachers">👤 Teachers</button>
+            <button onclick="window.location.href='subject.html'" class="nav-item" id="btn-subjects">📚 Manage Subjects</button>
+            <button onclick="window.location.href='teacher-list.html'" class="nav-item" id="btn-database">📋 Teacher List</button>
+            <button onclick="window.location.href='rooms.html'" class="nav-item" id="btn-rooms">🏠 Rooms</button>
+            <button onclick="window.location.href='sections.html'" class="nav-item" id="btn-schedule">📅 Sections</button>
+            <button onclick="window.location.href='generate.html'" class="nav-item" id="btn-generate">⚡ Generate Timetable</button>
+        </nav>
+
+        <a href="../../shared/logout.html" class="nav-item logout-btn">
+            🚪 Logout
+        </a>
+    </aside>
+
+    <main class="main-content">
+        <section id="teachers-tab" class="tab-pane">
+            <header style="margin-top: 0; padding-top: 0; margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 style="font-size: 2.2rem; font-weight: 600;">Teacher Management</h1>
+                    <p style="color: #a0a0c0; margin-top: 5px;">Register new faculty members to the system.</p>
+                </div>
+            </header>
+
+            <div class="card glass">
+                <form id="teacher-form">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>First Name</label>
+                            <input type="text" id="t-firstname" placeholder="Enter first name" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Last Name</label>
+                            <input type="text" id="t-lastname" placeholder="Enter last name" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Email Address</label>
+                            <input type="email" id="t-email" placeholder="email@school.edu" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Subjects</label>
+                            <input type="text" id="t-subjects" placeholder="Math, Science..." required>
+                        </div>
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label>Preferred Grade Level Assignment</label>
+                            <select id="t-targetgrade" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;" required>
+                                <option value="" disabled selected>Select Targeted Grade Level...</option>
+                                <option value="Grade 7">Grade 7</option>
+                                <option value="Grade 8">Grade 8</option>
+                                <option value="Grade 9">Grade 9</option>
+                                <option value="Grade 10">Grade 10</option>
+                                <option value="Grade 11">Grade 11</option>
+                                <option value="Grade 12">Grade 12</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <label>Availability Settings</label>
+                        <div id="days-selector" style="display: flex; gap: 20px; margin: 15px 0;">
+                            <label><input type="checkbox" name="days" value="Monday"> Mon</label>
+                            <label><input type="checkbox" name="days" value="Tuesday"> Tue</label>
+                            <label><input type="checkbox" name="days" value="Wednesday"> Wed</label>
+                            <label><input type="checkbox" name="days" value="Thursday"> Thu</label>
+                            <label><input type="checkbox" name="days" value="Friday"> Fri</label>
+                            <label><input type="checkbox" name="days" value="Saturday"> Sat</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <input type="time" id="t-start" value="08:00">
+                            <span style="color: #a0a0c0;">to</span>
+                            <input type="time" id="t-end" value="16:00">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-generate" style="margin-top: 2rem;">
+                        ✨ ADD TEACHERS & CREATE ACCOUNT
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <section id="schedule-tab" class="tab-pane" style="display:none;">
+            <h1>Master Schedule View</h1>
+            <div id="master-schedule-display"></div>
+        </section>
+
+        <section id="generate-tab" class="tab-pane" style="display:none;">
+            <div class="header-row">
+                <h1>Schedule Engine</h1>
+                <p>Run the automated algorithm to organize all teachers and rooms.</p>
+            </div>
+            
+            <div class="card glass">
+                <h3>Algorithm Constraints</h3>
+                <ul>
+                    <li>No teacher double-booking</li>
+                    <li>No room overlaps</li>
+                    <li>Maximum 6 hours per day per teacher</li>
+                </ul>
+                <button id="btn-run-generator" class="btn-generate" onclick="triggerAutoSchedule()">
+                    🚀 Run Optimization & Generate Master Schedule
+                </button>
+            </div>
+
+            <div id="generation-results" class="results-grid" style="margin-top: 2rem;"></div>
+        </section>
+    </main>
+
+    <script src="../js/Addteacher.js"></script>
+</body>
+</html>

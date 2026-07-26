@@ -1,0 +1,148 @@
+
+        :root {
+    --glass-bg: rgba(23, 23, 33, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --accent-glow: rgba(124, 77, 255, 0.3);
+    --input-bg: rgba(0, 0, 0, 0.25);
+    --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+body {
+    background: radial-gradient(circle at top left, #1b2735, #090a0f);
+    color: #ffffff;
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    display: flex;
+    height: 100vh;
+}
+
+
+
+/* Main Content Glass Cards */
+.main-content {
+    flex: 1;
+    padding: 3rem;
+    overflow-y: auto;
+}
+
+.card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 2.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+        .cohorts-header {
+            margin-bottom: 2rem;
+        }
+        .cohorts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .cohort-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .cohort-card:hover {
+            transform: translateY(-3px);
+            border-color: #00bcd4;
+        }
+        .cohort-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #00bcd4;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .cohort-meta {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 0.5rem;
+        }
+        .badge-subject {
+            display: inline-block;
+            background: rgba(46, 196, 182, 0.15);
+            color: #2ec4b6;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-top: 0.5rem;
+        }
+
+/* Glass Sidebar */
+.sidebar {
+    width: 280px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--glass-border);
+    padding: 2rem 1.2rem; /* Bahagyang binawasan ang padding para lumuwang ang button tracks inside */
+    box-sizing: border-box; /* Pinipigilan nitong lumampas ang laman sa labas ng 280px perimeter */
+    
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    
+    
+    z-index: 1000;
+}
+
+.nav-links-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    width: 100%; /* Kakainin ang eksaktong natitirang espasyo sa loob ng sidebar padding framework */
+    padding: 14px 18px;
+    margin: 6px 0;
+    border-radius: 12px;
+    color: #a0a0c0;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+    box-sizing: border-box; /* Tinitiyak na hindi luluwang ang lapad kahit may hover padding transformations */
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--glass-border);
+    color: white;
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    padding-left: 22px; /* Banayad na slide movement nang hindi sumisira sa alignment boundaries */
+}
+
+.logout-btn {
+    margin-top: auto; /* Awtomatikong ipapako sa pinaka-ilalim ng display panel bounding matrix */
+    color: #ff5f5f !important;
+    background: transparent;
+    border: 1px solid transparent;
+    border-top: 1px solid var(--glass-border) !important; /* Divider lines */
+    padding-top: 18px !important;
+    border-radius: 0 0 12px 12px;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 95, 95, 0.1) !important;
+    color: #ff8585 !important;
+    padding-left: 22px !important;
+}

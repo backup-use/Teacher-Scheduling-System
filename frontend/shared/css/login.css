@@ -1,0 +1,177 @@
+/* ── Login Page ── */
+body { display: flex; align-items: center; justify-content: center; overflow: hidden; }
+
+.login-bg {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden;
+  background: radial-gradient(ellipse at 20% 50%, #1a0f3c 0%, var(--bg) 60%);
+}
+
+.orb {
+  position: absolute; border-radius: 50%;
+  filter: blur(80px); opacity: 0.35;
+}
+.orb1 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #7C3AED, transparent);
+  top: -150px; left: -100px;
+  animation: float1 8s ease-in-out infinite;
+}
+.orb2 {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, #3B82F6, transparent);
+  bottom: -100px; right: -50px;
+  animation: float2 10s ease-in-out infinite;
+}
+.orb3 {
+  width: 250px; height: 250px;
+  background: radial-gradient(circle, #F59E0B, transparent);
+  top: 50%; right: 20%;
+  animation: float3 12s ease-in-out infinite;
+}
+
+@keyframes float1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(30px, 40px); } }
+@keyframes float2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-20px, -30px); } }
+@keyframes float3 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(15px, -20px); } }
+
+.login-wrap { position: relative; z-index: 1; width: 100%; max-width: 440px; padding: 1.5rem; }
+
+.login-card {
+  background: rgba(22, 20, 31, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(124,58,237,0.1);
+  animation: slideUp 0.5s ease;
+}
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 2rem;
+}
+.logo-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--text); }
+
+.login-title { font-size: 26px; margin-bottom: 6px; color: var(--text); }
+.login-sub { color: var(--text2); font-size: 14px; margin-bottom: 1.8rem; }
+
+.error-msg {
+  background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25);
+  color: var(--danger); border-radius: var(--radius); padding: 10px 14px;
+  font-size: 14px; margin-bottom: 1.2rem;
+  animation: shake 0.3s ease;
+}
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+/* ── Updated Field & Input Sizing for Better Readability ── */
+.field { 
+  margin-bottom: 1.5rem; /* Increased from 1.2rem to give breathing room */
+}
+
+.field label { 
+  display: block; 
+  font-size: 14px; /* Bumped up from 13px */
+  font-weight: 500; 
+  color: var(--text2); 
+  margin-bottom: 9px; /* Increased padding below label */
+}
+
+.field input {
+  width: 100%; 
+  padding: 14px 16px; /* Increased from 12px 14px for better vertical footprint */
+  border-radius: var(--radius);
+  background: var(--bg3); 
+  border: 1px solid var(--border);
+  color: var(--text); 
+  font-family: 'DM Sans', sans-serif; 
+  font-size: 16px; /* Bumped up from 15px so details are crisp and legible */
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field input:focus { 
+  outline: none; 
+  border-color: var(--primary); 
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.15); 
+}
+
+.field input::placeholder { 
+  color: var(--text3); 
+  font-size: 15px;
+}
+
+/* ── Password Container Layout & Alignment ── */
+.pw-wrap { 
+  position: relative; 
+  display: flex;
+  align-items: center;
+}
+
+.pw-wrap input { 
+  padding-right: 48px; /* Extra right clearance so text never slides under the icon */
+}
+
+.pw-toggle {
+  position: absolute; 
+  right: 14px; 
+  top: 50%; 
+  transform: translateY(-50%);
+  background: none; 
+  border: none; 
+  color: var(--text3); 
+  cursor: pointer; 
+  padding: 6px;
+  font-size: 16px; /* Ensures the icon scales perfectly with the input box text */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.pw-toggle:hover { 
+  color: var(--text); /* Changes to full bright white accent on hover */
+}
+
+.btn-login {
+  width: 100%; padding: 13px; border-radius: var(--radius); border: none;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all 0.2s; margin-top: 0.5rem;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.35);
+}
+.btn-login:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(124,58,237,0.45); }
+.btn-login:active { transform: translateY(0); }
+
+.login-hint {
+  text-align: center; font-size: 12px; color: var(--text3); margin-top: 1.5rem;
+}
+
+.toast {
+    position: fixed;   /* Removed from the page flow */
+    top: 30px;         /* Anchored to the top */
+    left: 50%;
+    transform: translateX(-50%); /* Perfectly centered horizontally */
+    z-index: 9999;
+    
+    /* Matching your EduScheduler aesthetic */
+    background: rgba(28, 28, 45, 0.9);
+    border: 1px solid #7c4dff;
+    padding: 12px 30px;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+/* Hidden state for animation */
+.toast.hidden {
+    opacity: 0;
+    transform: translate(-50%, -20px); /* Slides slightly up */
+    pointer-events: none;
+}

@@ -1,0 +1,367 @@
+
+        .main-content {
+            flex: 1;
+            padding: 3rem;
+            padding-top: 0px;
+            overflow-y: auto;
+        
+        }
+
+        .control-deck-panel {
+            background: #0d161d;
+            border: 1px solid #1a2d3a;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-deck-panel p {
+            color: #94a3b8;
+            font-size: 1rem;
+            max-width: 600px;
+            margin: 0 auto 25px auto;
+            line-height: 1.5;
+        }
+
+        /* Premium Timetable Initialization Button */
+        .btn-initialize-engine {
+            background: #00d2ff;
+            color: #000000;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-initialize-engine:hover {
+            background: #00a8cc;
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
+        }
+
+        .btn-initialize-engine:active {
+            transform: translateY(0);
+        }
+
+        /* Matrix Data Schedule Table Output Layouts */
+        .table-container-wrapper {
+            background: #0d161d;
+            border: 1px solid #1a2d3a;
+            border-radius: 8px;
+            width: 100%;
+            overflow-x: auto;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .timetable-matrix-view {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        .timetable-matrix-view th {
+            background: #162530;
+            color: #00d2ff;
+            padding: 16px 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #1a2d3a;
+        }
+
+        .timetable-matrix-view td {
+            padding: 16px 20px;
+            color: #ffffff;
+            border-bottom: 1px solid #1a2d3a;
+            vertical-align: middle;
+        }
+
+        .timetable-matrix-view tr:last-child td {
+            border-bottom: none;
+        }
+
+        .timetable-matrix-view tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .empty-placeholder-msg {
+            color: #64748b;
+            padding: 40px;
+            text-align: center;
+            font-style: italic;
+        }
+        :root {
+    --glass-bg: rgba(23, 23, 33, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --accent-glow: rgba(124, 77, 255, 0.3);
+    --input-bg: rgba(0, 0, 0, 0.25);
+    --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+body {
+    background: radial-gradient(circle at top left, #1b2735, #090a0f);
+    color: #ffffff;
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    display: flex;
+    height: 100vh;
+}
+
+/* Glass Sidebar */
+/* Glass Sidebar */
+.sidebar {
+    width: 280px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--glass-border);
+    padding: 2rem 1.2rem; /* Bahagyang binawasan ang padding para lumuwang ang button tracks inside */
+    box-sizing: border-box; /* Pinipigilan nitong lumampas ang laman sa labas ng 280px perimeter */
+    
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    z-index: 1000;
+}
+
+.nav-links-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    width: 100%; /* Kakainin ang eksaktong natitirang espasyo sa loob ng sidebar padding framework */
+    padding: 14px 18px;
+    margin: 6px 0;
+    border-radius: 12px;
+    color: #a0a0c0;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+    box-sizing: border-box; /* Tinitiyak na hindi luluwang ang lapad kahit may hover padding transformations */
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--glass-border);
+    color: white;
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    padding-left: 22px; /* Banayad na slide movement nang hindi sumisira sa alignment boundaries */
+}
+
+.logout-btn {
+    margin-top: auto; /* Awtomatikong ipapako sa pinaka-ilalim ng display panel bounding matrix */
+    color: #ff5f5f !important;
+    background: transparent;
+    border: 1px solid transparent;
+    border-top: 1px solid var(--glass-border) !important; /* Divider lines */
+    padding-top: 18px !important;
+    border-radius: 0 0 12px 12px;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 95, 95, 0.1) !important;
+    color: #ff8585 !important;
+    padding-left: 22px !important;
+}
+
+/* ==========================================================================
+   Automated Timetable Grid Layouts
+   ========================================================================== */
+
+/* Control Deck Header Wrapper Panel */
+.control-deck-text {
+    color: #a0a0c0;
+    font-size: 0.95rem;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+/* Turquoise Highlight Engine Button */
+.btn-action-cyan {
+    background: #00d2ff;
+    color: #0f0f1a;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-action-cyan:hover {
+    background: #00a8cc;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 210, 255, 0.3);
+}
+
+/* ==========================================================================
+   Weekly Schedule Matrix Component Cards
+   ========================================================================== */
+
+.timetable-grid-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    margin-bottom: 2rem;
+}
+
+.calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+    table-layout: fixed;
+}
+
+.calendar-table th, 
+.calendar-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 12px;
+    text-align: center;
+    vertical-align: top;
+    height: 95px; 
+    box-sizing: border-box;
+}
+
+.calendar-table th {
+    background: rgba(255, 255, 255, 0.03);
+    color: #a0a0c0;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    height: auto;
+    padding: 15px 10px;
+}
+
+/* Time Coordinate Index Column (Far Left Column) */
+.time-col-header {
+    background: rgba(0, 210, 255, 0.02) !important;
+    color: #00d2ff !important;
+    font-weight: 600;
+    font-size: 0.85rem !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 95px;
+    border: none !important;
+}
+
+/* ==========================================================================
+   Dynamic Color-Coded Subject Chips
+   ========================================================================== */
+
+.schedule-subject-tile {
+    border-radius: 6px;
+    padding: 10px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.schedule-subject-tile:hover {
+    transform: scale(1.04);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.tile-subject-name {
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tile-meta-text {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Gradient Action Button */
+.btn-generate {
+    width: 100%;
+    background: var(--primary-gradient);
+    border: none;
+    padding: 18px;
+    border-radius: 15px;
+    color: #000;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-generate:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(79, 172, 254, 0.4);
+}
+
+/* Base Button Style */
+.btn-generate {
+    width: 100%;
+    background: #00d2ff; /* Your bright cyan color */
+    border: none;
+    padding: 18px;
+    border-radius: 15px;
+    color: #000;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
+}
+
+/* Hover Effect - This triggers when the cursor moves over the button */
+.btn-generate:hover {
+    background: #00f2fe; /* Slightly brighter blue on hover */
+    transform: translateY(-3px); /* Lift the button up slightly */
+    box-shadow: 0 10px 25px rgba(0, 210, 255, 0.4); /* Glow effect */
+}
+
+/* Active Effect - This triggers when the button is clicked */
+.btn-generate:active {
+    transform: translateY(-1px); /* Push down slightly when clicked */
+    box-shadow: 0 5px 10px rgba(0, 210, 255, 0.3);
+}
+
+

@@ -1,0 +1,167 @@
+:root {
+    --bg-dark: #0b0c10;
+    --bg-surface: #1f2833;
+    --cyan-primary: #00d2ff;
+    --text-main: #c5c6c7;
+    
+    /* Glassmorphism Configuration variables */
+    --glass-bg: rgba(255, 255, 255, 0.02);
+    --glass-border: rgba(255, 255, 255, 0.05);
+    --accent-glow: rgba(0, 210, 255, 0.3);
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    display: flex;
+    height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    padding: 3rem;
+    padding-top: 0px;
+    overflow-y: auto;
+   
+}
+
+/* Table Presentation */
+.table-wrapper { 
+    width: 100%; 
+    overflow-x: auto; 
+}
+
+.teacher-table { 
+    width: 100%; 
+    border-collapse: separate; 
+    border-spacing: 0 8px; 
+}
+
+.teacher-table th { 
+    padding: 15px 20px; 
+    color: #a0a0c0; 
+    text-transform: uppercase; 
+    font-size: 0.75rem; 
+    letter-spacing: 1px; 
+    text-align: left; 
+}
+
+.teacher-table td { 
+    padding: 18px 20px; 
+    background: rgba(255, 255, 255, 0.02); 
+    vertical-align: middle; color: #fff; 
+    font-size: 16px;
+}
+
+/* Category Tags */
+.subject-badge { 
+    background: rgba(0, 210, 255, 0.1); 
+    color: #00d2ff; padding: 4px 10px; 
+    border-radius: 6px; font-size: 0.75rem; 
+    border: 1px solid rgba(0, 210, 255, 0.2); 
+}
+
+/* Premium Refresh Button */
+.btn-refresh-glass {
+    background: rgba(0, 210, 255, 0.1); 
+    color: #00d2ff; 
+    border: 1px solid rgba(0, 210, 255, 0.3);
+    padding: 12px 20px; 
+    border-radius: 12px; 
+    cursor: pointer; transition: 0.3s; 
+    display: flex; align-items: center; 
+    gap: 8px;
+}
+
+.btn-refresh-glass:hover { 
+    background: rgba(0, 210, 255, 0.2); 
+    transform: translateY(-2px); 
+    box-shadow: 0 5px 15px rgba(0, 210, 255, 0.2); 
+}
+.btn-delete {
+    background: transparent !important;   
+    border: none !important;              
+    outline: none !important;            
+    box-shadow: none !important;        
+    padding: 4px !important;             
+    margin: 0 !important;
+    cursor: pointer;
+    font-size: 1.1rem;                   
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+/* Subtle hover pop effect */
+.btn-delete:hover {
+    transform: scale(1.2);
+}
+/* Glass Sidebar */
+.sidebar {
+    width: 280px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--glass-border);
+    padding: 2rem 1.2rem; /* Bahagyang binawasan ang padding para lumuwang ang button tracks inside */
+    box-sizing: border-box; /* Pinipigilan nitong lumampas ang laman sa labas ng 280px perimeter */
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    z-index: 1000;
+}
+
+.nav-links-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    width: 100%; /* Kakainin ang eksaktong natitirang espasyo sa loob ng sidebar padding framework */
+    padding: 14px 18px;
+    margin: 6px 0;
+    border-radius: 12px;
+    color: #a0a0c0;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+    box-sizing: border-box; /* Tinitiyak na hindi luluwang ang lapad kahit may hover padding transformations */
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--glass-border);
+    color: white;
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    padding-left: 22px; /* Banayad na slide movement nang hindi sumisira sa alignment boundaries */
+}
+
+.logout-btn {
+    margin-top: auto; /* Awtomatikong ipapako sa pinaka-ilalim ng display panel bounding matrix */
+    color: #ff5f5f !important;
+    background: transparent;
+    border: 1px solid transparent;
+    border-top: 1px solid var(--glass-border) !important; /* Divider lines */
+    padding-top: 18px !important;
+    border-radius: 0 0 12px 12px;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 95, 95, 0.1) !important;
+    color: #ff8585 !important;
+    padding-left: 22px !important;
+}

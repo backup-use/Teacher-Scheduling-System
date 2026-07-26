@@ -1,0 +1,418 @@
+:root {
+    --glass-bg: rgba(23, 23, 33, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --accent-glow: rgba(124, 77, 255, 0.3);
+    --input-bg: rgba(0, 0, 0, 0.25);
+    --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+body {
+    background: radial-gradient(circle at top left, #1b2735, #090a0f);
+    color: #ffffff;
+    /* CHANGED: Modern, highly readable educational font face setup */
+    font-family: 'Poppins', 'Inter', 'Segoe UI', sans-serif;
+    letter-spacing: -0.01em;
+    margin: 0;
+    display: flex;
+    height: 100vh;
+}
+
+/* ==========================================================================
+   1. GLASS SIDEBAR NAVIGATION
+   ========================================================================== */
+.sidebar {
+    width: 280px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--glass-border);
+    padding: 2rem 1.2rem; 
+    box-sizing: border-box; 
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    z-index: 1000;
+}
+
+.nav-links-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    width: 100%; 
+    padding: 14px 18px;
+    margin: 6px 0;
+    border-radius: 12px;
+    color: #a0a0c0;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+     
+    /* CHANGED: Inherits the clean premium typeface system */
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--glass-border);
+    color: white;
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    padding-left: 22px; 
+}
+
+.logout-btn {
+    margin-top: auto; 
+    color: #ff5f5f !important;
+    background: transparent;
+    border: 1px solid transparent;
+    border-top: 1px solid var(--glass-border) !important; 
+    padding-top: 18px !important;
+    border-radius: 0 0 12px 12px;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 95, 95, 0.1) !important;
+    color: #ff8585 !important;
+    padding-left: 22px !important;
+}
+
+/* ==========================================================================
+   2. MAIN CONTENT & TIMETABLE LAYOUT (OPTIMIZED FOR WHITE BG)
+   ========================================================================== */
+.main-content {
+    flex: 1;
+    padding: 3rem;
+    overflow-y: auto;
+    background: #ffffff; /* Purong puti para sa dashboard background */
+    color: #1e293b;
+}
+
+.card {
+    background: #f8fafc; /* Bahagyang off-white/light gray card para may lalim */
+    backdrop-filter: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 24px;
+    padding: 2.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Siguruhing madilim at litaw ang Instructor Name */
+.main-content h1, 
+.main-content h2, 
+.main-content .instructor-title {
+    color: #0f172a !important;
+    font-weight: 700;
+}
+
+.timetable-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.btn-group {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-action {
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Poppins', sans-serif;
+}
+.btn-print { background-color: #0097a7; color: #fff; } /* Mas madilim na cyan */
+.btn-pdf { background-color: #00897b; color: #fff; }   /* Mas madilim na teal */
+
+.timetable-wrapper {
+    overflow-x: auto;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    padding: 1rem;
+}
+
+.timetable-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    min-width: 800px;
+}
+
+/* Darker borders para sa mga linya ng table grid */
+.timetable-table th, .timetable-table td {
+    border: 1px solid #94a3b8; 
+    padding: 1rem;
+    vertical-align: middle;
+    font-family: 'Poppins', 'Inter', sans-serif;
+}
+
+/* Elegant Slate/Navy Header para sa mga Araw (Monday-Saturday) */
+.timetable-table th {
+    background: #334155; 
+    color: #ffffff !important; /* Puti ang text para litaw sa madilim na header */
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+/* Ginawang Dark Deep Blue/Teal ang Oras para kitang-kita */
+.time-cell {
+    background: #f1f5f9;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #000000 !important; /* Deep Navy Blue para sa mataas na contrast */
+}
+
+/* Mga Cards na may Klase (Premium Contrast Setup) */
+.schedule-card {
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-family: 'Poppins', sans-serif;
+    text-transform: uppercase !important; 
+    padding: 12px;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Default Class Block (Dating cyan text, ngayon ay may malinis na background at dark text) */
+.card-default { 
+    background-color: #e0f2fe !important; /* Banayad na blue background */
+    color: #0369a1 !important;            /* Madilim na asul na text */
+    border-left: 5px solid #0284c7 !important; 
+}
+.card-math { background-color: #fef9c3 !important; color: #713f12 !important; border-left: 5px solid #ca8a04; }
+.card-science { background-color: #dcfce7 !important; color: #14532d !important; border-left: 5px solid #16a34a; }
+
+
+/* ==========================================================================
+   3. INTERACTIVE VACANT CELLS & MEMO ACTION BUTTONS (LIGHT THEME)
+   ========================================================================== */
+.vacant-cell-fill {
+    /* Pinalitan ang nakakadiring solid gray block ng malinis na white/soft-gray strip block */
+    background-color: #f8fafc !important; 
+    color: #64748b !important; 
+    font-style: normal;
+    padding: 14px !important;
+    border-radius: 8px !important;
+    border: 1px dashed #cbd5e1 !important; 
+    position: relative !important;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 45px;
+}
+
+/* Mas daling basahin na "-- Vacant --" text */
+.vacant-cell-text {
+    display: block;
+    font-size: 0.85rem;
+    color: #64748b !important; /* Slate gray para malinis tingnan */
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+}
+
+.vacant-cell-fill.has-note .vacant-cell-text {
+    display: none !important;
+}
+
+.add-note-btn {
+    position: absolute !important;
+    bottom: 5px !important;
+    right: 5px !important;
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 50% !important;
+    background: #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #000000 !important;
+    font-size: 0.85rem !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease-in-out !important;
+    opacity: 0; 
+}
+
+.vacant-cell-fill:hover .add-note-btn {
+    opacity: 1 !important;
+    background: #000000 !important;
+    color: #ffffff !important; 
+    transform: scale(1.1);
+}
+
+.saved-cell-note {
+    font-family: 'Inter', sans-serif !important; 
+    font-size: 0.85rem !important;                
+    color: #000000 !important; /* Solid dark text para sa personal notes/memo */                                       
+    font-weight: 600 !important;                                  
+    width: 100%;
+    word-wrap: break-word;
+    white-space: normal;                                          
+    text-align: center;
+    text-transform: none;                                          
+}
+
+
+/* ==========================================================================
+   4. SLATE DARK INTERACTIVE POP-UP MODAL UI
+   ========================================================================== */
+.vacant-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.vacant-modal-overlay.modal-active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.vacant-modal-content {
+    background: #1e293b;
+    border: 1px solid #334155;
+    padding: 24px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    /* CHANGED: Modal styling fonts */
+    font-family: 'Poppins', sans-serif;
+    color: #ffffff;
+    text-align: left;
+}
+
+.vacant-modal-content h3 {
+    margin: 0 0 6px 0;
+    font-size: 1.2rem;
+    color: #f8fafc;
+    font-weight: 600;
+}
+
+.modal-subtitle {
+    margin: 0 0 16px 0;
+    font-size: 0.82rem;
+    color: #94a3b8;
+}
+
+#modal-note-textarea {
+    width: 100%;
+    height: 110px;
+    background: #0f172a;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 12px;
+    color: #ffffff;
+    font-size: 0.88rem;
+    resize: none;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    font-family: 'Inter', sans-serif;
+}
+
+#modal-note-textarea:focus {
+    outline: none;
+    border-color: #00bcd4;
+    box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.2);
+}
+
+.modal-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.modal-actions-row button {
+    padding: 9px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+#modal-cancel-btn {
+    background: #334155;
+    color: #cbd5e1;
+}
+
+#modal-cancel-btn:hover {
+    background: #475569;
+    color: #ffffff;
+}
+
+#modal-save-btn {
+    background: #00bcd4;
+    color: #000000;
+}
+
+#modal-save-btn:hover {
+    background: #00acc1;
+    transform: translateY(-1px);
+}
+
+
+/* ==========================================================================
+   5. PRINT & HARDCOPY MEDIA CONFIGURATION OVERRIDES
+   ========================================================================== */
+@media print {
+    .add-note-btn, 
+    .vacant-modal-overlay,
+    .sidebar,
+    .timetable-controls {
+        display: none !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+    }
+
+    /* CHANGED: Direct override ensuring the document print captures the crisp educational fonts */
+    body, table, td, th, .schedule-card, strong, span, .saved-cell-note {
+        font-family: 'Poppins', 'Inter', sans-serif !important;
+        color: #000000 !important; /* Standard sharp dark ink print fallback */
+    }
+
+    .schedule-card strong {
+        font-weight: 700 !important;
+        letter-spacing: 0.5px;
+    }
+}

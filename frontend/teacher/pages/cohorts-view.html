@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduScheduler Pro | My Cohorts</title>
+
+    
+    <link rel="stylesheet" href="../css/cohorts-view.css">
+
+</head>
+<body>
+        <aside class="sidebar">
+            <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold; color: white;">
+                🗓️ Scheduler Pro
+            </div>
+            <nav class="nav-links-wrapper">
+                <button onclick="window.location.href='index.html'" class="nav-item " id="btn-teachers">📊 Dashboard Home</button>
+                <button onclick="window.location.href='my-schedule.html'" class="nav-item " id="btn-subjects">📅 My Timetable</button>
+                <button onclick="window.location.href='rooms-view.html'" class="nav-item " id="btn-database">🏫 View Rooms</button>
+                <button onclick="window.location.href='cohorts-view.html'" class="nav-item active" id="btn-rooms">👥 My Cohorts</button>
+            </nav>        
+                <a href="../shared/logout.html" class="nav-item logout-btn">
+                    🚪 Logout
+                </a>
+            
+        </aside>
+
+        <main class="main-content">
+            
+            <div class="cohorts-header">
+                <h1>👥 My Assigned Student Cohorts</h1>
+                <p style="color: #aaa; font-size: 0.9rem;">The student sections and classes you are currently scheduled to teach.</p>
+            </div>
+
+            <div id="cohorts-container" class="cohorts-grid">
+                <p style="color: #aaa;">Analyzing schedule tracking allocations...</p>
+            </div>
+
+        </main>
+
+    <script src="../js/cohorts-view.js"></script>
+</body>
+</html>
