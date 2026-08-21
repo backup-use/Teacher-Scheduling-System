@@ -389,7 +389,7 @@ const server = http.createServer(async (req, res) => {
 
         // Generate reset token and send email
         const resetToken = signToken({ id: user.id, email: user.email });
-        const resetLink = `http://localhost:3000/shared/reset-password.html?token=${resetToken}`;
+        const resetLink = `https://lectura-mdvz.onrender.com/shared/reset-password.html?token=${resetToken}`;
 
         await transporter.sendMail({
           from: `"Lectura Security" <${process.env.EMAIL_USER}>`,
