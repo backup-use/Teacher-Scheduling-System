@@ -3,19 +3,11 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 const db = require("./db");
 
 const PORT = process.env.PORT || 3000;
-
-// Initialize Nodemailer Transporter (Gmail SMTP)
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS 
-  }
-});
 
 // ─── Email Notification Helper ───────────────────────────────────────────────
 async function sendCredentialsEmail(teacherEmail, teacherName, username, password, extraDetails = {}) {
@@ -30,9 +22,9 @@ async function sendCredentialsEmail(teacherEmail, teacherName, username, passwor
       ? workDays.join(", ") 
       : "Regular Work Days";
 
-    const mailOptions = {
-      from: `"Lectura Scheduling" <${process.env.EMAIL_USER}>`,
-      to: teacherEmail,
+    const { data, error } = await resend.emails.send({
+      from: 'Lectura Scheduling <onboarding@resend.dev>',
+      to: [teacherEmail],
       subject: '🔑 Welcome to Lectura - Your Account Credentials & Schedule Details',
       html: `
         <div style="font-family: Arial, sans-serif; background-color: #0f111a; color: #ffffff; padding: 25px; border-radius: 10px; max-width: 600px; margin: auto;">
@@ -73,12 +65,15 @@ async function sendCredentialsEmail(teacherEmail, teacherName, username, passwor
           <p style="font-size: 0.8rem; color: #8080a0; margin-bottom: 0;">Lectura Automated Notification System • Do not reply to this email</p>
         </div>
       `
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`✉️ Detailed email sent via Nodemailer to ${teacherEmail}! MessageID:`, info.messageId);
+    if (error) {
+      return console.error(`❌ Failed to send detailed email via Resend to ${teacherEmail}:`, error);
+    }
+
+    console.log(`✉️ Detailed email sent via Resend to ${teacherEmail}! ID:`, data.id);
   } catch (error) {
-    console.error(`❌ Failed to send detailed email via Nodemailer to ${teacherEmail}:`, error);
+    console.error(`❌ Failed to send detailed email to ${teacherEmail}:`, error);
   }
 }
 
