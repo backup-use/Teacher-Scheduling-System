@@ -91,10 +91,7 @@ body {
    
 }
 /* Tanggalin ang default margin ng mismong pamagat sa loob ng main-content */
-.main-content h1 {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-}
+
 .card {
     background: var(--glass-bg);
     backdrop-filter: blur(20px);

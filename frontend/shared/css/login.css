@@ -175,3 +175,144 @@ body { display: flex; align-items: center; justify-content: center; overflow: hi
     transform: translate(-50%, -20px); /* Slides slightly up */
     pointer-events: none;
 }
+
+/* ── Forgot Password Link Styling ── */
+.forgot-link-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  margin-bottom: 20px;
+}
+
+.forgot-link {
+  color: var(--primary, #00D2FF);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.forgot-link:hover {
+  opacity: 0.85;
+  text-decoration: underline;
+}
+
+/* ── Modal Glassmorphism Overlay & Card ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 11, 20, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  background: rgba(22, 20, 31, 0.95);
+  backdrop-filter: blur(25px);
+  border: 1px solid var(--border-strong, rgba(124, 58, 237, 0.2));
+  border-radius: var(--radius-xl, 16px);
+  padding: 2.2rem;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: var(--shadow-lg), 0 0 25px rgba(0, 210, 255, 0.15);
+  animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text, #ffffff);
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
+.modal-desc {
+  font-size: 13.5px;
+  color: var(--text2, #a0a0c0);
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 13px 15px;
+  border-radius: var(--radius, 8px);
+  background: var(--bg3, #0f111a);
+  border: 1px solid var(--border, #2a2d45);
+  color: var(--text, #fff);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  box-sizing: border-box;
+  margin-bottom: 1.5rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-input:focus {
+  border-color: var(--primary, #00D2FF);
+  box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border, #2a2d45);
+  color: var(--text2, #ccc);
+  padding: 10px 18px;
+  border-radius: var(--radius, 8px);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text, #fff);
+}
+
+.btn-send {
+  background: linear-gradient(135deg, var(--primary, #00D2FF), #0099ff);
+  border: none;
+  color: #080911;
+  padding: 10px 20px;
+  border-radius: var(--radius, 8px);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+}
+
+.btn-send:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 210, 255, 0.45);
+}
+
+.btn-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

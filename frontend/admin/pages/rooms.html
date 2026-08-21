@@ -3,66 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduScheduler Pro | Facilities Management</title>
-    <link rel="stylesheet" href="../css/dashboard.css">
-    <link rel="stylesheet" href="../css/subject.css">
-    <link rel="stylesheet" href="../../shared/css/base.css">
+    <title>Lectura | Facilities Management</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
     <link rel="stylesheet" href="../css/rooms.css">
 </head>
 <body>    
-        <aside class="sidebar">
-            <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold; color: white;">
-                🗓️ Scheduler Pro
+    <aside class="sidebar">
+        <div class="logo" style="margin-bottom: 2.5rem; display: flex; align-items: center; gap: 12px; font-size: 1.4rem; font-weight: 700; color: #ffffff;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.4));">
+                <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
+                <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
+                <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
+            </svg>
+            <span>Lectura<span style="color: #00D2FF;">.</span></span>
+        </div>
+        
+        <nav class="nav-links-wrapper">
+            <button onclick="window.location.href='Addteacher.html'" data-href="Addteacher.html" class="nav-item" id="btn-teachers">👤 Teachers</button>
+            <button onclick="window.location.href='subject.html'" data-href="subject.html" class="nav-item" id="btn-subjects">📚 Manage Subjects</button>
+            <button onclick="window.location.href='teacher-list.html'" data-href="teacher-list.html" class="nav-item" id="btn-database">📋 Teacher List</button>
+            <button onclick="window.location.href='rooms.html'" data-href="rooms.html" class="nav-item active" id="btn-rooms">🏠 Rooms</button>
+            <button onclick="window.location.href='sections.html'" data-href="sections.html" class="nav-item" id="btn-schedule">📅 Sections</button>
+            <button onclick="window.location.href='generate.html'" data-href="generate.html" class="nav-item" id="btn-generate">⚡ Generate Timetable</button>
+        </nav>
+
+        <a href="../../shared/logout.html" class="nav-item logout-btn">
+            🚪 Logout
+        </a>
+    </aside>
+
+    <main class="main-content">
+        <header class="content-header" style="margin-bottom: 30px;">
+            <div class="header-title-area">
+                <h1 style="color: #ffffff; margin-bottom: 5px;">Facilities Matrix Configuration</h1>
+                <p style="color: #94a3b8; margin: 0;">Register structural classroom spaces and seating constraints below.</p>
             </div>
-            
-            <nav class="nav-links-wrapper">
-                <button onclick="window.location.href='Addteacher.html'" class="nav-item " id="btn-teachers">👤 Teachers</button>
-                <button onclick="window.location.href='subject.html'" class="nav-item" id="btn-subjects">📚 Manage Subjects</button>
-                <button onclick="window.location.href='teacher-list.html'" class="nav-item" id="btn-database">📋 Teacher List</button>
-                <button onclick="window.location.href='rooms.html'" class="nav-item active" id="btn-rooms">🏠 Rooms</button>
-                <button onclick="window.location.href='sections.html'" class="nav-item" id="btn-schedule">📅 Sections</button>
-                <button onclick="window.location.href='generate.html'" class="nav-item" id="btn-generate">⚡ Generate Timetable</button>
-            </nav>
+        </header>
 
-            <a href="../../shared/logout.html" class="nav-item logout-btn">
-                🚪 Logout
-            </a>
-        </aside>
-
-        <main class="main-content">
-            <header class="content-header" style="margin-bottom: 30px;">
-                <div class="header-title-area">
-                    <h1 style="color: #ffffff; margin-bottom: 5px;">Facilities Matrix Configuration</h1>
-                    <p style="color: #94a3b8; margin: 0;">Register structural classroom spaces and seating constraints below.</p>
-                </div>
-            </header>
-
-            <div class="dashboard-card-panel">
-                <div class="subject-workspace-grid">
-                    
-                    <div class="subject-panel-col">
+        <div class="dashboard-card-panel">
+            <div class="subject-workspace-grid">
+                
+                <div class="subject-panel-col">
+                    <form id="room-form" onsubmit="event.preventDefault(); addNewRoom();">
                         <div class="form-group">
-                            <label class="input-label">Room Designation Name</label>
-                            <input type="text" id="room-name" placeholder="e.g., Room 302, Science Lab" class="custom-input-box">
+                            <label class="input-label" for="room-name">Room Designation Name</label>
+                            <input type="text" id="room-name" name="roomName" placeholder="e.g., Room 302, Science Lab" class="custom-input-box" required>
                         </div>
                         <div class="form-group">
-                            <label class="input-label">Max Seating Capacity</label>
-                            <input type="number" id="room-capacity" placeholder="e.g., 45" class="custom-input-box">
+                            <label class="input-label" for="room-capacity">Max Seating Capacity</label>
+                            <input type="number" id="room-capacity" name="capacity" placeholder="e.g., 45" class="custom-input-box" required>
                         </div>
-                        <button type="button" class="btn-add-subject" onclick="addNewRoom()">REGISTER ROOM 🏠</button>
-                    </div>
-                    
-                    <div class="subject-panel-col">
-                        <label class="input-label" style="display: block; margin-bottom: 8px;">Registered Facilities Catalog</label>
-                        <div class="subject-display-box" id="rooms-list">
-                            </div>
-                    </div>
-
+                        <button type="submit" class="btn-add-subject" id="btn-register-room">REGISTER ROOM 🏠</button>
+                    </form>
                 </div>
-            </div>
-        </main>
+                
+                <div class="subject-panel-col">
+                    <label class="input-label" style="display: block; margin-bottom: 8px;">Registered Facilities Catalog</label>
+                    <div class="subject-display-box" id="rooms-list">
+                    </div>
+                </div>
 
-    <script src="../js/room.js"></script>
-    
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/rooms.js"></script>
 </body>
 </html>

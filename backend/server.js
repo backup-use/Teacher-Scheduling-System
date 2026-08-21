@@ -1,50 +1,130 @@
+require('dotenv').config();
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const nodemailer = require("nodemailer");
+const db = require("./db");
 
-const PORT = 3000;
-const DB_FILE = path.join(__dirname, "db.json");
+const PORT = process.env.PORT || 3000;
 
-// ─── Tiny DB ────────────────────────────────────────────────────────────────
-function loadDB() {
-  if (!fs.existsSync(DB_FILE)) {
-    const init = {
-      users: [
-        {
-          id: "admin-001",
-          username: "admin",
-          password: hashPassword("admin123"),
-          role: "admin",
-          name: "Administrator",
-        },
-      ],
-      schoolSubjects: ["Math", "Science", "English", "History", "ICT"], // Master School List
-      teachers: [],
-      schedules: [],
-      rooms: [],    // Initialized permanent rooms array registry
-      sections: []  // Initialized permanent sections array registry
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(init, null, 2));
+// Initialize Nodemailer Transporter (Gmail SMTP)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS 
   }
-  return JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+});
+
+// ─── Email Notification Helper ───────────────────────────────────────────────
+async function sendCredentialsEmail(teacherEmail, teacherName, username, password, extraDetails = {}) {
+  try {
+    const { subjects = [], workDays = [], startTime = "", endTime = "" } = extraDetails;
+
+    const formattedSubjects = Array.isArray(subjects) && subjects.length > 0 
+      ? subjects.join(", ") 
+      : "To be assigned";
+
+    const formattedDays = Array.isArray(workDays) && workDays.length > 0 
+      ? workDays.join(", ") 
+      : "Regular Work Days";
+
+    const mailOptions = {
+      from: `"Lectura Scheduling" <${process.env.EMAIL_USER}>`,
+      to: teacherEmail,
+      subject: '🔑 Welcome to Lectura - Your Account Credentials & Schedule Details',
+      html: `
+        <div style="font-family: Arial, sans-serif; background-color: #0f111a; color: #ffffff; padding: 25px; border-radius: 10px; max-width: 600px; margin: auto;">
+          <h2 style="color: #00d2ff; margin-top: 0;">Welcome to Lectura Portal!</h2>
+          <p>Hello <strong>${teacherName}</strong>,</p>
+          <p>An administrator has created your faculty account. Below are your account login credentials:</p>
+          
+          <div style="background: rgba(0, 210, 255, 0.08); border: 1px solid #00d2ff; padding: 15px 20px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 8px 0; font-size: 1.05rem;"><strong>Username:</strong> <span style="color: #00d2ff;">${username}</span></p>
+            <p style="margin: 8px 0; font-size: 1.05rem;"><strong>Temporary Password:</strong> <span style="color: #00d2ff;">${password}</span></p>
+          </div>
+
+          <div style="background: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px;">
+            <p style="margin: 0; color: #ffca28; font-size: 0.9rem;">
+              ⚠️ <strong>Security Notice:</strong> Please log in to the portal and <strong>change your password immediately</strong> upon your first login to secure your account.
+            </p>
+          </div>
+
+          <h3 style="color: #00d2ff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">📋 Your Profile Summary</h3>
+          
+          <table style="width: 100%; color: #d0d0e0; font-size: 0.95rem; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; width: 40%;"><strong>Assigned Subjects:</strong></td>
+              <td style="padding: 6px 0; color: #ffffff;">${formattedSubjects}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0;"><strong>Work Days:</strong></td>
+              <td style="padding: 6px 0; color: #ffffff;">${formattedDays}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0;"><strong>Time Availability:</strong></td>
+              <td style="padding: 6px 0; color: #ffffff;">${startTime || '08:00 AM'} - ${endTime || '05:00 PM'}</td>
+            </tr>
+          </table>
+
+          <br>
+          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1);" />
+          <p style="font-size: 0.8rem; color: #8080a0; margin-bottom: 0;">Lectura Automated Notification System • Do not reply to this email</p>
+        </div>
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✉️ Detailed email sent via Nodemailer to ${teacherEmail}! MessageID:`, info.messageId);
+  } catch (error) {
+    console.error(`❌ Failed to send detailed email via Nodemailer to ${teacherEmail}:`, error);
+  }
 }
 
-function saveDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-}
-
+// ─── Utility Helpers ─────────────────────────────────────────────────────────
 function hashPassword(pw) {
   return crypto.createHash("sha256").update(pw + "salt_key_2024").digest("hex");
 }
 
-// Generates an 8-byte hex string for strong, reliable matching
 function genId() {
   return crypto.randomBytes(8).toString("hex");
 }
 
+async function initAdmin() {
+  try {
+    await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);");
+    const adminPasswordHash = hashPassword("admin123");
+    const { rows } = await db.query("SELECT * FROM users WHERE username = $1", ["admin"]);
+    
+    if (rows.length === 0) {
+      try {
+        await db.query(
+          "INSERT INTO users (username, password, role, name) VALUES ($1, $2, $3, $4)",
+          ["admin", adminPasswordHash, "admin", "Administrator"]
+        );
+      } catch (err) {
+        const userId = "usr-" + genId();
+        await db.query(
+          "INSERT INTO users (id, username, password, role, name) VALUES ($1, $2, $3, $4, $5)",
+          [userId, "admin", adminPasswordHash, "admin", "Administrator"]
+        );
+      }
+      console.log(" -> Admin account created in database (admin / admin123)");
+    } else {
+      await db.query(
+        "UPDATE users SET password = $1 WHERE username = $2",
+        [adminPasswordHash, "admin"]
+      );
+      console.log(" -> Admin password updated/verified (admin / admin123)");
+    }
+  } catch (err) {
+    console.error(" -> Database seed error (initAdmin):", err.message);
+  }
+}
+
 // ─── JWT-lite (HMAC tokens) ──────────────────────────────────────────────────
-const SECRET = "scheduler_secret_2024_xyz";
+const SECRET = process.env.JWT_SECRET || "scheduler_secret_2024_xyz";
 
 function signToken(payload) {
   const header = Buffer.from(JSON.stringify({ alg: "HS256" })).toString("base64url");
@@ -67,25 +147,59 @@ function verifyToken(token) {
   }
 }
 
+async function getPartitionedSubjects() {
+  try {
+    await db.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS grade_level VARCHAR(255);");
+  } catch (e) {
+    console.error("Schema sync warning:", e.message);
+  }
+
+  const { rows } = await db.query("SELECT * FROM subjects ORDER BY LOWER(name) ASC");
+  const partitions = { junior: [], grade11: [], grade12: [] };
+
+  rows.forEach(r => {
+    const level = (r.grade_level || "").toLowerCase();
+    const item = { id: r.id, name: r.name, gradeLevel: r.grade_level || "Junior High School" };
+
+    if (level.includes("11")) {
+      partitions.grade11.push(item);
+    } else if (level.includes("12")) {
+      partitions.grade12.push(item);
+    } else {
+      partitions.junior.push(item);
+    }
+  });
+
+  return partitions;
+}
+
 // ─── Schedule Generator ──────────────────────────────────────────────────────
-function generateSchedule(teacher) {
-  const db = loadDB();
+async function generateSchedule(teacher) {
   const slots = [];
-  const days = teacher.workDays || [];
+  const days = teacher.workDays || teacher.work_days || [];
   
-  const startTime = teacher.startTime || "08:00";
-  const endTime = teacher.endTime || "16:00";
+  const startTime = teacher.startTime || teacher.start_time || "08:00";
+  const endTime = teacher.endTime || teacher.end_time || "16:00";
   const timeSlots = generateTimeSlots(startTime, endTime, 60);
 
-  const availableSchoolSubjects = db.schoolSubjects || ["Math", "Science", "English", "History", "ICT"];
-  const validSubjects = (teacher.subjects || []).filter(sub => availableSchoolSubjects.includes(sub));
-  
-  const primarySubject = validSubjects.length > 0 ? validSubjects[0] : ((teacher.subjects && teacher.subjects[0]) || "General Class");
+  let availableSchoolSubjects = ["Math", "Science", "English", "History", "ICT"];
+  try {
+    const res = await db.query('SELECT name FROM subjects ORDER BY LOWER(name) ASC');
+    if (res.rows.length > 0) {
+      availableSchoolSubjects = res.rows.map(r => r.name);
+    }
+  } catch (err) {
+    console.error("Error fetching subjects for schedule generator:", err);
+  }
+
+  const teacherSubjects = teacher.subjects || [];
+  const validSubjects = teacherSubjects.filter(sub => availableSchoolSubjects.includes(sub));
+  const primarySubject = validSubjects.length > 0 ? validSubjects[0] : (teacherSubjects[0] || "General Class");
 
   days.forEach((day) => {
     timeSlots.forEach((slot) => {
       const availabilityList = teacher.availability || [];
-      const isAvailable = availabilityList.some(
+      const isAvailable = availabilityList.length === 0 || availabilityList.some(
         (a) => a.day === day && isTimeInRange(slot.start, a.from || "08:00", a.to || "16:00")
       );
       if (isAvailable) {
@@ -141,7 +255,7 @@ function isTimeInRange(time, from, to) {
   return time >= from && time < to;
 }
 
-// ─── Router Helper Utils ─────────────────────────────────────────────────────
+// ─── Router Helpers ──────────────────────────────────────────────────────────
 function parseBody(req) {
   return new Promise((resolve) => {
     let data = "";
@@ -206,17 +320,99 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname.startsWith("/api/")) {
-    const db = loadDB();
 
     // POST /api/login
     if (pathname === "/api/login" && req.method === "POST") {
-      const body = await parseBody(req);
-      const user = db.users.find(
-        (u) => u.username === body.username && u.password === hashPassword(body.password)
-      );
-      if (!user) return send(res, 401, { error: "Invalid credentials" });
-      const token = signToken({ id: user.id, role: user.role, name: user.name });
-      return send(res, 200, { token, role: user.role, name: user.name, id: user.id });
+      try {
+        const body = await parseBody(req);
+        const { rows } = await db.query(
+          "SELECT * FROM users WHERE username = $1 AND password = $2",
+          [body.username, hashPassword(body.password)]
+        );
+        if (rows.length === 0) return send(res, 401, { error: "Invalid credentials" });
+        
+        const user = rows[0];
+        const token = signToken({ id: user.id, role: user.role, name: user.name, teacher_id: user.teacher_id });
+        return send(res, 200, { token, role: user.role, name: user.name, id: user.id });
+      } catch (err) {
+        return send(res, 500, { error: err.message });
+      }
+    }
+
+    // POST /api/auth/forgot-password
+    if (pathname === "/api/auth/forgot-password" && req.method === "POST") {
+      try {
+        const body = await parseBody(req);
+        const identifier = (body.identifier || body.email || "").trim().toLowerCase();
+        const temporaryEmail = (body.temporaryEmail || "").trim().toLowerCase();
+        const securityKey = (body.securityKey || "").trim();
+
+        if (!identifier) {
+          return send(res, 400, { error: "Please enter your Username or Email address." });
+        }
+
+        // Searches by Username OR Email across both USERS and TEACHERS tables
+        let { rows } = await db.query(
+          `SELECT u.id, u.username, u.name, u.role, COALESCE(u.email, t.email) AS email 
+          FROM users u 
+          LEFT JOIN teachers t ON u.teacher_id::text = t.id::text 
+          WHERE LOWER(u.username) = $1 OR LOWER(u.email) = $1 OR LOWER(t.email) = $1`,
+          [identifier]
+        );
+
+        if (rows.length === 0) {
+          return send(res, 404, { error: "No account found matching that username or email." });
+        }
+
+        const user = rows[0];
+
+        // If account exists but has no email linked
+        if (!user.email) {
+          const MASTER_SECURITY_KEY = process.env.MASTER_KEY || "LECTURA_SECURE_2024";
+
+          if (!securityKey || securityKey !== MASTER_SECURITY_KEY) {
+            return send(res, 202, { 
+              requiresVerification: true,
+              role: user.role,
+              message: "Account found, but no email is linked. Please enter your email and the Master Security Key." 
+            });
+          }
+
+          if (!temporaryEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(temporaryEmail)) {
+            return send(res, 400, { error: "Please enter a valid email address." });
+          }
+
+          // Bind email to account for future logins
+          await db.query("UPDATE users SET email = $1 WHERE id = $2", [temporaryEmail, user.id]);
+          user.email = temporaryEmail;
+        }
+
+        // Generate reset token and send email
+        const resetToken = signToken({ id: user.id, email: user.email });
+        const resetLink = `http://localhost:3000/shared/reset-password.html?token=${resetToken}`;
+
+        await transporter.sendMail({
+          from: `"Lectura Security" <${process.env.EMAIL_USER}>`,
+          to: user.email,
+          subject: "🔒 Reset Your Lectura Account Password",
+          html: `
+            <div style="font-family: Arial, sans-serif; background: #0f111a; color: #fff; padding: 20px; border-radius: 8px;">
+              <h2 style="color: #00d2ff;">Password Reset Request</h2>
+              <p>Hello <strong>${user.name || user.username}</strong>,</p>
+              <p>We received a request to reset your password for account (<strong>${user.username}</strong>).</p>
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="${resetLink}" style="background-color: #00d2ff; color: #000; font-weight: bold; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+              </div>
+            </div>
+          `
+        });
+
+        return send(res, 200, { message: `Password reset link successfully sent to ${user.email}!` });
+
+      } catch (err) {
+        console.error("❌ Forgot Password Error:", err);
+        return send(res, 500, { error: err.message });
+      }
     }
 
     // GET /api/me
@@ -226,278 +422,506 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { id: auth.id, role: auth.role, name: auth.name });
     }
 
-    // ── Public Access Bypass for Sections & Rooms (Iwas Error sa Fetch) ──
-    
-    // GET /api/admin/sections
-    if (pathname === "/api/admin/sections" && req.method === "GET") {
-      return send(res, 200, db.sections || []);
-    }
-
-    // POST /api/admin/sections
-    if (pathname === "/api/admin/sections" && req.method === "POST") {
-      const body = await parseBody(req);
-      if (!body.name || body.students === undefined) {
-        return send(res, 400, { error: "Section Name and Student count are required." });
-      }
-      if (!db.sections) db.sections = [];
-      db.sections.push(body);
-      saveDB(db);
-      return send(res, 201, db.sections);
-    }
-
-    // DELETE /api/admin/sections/:id
-    if (pathname.startsWith("/api/admin/sections/") && req.method === "DELETE") {
-      const segments = pathname.split("/");
-      const sectionId = segments[segments.length - 1];
-      if (!db.sections) db.sections = [];
-      const index = db.sections.findIndex(s => s.id === sectionId);
-      if (index === -1) return send(res, 404, { error: "Section not found." });
-      db.sections.splice(index, 1);
-      saveDB(db);
-      return send(res, 200, { success: true });
-    }
-
-    // GET /api/admin/rooms
-    if (pathname === "/api/admin/rooms" && req.method === "GET") {
-      return send(res, 200, db.rooms || []);
-    }
-
-    // POST /api/admin/rooms
-    if (pathname === "/api/admin/rooms" && req.method === "POST") {
-      const body = await parseBody(req);
-      if (!body.name || body.capacity === undefined) {
-        return send(res, 400, { error: "Room Name and Capacity are required." });
-      }
-      if (!db.rooms) db.rooms = [];
-      db.rooms.push(body);
-      saveDB(db);
-      return send(res, 201, db.rooms);
-    }
-
-    // DELETE /api/admin/rooms/:id
-    if (pathname.startsWith("/api/admin/rooms/") && req.method === "DELETE") {
-      const segments = pathname.split("/");
-      const roomId = segments[segments.length - 1];
-      if (!db.rooms) db.rooms = [];
-      const index = db.rooms.findIndex(r => r.id === roomId);
-      if (index === -1) return send(res, 404, { error: "Room not found." });
-      db.rooms.splice(index, 1);
-      saveDB(db);
-      return send(res, 200, { success: true });
-    }
-
     // ── Admin Protected Endpoints ──
     if (pathname.startsWith("/api/admin/")) {
       const auth = getAuth(req);
-      if (!auth || auth.role !== "admin") return send(res, 403, { error: "Forbidden" });
+      if (!auth || auth.role !== "admin") return send(res, 403, { error: "Forbidden: Admin access required." });
+
+      // GET /api/admin/teachers
+      if (pathname === "/api/admin/teachers" && req.method === "GET") {
+        try {
+          const { rows } = await db.query("SELECT * FROM teachers ORDER BY created_at DESC");
+          return send(res, 200, rows);
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
+      }
 
       // GET /api/admin/subjects
       if (pathname === "/api/admin/subjects" && req.method === "GET") {
-        return send(res, 200, db.schoolSubjects || []);
+        try {
+          const partitions = await getPartitionedSubjects();
+          return send(res, 200, partitions);
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
       }
 
       // POST /api/admin/subjects
       if (pathname === "/api/admin/subjects" && req.method === "POST") {
         const body = await parseBody(req);
-        if (!body.subjectName) return send(res, 400, { error: "Subject title required" });
-        if (!db.schoolSubjects.includes(body.subjectName)) {
-          db.schoolSubjects.push(body.subjectName);
-          saveDB(db);
+        const subjectName = (body.subjectName || body.name || "").trim();
+        const gradeLevel = (body.gradeLevel || "Junior High School").trim();
+
+        if (!subjectName) {
+          return send(res, 400, { error: "Subject title required." });
         }
-        return send(res, 201, db.schoolSubjects);
+
+        try {
+          await db.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS grade_level VARCHAR(255);");
+
+          const existing = await db.query(
+            "SELECT id FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1) AND LOWER(TRIM(COALESCE(grade_level, ''))) = LOWER($2)",
+            [subjectName, gradeLevel]
+          );
+
+          if (existing.rows.length > 0) {
+            return send(res, 400, { error: `This subject already exists in ${gradeLevel}.` });
+          }
+
+          await db.query("INSERT INTO subjects (name, grade_level) VALUES ($1, $2)", [subjectName, gradeLevel]);
+          
+          const partitions = await getPartitionedSubjects();
+
+          return send(res, 201, {
+            success: true,
+            message: `Subject "${subjectName}" added successfully to ${gradeLevel}!`,
+            partitions: partitions
+          });
+        } catch (err) {
+          console.error("Database error inserting subject:", err);
+          return send(res, 500, { error: "Failed to insert subject entry into database." });
+        }
       }
 
+      // DELETE /api/admin/subjects/:id
       if (pathname.startsWith("/api/admin/subjects/") && req.method === "DELETE") {
         try {
-          const segments = pathname.split("/");
-          const subjectToDelete = decodeURIComponent(segments[segments.length - 1]);
-          if (!db.schoolSubjects) return send(res, 404, { error: "Subject catalog array not found." });
-          const index = db.schoolSubjects.indexOf(subjectToDelete);
-          if (index === -1) return send(res, 404, { error: "Subject entry does not exist." });
-          db.schoolSubjects.splice(index, 1);
-          saveDB(db);
-          return send(res, 200, { success: true });
+          const subjectParam = decodeURIComponent(pathname.split("/").pop()).trim();
+          
+          let result;
+          if (!isNaN(subjectParam)) {
+            result = await db.query("DELETE FROM subjects WHERE id = $1", [parseInt(subjectParam, 10)]);
+          } else {
+            result = await db.query("DELETE FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1)", [subjectParam]);
+          }
+
+          if (result.rowCount === 0) return send(res, 404, { error: "Subject entry does not exist." });
+          
+          const partitions = await getPartitionedSubjects();
+          return send(res, 200, partitions);
         } catch (error) {
-          return send(res, 500, { error: "Internal failure." });
+          console.error("Deletion error:", error);
+          return send(res, 500, { error: "Internal failure during subject removal." });
         }
       }
 
-      // GET /api/admin/teachers
-      if (pathname === "/api/admin/teachers" && req.method === "GET") {
-        return send(res, 200, db.teachers || []);
+      // GET /api/admin/sections
+      if (pathname === "/api/admin/sections" && req.method === "GET") {
+        try {
+          const { rows } = await db.query("SELECT * FROM sections ORDER BY name ASC");
+          return send(res, 200, rows);
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
       }
 
-      // POST /api/admin/teachers
+      // POST /api/admin/sections
+      if (pathname === "/api/admin/sections" && req.method === "POST") {
+        try {
+          const body = await parseBody(req);
+          const sectionName = (body.name || "").trim();
+
+          if (!sectionName || body.students === undefined) {
+            return send(res, 400, { error: "Section Name and Student count are required." });
+          }
+
+          const existing = await db.query(
+            "SELECT id FROM sections WHERE LOWER(TRIM(name)) = LOWER($1)",
+            [sectionName]
+          );
+          if (existing.rows.length > 0) {
+            return send(res, 400, { error: "This section already exists." });
+          }
+
+          await db.query(
+            "INSERT INTO sections (name, students) VALUES ($1, $2)",
+            [sectionName, body.students]
+          );
+          const { rows } = await db.query("SELECT * FROM sections ORDER BY name ASC");
+          return send(res, 201, rows);
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
+      }
+
+      // DELETE /api/admin/sections/:id
+      if (pathname.startsWith("/api/admin/sections/") && req.method === "DELETE") {
+        try {
+          const sectionId = pathname.split("/").pop();
+          const result = await db.query("DELETE FROM sections WHERE id = $1", [sectionId]);
+          if (result.rowCount === 0) return send(res, 404, { error: "Section not found." });
+          return send(res, 200, { success: true });
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
+      }
+
+      // GET /api/admin/rooms
+      if (pathname === "/api/admin/rooms" && req.method === "GET") {
+        try {
+          const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
+          const normalizedRooms = rows.map(r => ({
+            id: r.id,
+            name: r.name || r.room_name || "",
+            capacity: r.capacity || r.max_capacity || 0
+          }));
+          return send(res, 200, normalizedRooms);
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
+      }
+
+      // POST /api/admin/rooms
+      if (pathname === "/api/admin/rooms" && req.method === "POST") {
+        try {
+          const body = await parseBody(req);
+          const roomName = (body.name || body.roomName || "").trim();
+          const capacity = body.capacity !== undefined ? body.capacity : body.maxCapacity;
+
+          if (!roomName || capacity === undefined) {
+            return send(res, 400, { error: "Room Name and Capacity are required." });
+          }
+
+          let existing;
+          try {
+            existing = await db.query(
+              "SELECT id FROM rooms WHERE LOWER(TRIM(name)) = LOWER($1) OR LOWER(TRIM(room_name)) = LOWER($1)",
+              [roomName]
+            );
+          } catch {
+            existing = { rows: [] };
+          }
+
+          if (existing.rows && existing.rows.length > 0) {
+            return send(res, 400, { error: "This room already exists." });
+          }
+
+          let insertedRow;
+          try {
+            const resInsert = await db.query(
+              "INSERT INTO rooms (name, capacity) VALUES ($1, $2) RETURNING *",
+              [roomName, capacity]
+            );
+            insertedRow = resInsert.rows[0];
+          } catch {
+            const resInsert = await db.query(
+              "INSERT INTO rooms (room_name, capacity) VALUES ($1, $2) RETURNING *",
+              [roomName, capacity]
+            );
+            insertedRow = resInsert.rows[0];
+          }
+
+          const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
+          const normalized = rows.map(r => ({
+            id: r.id,
+            name: r.name || r.room_name || "",
+            capacity: r.capacity || 0
+          }));
+
+          return send(res, 201, { success: true, room: insertedRow, rooms: normalized });
+        } catch (err) {
+          console.error("Room registration failure:", err);
+          return send(res, 500, { error: "Database failure: " + err.message });
+        }
+      }
+
+      // DELETE /api/admin/rooms/:id
+      if (pathname.startsWith("/api/admin/rooms/") && req.method === "DELETE") {
+        try {
+          const roomId = pathname.split("/").pop();
+          const result = await db.query("DELETE FROM rooms WHERE id = $1", [roomId]);
+          if (result.rowCount === 0) return send(res, 404, { error: "Room not found." });
+          return send(res, 200, { success: true });
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
+      }
+
+      // POST /api/admin/teachers (INAYOS NA ITO PARA ISAVE DIN ANG EMAIL SA USERS TABLE)
       if (pathname === "/api/admin/teachers" && req.method === "POST") {
-        const body = await parseBody(req);
-        if (!body.firstName || !body.lastName) return send(res, 400, { error: "Names are mandatory." });
+        try {
+          const body = await parseBody(req);
+          
+          const firstName = (body.firstName || "").trim();
+          const lastName = (body.lastName || "").trim();
+          const email = (body.email || "").trim().toLowerCase();
 
-        const id = genId();
-        const username = (body.firstName.toLowerCase().trim() + "." + body.lastName.toLowerCase().trim()).replace(/\s+/g, "");
-        const password = "teacher" + Math.floor(1000 + Math.random() * 9000);
+          if (!firstName || !lastName) {
+            return send(res, 400, { error: "First name and last name are required." });
+          }
 
-        const teacher = {
-          id,
-          firstName: body.firstName.trim(),
-          lastName: body.lastName.trim(),
-          email: body.email || "no-email@school.edu",
-          subjects: body.subjects || [],
-          targetGrade: body.targetGrade || "", 
-          workDays: body.workDays || [],
-          startTime: body.startTime || "08:00",
-          endTime: body.endTime || "16:00",
-          availability: body.availability || [],
-          employeeId: "EMP-" + Math.floor(1000 + Math.random() * 9000),
-          createdAt: new Date().toISOString(),
-        };
+          const nameCheck = await db.query(
+            `SELECT id FROM teachers WHERE LOWER(TRIM(first_name)) = LOWER($1) AND LOWER(TRIM(last_name)) = LOWER($2)`,
+            [firstName, lastName]
+          );
+          if (nameCheck.rows.length > 0) {
+            return send(res, 400, { error: `Teacher "${firstName} ${lastName}" is already registered!` });
+          }
 
-        const userAccount = {
-          id,
-          username,
-          password: hashPassword(password),
-          role: "teacher",
-          name: `${body.firstName} ${body.lastName}`,
-          teacherId: id,
-        };
+          let baseUsername = (firstName.toLowerCase() + "." + lastName.toLowerCase()).replace(/\s+/g, "");
+          let username = baseUsername;
+          
+          const existingUser = await db.query("SELECT id FROM users WHERE username = $1", [username]);
+          if (existingUser.rows.length > 0) {
+            username = `${baseUsername}${Math.floor(100 + Math.random() * 900)}`;
+          }
 
-        const schedule = {
-          teacherId: id,
-          slots: generateSchedule(teacher),
-          generatedAt: new Date().toISOString(),
-        };
+          const password = "teacher" + Math.floor(1000 + Math.random() * 9000);
+          const employeeId = "EMP-" + Math.floor(1000 + Math.random() * 9000);
 
-        db.teachers.push(teacher);
-        db.users.push(userAccount);
-        db.schedules.push(schedule);
-        saveDB(db);
+          const rawSubjects = Array.isArray(body.subjects) ? body.subjects : [body.subjects].filter(Boolean);
+          const subjectsJSON = JSON.stringify(rawSubjects);
+          const workDaysJSON = JSON.stringify(Array.isArray(body.workDays) ? body.workDays : []);
+          const targetGrade = body.targetGrade || body.target_grade || "";
 
-        return send(res, 201, { teacher, credentials: { username, password }, schedule });
+          function sanitizeTime(timeStr) {
+            if (!timeStr || timeStr.trim() === "") return "08:00";
+            let t = timeStr.trim().toLowerCase();
+            let isPM = t.includes("pm");
+            let isAM = t.includes("am");
+            let nums = t.replace(/[^0-9:]/g, "").split(":");
+            let h = parseInt(nums[0], 10);
+            let m = nums[1] ? parseInt(nums[1], 10) : 0;
+            if (isPM && h !== 12) h += 12;
+            if (isAM && h === 12) h = 0;
+            return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+          }
+
+          let availabilityArray = [];
+          if (typeof body.availability === 'string') {
+            try { availabilityArray = JSON.parse(body.availability); } catch (e) { availabilityArray = []; }
+          } else if (Array.isArray(body.availability)) {
+            availabilityArray = body.availability;
+          }
+
+          const formattedAvailability = availabilityArray.map(item => ({
+            day: item.day || "Monday",
+            from: sanitizeTime(item.from),
+            to: sanitizeTime(item.to)
+          }));
+
+          const teacherResult = await db.query(
+            `INSERT INTO teachers (
+              first_name, last_name, email, subjects, target_grade, 
+              work_days, start_time, end_time, availability, employee_id, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING *`,
+            [
+              firstName,
+              lastName,
+              email || "no-email@school.edu",
+              subjectsJSON,
+              targetGrade,
+              workDaysJSON,
+              sanitizeTime(body.startTime),
+              sanitizeTime(body.endTime),
+              JSON.stringify(formattedAvailability),
+              employeeId
+            ]
+          );
+
+          const newTeacher = teacherResult.rows[0];
+          const teacherIdStr = String(newTeacher.id);
+          const userId = "usr-" + genId();
+
+          // Sguraduhing may email column sa users at i-save ang email doon
+          await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);");
+          await db.query(
+            "INSERT INTO users (id, username, password, role, name, teacher_id, email) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            [userId, username, hashPassword(password), "teacher", `${firstName} ${lastName}`, teacherIdStr, email]
+          );
+
+          const slots = await generateSchedule(newTeacher);
+          await db.query(
+            "INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())",
+            [teacherIdStr, JSON.stringify(slots)]
+          );
+
+          if (email && email.includes('@')) {
+            sendCredentialsEmail(
+              email, 
+              `${firstName} ${lastName}`, 
+              username, 
+              password,
+              {
+                subjects: rawSubjects,
+                workDays: Array.isArray(body.workDays) ? body.workDays : [],
+                startTime: body.startTime,
+                endTime: body.endTime
+              }
+            );
+          }
+
+          return send(res, 201, { 
+            success: true,
+            teacher: newTeacher, 
+            credentials: { username, password }, 
+            schedule: { teacherId: newTeacher.id, slots } 
+          });
+
+        } catch (err) {
+          console.error('❌ Teacher registration error:', err);
+          return send(res, 500, { 
+            error: err.message,
+            details: err.stack
+          });
+        }
       }
 
       // PUT /api/admin/teachers/:id
       if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "PUT") {
-        const id = pathname.split("/").pop();
-        const body = await parseBody(req);
-        const idx = db.teachers.findIndex((t) => t.id === id);
-        if (idx === -1) return send(res, 404, { error: "Not found" });
+        try {
+          const id = pathname.split("/").pop();
+          const body = await parseBody(req);
+          
+          const { rows } = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
+          if (rows.length === 0) return send(res, 404, { error: "Not found" });
 
-        db.teachers[idx] = { ...db.teachers[idx], ...body, id };
-        const schedIdx = db.schedules.findIndex((s) => s.teacherId === id);
-        const newSched = {
-          teacherId: id,
-          slots: generateSchedule(db.teachers[idx]),
-          generatedAt: new Date().toISOString(),
-        };
-        if (schedIdx !== -1) db.schedules[schedIdx] = newSched;
-        else db.schedules.push(newSched);
+          const updated = { ...rows[0], ...body };
+          await db.query(
+            `UPDATE teachers SET first_name=$1, last_name=$2, email=$3, subjects=$4, target_grade=$5, work_days=$6 WHERE id=$7`,
+            [updated.first_name || updated.firstName, updated.last_name || updated.lastName, updated.email, updated.subjects, updated.target_grade || updated.targetGrade, updated.work_days || updated.workDays, id]
+          );
 
-        saveDB(db);
-        return send(res, 200, { teacher: db.teachers[idx], schedule: newSched });
+          const newSlots = await generateSchedule(updated);
+          await db.query(
+            `INSERT INTO schedules (teacher_id, slots, generated_at)
+             VALUES ($1, $2, NOW())`,
+            [String(id), JSON.stringify(newSlots)]
+          );
+
+          return send(res, 200, { teacher: updated, schedule: { teacherId: id, slots: newSlots } });
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
       }
 
       // DELETE /api/admin/teachers/:id
       if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "DELETE") {
-        const id = pathname.split("/").pop();
-        db.teachers = db.teachers.filter((t) => t.id !== id);
-        db.users = db.users.filter((u) => u.id !== id);
-        db.schedules = db.schedules.filter((s) => s.teacherId !== id);
-        saveDB(db);
-        return send(res, 200, { success: true });
+        try {
+          const id = pathname.split("/").pop();
+          await db.query("DELETE FROM teachers WHERE id = $1", [id]);
+          await db.query("DELETE FROM users WHERE teacher_id = $1 OR id = $1", [String(id)]);
+          await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
+          return send(res, 200, { success: true });
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
       }
 
       // GET /api/admin/schedules
       if (pathname === "/api/admin/schedules" && req.method === "GET") {
-        const full = db.schedules.map((s) => {
-          const teacher = db.teachers.find((t) => t.id === s.teacherId);
-          return { ...s, teacher };
-        });
-        return send(res, 200, full);
+        try {
+          const { rows: schedules } = await db.query("SELECT * FROM schedules");
+          const { rows: teachers } = await db.query("SELECT * FROM teachers");
+
+          const full = schedules.map((s) => {
+            const teacher = teachers.find((t) => String(t.id) === String(s.teacher_id));
+            return { ...s, slots: typeof s.slots === 'string' ? JSON.parse(s.slots) : s.slots, teacher };
+          });
+          return send(res, 200, full);
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
       }
 
       // POST /api/admin/schedules/save-bulk
       if (pathname === "/api/admin/schedules/save-bulk" && req.method === "POST") {
-        const body = await parseBody(req);
-        const compiledSchedules = body.schedules; // Expecting key-mapped matrix structures array
+        try {
+          const body = await parseBody(req);
+          const compiledSchedules = body.schedules;
 
-        if (!compiledSchedules || typeof compiledSchedules !== 'object') {
-          return send(res, 400, { error: "Malformed schedule payload matrix." });
-        }
-
-        // Wipe previous volatile server structures and map incoming compiled sets cleanly
-        db.schedules = [];
-
-        // Re-map the teacher schedules directly into your database schema
-        for (const [fullName, scheduleObj] of Object.entries(compiledSchedules)) {
-          const foundTeacher = db.teachers.find(t => `${t.firstName} ${t.lastName}` === fullName);
-          
-          if (foundTeacher) {
-            // Map the structural layout to match the inner backend schema constraints 
-            const parsedSlots = scheduleObj.slots.map(slot => ({
-              id: crypto.randomBytes(4).toString("hex"),
-              day: slot.day,
-              startTime: slot.time.split(" - ")[0] || "08:00 AM",
-              endTime: slot.time.split(" - ")[1] || "09:00 AM",
-              subject: slot.subject,
-              room: slot.room,
-              section: slot.section, // Preserve section link
-              status: "scheduled"
-            }));
-
-            db.schedules.push({
-              teacherId: foundTeacher.id,
-              slots: parsedSlots,
-              generatedAt: new Date().toISOString()
-            });
+          if (!compiledSchedules || typeof compiledSchedules !== 'object') {
+            return send(res, 400, { error: "Malformed schedule payload matrix." });
           }
-        }
 
-        saveDB(db);
-        return send(res, 200, { success: true, message: "Master timetable saved directly to system disk db.json!" });
+          await db.query("DELETE FROM schedules");
+          const { rows: teachers } = await db.query("SELECT * FROM teachers");
+
+          for (const [fullName, scheduleObj] of Object.entries(compiledSchedules)) {
+            const foundTeacher = teachers.find(t => `${t.first_name} ${t.last_name}` === fullName || `${t.firstName} ${t.lastName}` === fullName);
+            
+            if (foundTeacher) {
+              const parsedSlots = scheduleObj.slots.map(slot => ({
+                id: crypto.randomBytes(4).toString("hex"),
+                day: slot.day,
+                startTime: slot.time ? slot.time.split(" - ")[0] : "08:00 AM",
+                endTime: slot.time ? slot.time.split(" - ")[1] : "09:00 AM",
+                subject: slot.subject,
+                room: slot.room,
+                section: slot.section,
+                status: "scheduled"
+              }));
+
+              await db.query(
+                "INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())",
+                [String(foundTeacher.id), JSON.stringify(parsedSlots)]
+              );
+            }
+          }
+
+          return send(res, 200, { success: true, message: "Master timetable saved directly to PostgreSQL!" });
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
       }
 
       // POST /api/admin/schedules/regenerate/:id
       if (pathname.match(/^\/api\/admin\/schedules\/regenerate\/[^/]+$/) && req.method === "POST") {
-        const id = pathname.split("/").pop();
-        const teacher = db.teachers.find((t) => t.id === id);
-        if (!teacher) return send(res, 404, { error: "Teacher not found" });
-        const idx = db.schedules.findIndex((s) => s.teacherId === id);
-        const newSched = {
-          teacherId: id,
-          slots: generateSchedule(teacher),
-          generatedAt: new Date().toISOString(),
-        };
-        if (idx !== -1) db.schedules[idx] = newSched;
-        else db.schedules.push(newSched);
-        saveDB(db);
-        return send(res, 200, newSched);
+        try {
+          const id = pathname.split("/").pop();
+          const { rows } = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
+          if (rows.length === 0) return send(res, 404, { error: "Teacher not found" });
+          
+          const newSlots = await generateSchedule(rows[0]);
+          await db.query(
+            `INSERT INTO schedules (teacher_id, slots, generated_at)
+             VALUES ($1, $2, NOW())`,
+            [String(id), JSON.stringify(newSlots)]
+          );
+
+          return send(res, 200, { teacherId: id, slots: newSlots });
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
       }
     }
 
-    // ── Global Timetable Endpoint for Teacher Account Dashboards ──
+    // ── Global Timetable Endpoint for Teacher Dashboards ──
     if (pathname === "/api/timetable" && req.method === "GET") {
-      const auth = getAuth(req);
-      if (!auth) return send(res, 401, { error: "Unauthorized access token." });
+      try {
+        const auth = getAuth(req);
+        if (!auth) return send(res, 401, { error: "Unauthorized access token." });
 
-      const flattenedOutputMatrix = [];
-      
-      db.schedules.forEach(scheduleSet => {
-        const structuralTeacher = db.teachers.find(t => t.id === scheduleSet.teacherId);
-        const instructorName = structuralTeacher ? `${structuralTeacher.firstName} ${structuralTeacher.lastName}` : "Unknown Instructor";
+        const flattenedOutputMatrix = [];
+        const { rows: schedules } = await db.query("SELECT * FROM schedules");
+        const { rows: teachers } = await db.query("SELECT * FROM teachers");
 
-        scheduleSet.slots.forEach(slot => {
-          flattenedOutputMatrix.push({
-            id: slot.id,
-            instructor: instructorName,
-            subject: slot.subject,
-            section: slot.section,
-            room: slot.room,
-            day: slot.day,
-            timeSlot: `${slot.startTime} to ${slot.endTime}`.replace(" - ", " to ")
-          });
+        schedules.forEach(scheduleSet => {
+          const structuralTeacher = teachers.find(t => String(t.id) === String(scheduleSet.teacher_id));
+          const instructorName = structuralTeacher ? `${structuralTeacher.first_name || structuralTeacher.firstName} ${structuralTeacher.last_name || structuralTeacher.lastName}` : "Unknown Instructor";
+
+          const slots = typeof scheduleSet.slots === 'string' ? JSON.parse(scheduleSet.slots) : scheduleSet.slots;
+
+          if (Array.isArray(slots)) {
+            slots.forEach(slot => {
+              flattenedOutputMatrix.push({
+                id: slot.id,
+                instructor: instructorName,
+                subject: slot.subject,
+                section: slot.section,
+                room: slot.room,
+                day: slot.day,
+                timeSlot: `${slot.startTime} to ${slot.endTime}`.replace(" - ", " to ")
+              });
+            });
+          }
         });
-      });
 
-      return send(res, 200, flattenedOutputMatrix);
+        return send(res, 200, flattenedOutputMatrix);
+      } catch (err) {
+        return send(res, 500, { error: err.message });
+      }
     }
 
     // ── Teacher-only routes ──
@@ -506,20 +930,31 @@ const server = http.createServer(async (req, res) => {
       if (!auth || auth.role !== "teacher") return send(res, 403, { error: "Forbidden" });
 
       if (pathname === "/api/teacher/schedule" && req.method === "GET") {
-        const schedule = db.schedules.find((s) => s.teacherId === auth.id);
-        const teacher = db.teachers.find((t) => t.id === auth.id);
-        return send(res, 200, { schedule: schedule || null, teacher: teacher || null });
+        try {
+          const { rows: userRows } = await db.query("SELECT teacher_id FROM users WHERE id = $1", [auth.id]);
+          const targetTeacherId = userRows[0]?.teacher_id || auth.id;
+
+          const { rows: schedRows } = await db.query("SELECT * FROM schedules WHERE teacher_id = $1", [String(targetTeacherId)]);
+          const { rows: teacherRows } = await db.query("SELECT * FROM teachers WHERE id = $1", [targetTeacherId]);
+
+          return send(res, 200, { 
+            schedule: schedRows[0] || null, 
+            teacher: teacherRows[0] || null 
+          });
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
       }
     }
 
     return send(res, 404, { error: "API route not found" });
   }
 
-  // ── Static Files Router Asset Delivery ──
+  // ── Static Files Router ──
   const frontendBase = path.join(__dirname, "../frontend");
 
-  if (pathname === "/" || pathname === "/index.html") {
-    res.writeHead(302, { "Location": "/admin/pages/Addteacher.html" });
+  if (pathname === "/" || pathname === "/login.html") {
+    res.writeHead(302, { "Location": "/shared/login.html" });
     return res.end();
   }
 
@@ -532,7 +967,18 @@ const server = http.createServer(async (req, res) => {
   res.end("Not found");
 });
 
-server.listen(PORT, () => {
-  console.log(`\n✅ Scheduler running at http://localhost:${PORT}`);
-  console.log(`\n👤 Admin login: admin / admin123`);
+server.listen(PORT, "0.0.0.0", async () => {
+  await initAdmin();
+  console.log(`\n Scheduler running locally at http://localhost:${PORT}`);
+  console.log(` On Network: 192.168.0.103:${PORT}`);
+  console.log(`\n Admin login: admin / admin123`);
+});
+
+// Test connection on server start
+db.query("SELECT NOW()", (err, res) => {
+  if (err) {
+    console.error("❌ Supabase Connection Failed:", err.message);
+  } else {
+    console.log("✅ Successfully connected to Supabase PostgreSQL at:", res.rows[0].now);
+  }
 });

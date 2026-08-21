@@ -19,7 +19,8 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-main);
     display: flex;
-    min-height: 100vh;
+    height: 100vh; /* BAGUHIN: Gawing fixed height 100vh (hinding-hindi tatangkad ang body) */
+    overflow: hidden; /* BAGUHIN: Bawal mag-scroll ang buong outer screen/page */
 }
 
 /* ==========================================================================
@@ -29,7 +30,9 @@ main, .main-content {
     flex-grow: 1; 
     padding: 3rem; 
     background: linear-gradient(135deg, #0b0c10 0%, #12171f 100%);
-    overflow-y: auto; 
+    height: 100vh; /* IPAPAKO SA SCREEN HEIGHT */
+    overflow-y: auto; /* DITO LAMANG GAGANA ANG SCROLLBAR */
+    box-sizing: border-box; /* Tinitiyak na kasama ang padding sa 100vh height */
 }
 
 .card {
@@ -196,7 +199,7 @@ input:focus {
     box-sizing: border-box; /* Pinipigilan nitong lumampas ang laman sa labas ng 280px perimeter */
     
     display: flex;
-    flex-direction: column;
+    flex-direction: column; 
     height: 100vh;
     z-index: 1000;
 }

@@ -1,4 +1,3 @@
-// Helper function para makuha ang Authorization token
 function getAuthHeaders() {
     const token = localStorage.getItem('token');
     return {
@@ -8,11 +7,11 @@ function getAuthHeaders() {
 }
 
 /**
- * Reads data states from internal engines and renders updated rows on screens.
+ * Fetches rooms and paints them into #rooms-list
  */
 async function renderRoomsUIList() {
     const listContainer = document.getElementById('rooms-list');
-    if (!listContainer) return; // Fail-silent framework guard loop
+    if (!listContainer) return;
 
     try {
         const response = await fetch('/api/admin/rooms', {
@@ -22,56 +21,63 @@ async function renderRoomsUIList() {
         if (!response.ok) throw new Error("Failed to fetch rooms.");
 
         const savedRooms = await response.json();
+        console.log("Rooms returned from server:", savedRooms); // Check key names in browser console
         
-        // Check if any items are available to draw inside our browser DOM viewport tree
-        if (savedRooms.length === 0) {
-            listContainer.innerHTML = `<div class="empty-notice-state">No rooms configured yet.</div>`;
+        if (!Array.isArray(savedRooms) || savedRooms.length === 0) {
+            listContainer.innerHTML = `<div class="empty-notice-state" style="color: #a0a0c0; padding: 15px;">No rooms configured yet.</div>`;
             return;
         }
         
-        listContainer.innerHTML = ""; // Wipe container targets to avoid messy duplicated prints
+        listContainer.innerHTML = "";
         
         savedRooms.forEach((room) => {
             const itemDiv = document.createElement('div');
             itemDiv.className = "room-card-item";
             
-            // Ipasa ang room.id sa delete function para sa permanenteng tracking
+            // Extract the room name from any possible backend property name
+            const roomName = room.name || room.roomName || room.roomNumber || room.designation || room.room_name || 'Unnamed Room';
+            const capacity = room.capacity || room.maxCapacity || room.seatingCapacity || 0;
+            const roomId = room._id || room.id;
+            
             itemDiv.innerHTML = `
                 <div class="room-details-meta">
-                    <strong class="room-title-text">🏠 ${room.name}</strong>
-                    <span class="room-capacity-badge">👥 Max: ${room.capacity} pax</span>
+                    <strong class="room-title-text">🏠 ${roomName}</strong>
+                    <span class="room-capacity-badge">👥 Max: ${capacity} pax</span>
                 </div>
-                <button onclick="deleteRoomItem('${room.id}')" class="btn-delete-row-action" title="Remove Facility Spatial Box">🗑️</button>
+                <button onclick="deleteRoomItem('${roomId}')" class="btn-delete-row-action" title="Remove Facility">🗑️</button>
             `;
             listContainer.appendChild(itemDiv);
         });
     } catch (error) {
         console.error("Error rendering rooms:", error);
-        listContainer.innerHTML = `<div class="empty-notice-state" style="color: #ff5f5f;">⚠️ Failed to load rooms from server.</div>`;
+        listContainer.innerHTML = `<div class="empty-notice-state" style="color: #ff5f5f; padding: 15px;">⚠️ Failed to load rooms from server.</div>`;
     }
 }
 
 /**
- * Handles form field extraction data submissions and commits elements safely.
+ * Handles adding a room when clicking the REGISTER ROOM button
  */
 async function addNewRoom() {
     const roomNameField = document.getElementById('room-name');
     const roomCapacityField = document.getElementById('room-capacity');
 
+    if (!roomNameField || !roomCapacityField) return;
+
     const nameValue = roomNameField.value.trim();
     const capacityValue = parseInt(roomCapacityField.value, 10);
 
-    // Form Validation Check
     if (!nameValue || isNaN(capacityValue) || capacityValue <= 0) {
-        alert("⚠️ Validation Error: Please provide a valid Room Designation Name and a positive Seating Capacity count.");
+        alert("⚠️ Validation Error: Please provide a valid Room Designation Name and Seating Capacity.");
         return;
     }
 
-    // Map object blueprint specifications precisely matching scheduler-engine parameters
+    // Include multiple property formats so your backend route catches the payload
     const newlyConfiguredRoom = {
-        id: "rm-id-" + Date.now(), 
         name: nameValue,
-        capacity: capacityValue
+        roomName: nameValue,
+        roomNumber: nameValue,
+        capacity: capacityValue,
+        maxCapacity: capacityValue
     };
 
     try {
@@ -83,23 +89,20 @@ async function addNewRoom() {
 
         if (!response.ok) throw new Error("Failed to save room.");
 
-        // Clear user input areas automatically to provide responsive tactile interactions
+        // Clear input values
         roomNameField.value = "";
         roomCapacityField.value = "";
 
-        console.log("💾 Room facility committed to server layers successfully:", newlyConfiguredRoom);
-        
-        // Repaint UI immediately after record additions 
+        // Reload room list
         renderRoomsUIList();
     } catch (error) {
         console.error("Error adding room:", error);
-        alert("⚠️ Database Error: Could not save the room facility to the backend server.");
+        alert("⚠️ Database Error: Could not save the room facility.");
     }
 }
 
 /**
- * Removes target facility configurations from the database collection
- * @param {String} id - The unique backend ID of the room resource
+ * Deletes a room by ID
  */
 async function deleteRoomItem(id) {
     if (!confirm("Are you sure you want to delete this room?")) return;
@@ -112,13 +115,12 @@ async function deleteRoomItem(id) {
 
         if (!response.ok) throw new Error("Failed to delete room.");
         
-        // Repaint interface structures dynamically 
         renderRoomsUIList();
     } catch (error) {
         console.error("Error deleting room:", error);
-        alert("⚠️ Database Error: Failed to drop the room deployment from backend registry.");
+        alert("⚠️ Database Error: Failed to remove room.");
     }
 }
 
-// Hook life-cycle operations to populate active logs immediately upon safe initialization loops
+// Initial rendering on page load
 window.addEventListener('DOMContentLoaded', renderRoomsUIList);

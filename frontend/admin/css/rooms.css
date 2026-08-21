@@ -1,10 +1,36 @@
 
-        /* Fixes the layout spacing to prevent unstyled layout breakage */
-        .main-content {
-            padding: 40px;
-            width: 100%;
-            box-sizing: border-box;
-        }
+:root {
+    --glass-bg: rgba(23, 23, 33, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --accent-glow: rgba(124, 77, 255, 0.3);
+    --input-bg: rgba(0, 0, 0, 0.25);
+    --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+/* Siguraduhing Dark Mode ang buong page background */
+body {
+    margin: 0;
+    background-color: #0b0c10 !important;
+    color: #c5c6c7;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Siguraduhing Dark Gradient din ang main workspace panel */
+main, .main-content {
+    flex-grow: 1;
+    padding: 3rem;
+    background: linear-gradient(135deg, #0b0c10 0%, #12171f 100%) !important;
+    height: 100vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+/* Gawing puti ang malalaking Headings/Labels na nawawala sa white background */
+h1, h2, h3, label {
+    color: #ffffff !important;
+}
         .subject-workspace-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;

@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Subjects - Smart Scheduler</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>Lectura | Manage Subjects</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
     <link rel="stylesheet" href="../css/subject.css">
 </head>
 <body>
 
     <aside class="sidebar">
-        <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold; color: white;">
-            🗓️ Scheduler Pro
+        <div class="logo" style="margin-bottom: 2.5rem; display: flex; align-items: center; gap: 12px; font-size: 1.4rem; font-weight: 700; color: #ffffff;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.4));">
+                <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
+                <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
+                <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
+            </svg>
+            <span>Lectura<span style="color: #00D2FF;">.</span></span>
         </div>
         
         <nav class="nav-links-wrapper">
@@ -29,29 +34,48 @@
     </aside>
 
     <main class="main-content">
-    <div style="background: #151a21; border-radius: 12px; padding: 2.5rem; border: 1px solid rgba(255,255,255,0.05); max-width: 900px; margin: 0 auto;">
-        <h2 style="color: #fff; font-size: 1.8rem; margin-top: 0; margin-bottom: 0.5rem;">Master Subject Catalog Setup</h2>
-        <p style="color: #a0a0c0; font-size: 0.95rem; margin-bottom: 2rem;">
-            Input the courses offered by the school. The auto-generation algorithm looks at this list and cross-references it with teacher targets to keep schedules fair (*patas*).
-        </p>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <label style="color: #a0a0c0; font-size: 0.95rem; font-weight: 500;">New Subject Title</label>
-                <input type="text" id="new-subject-name" placeholder="e.g., Computer Science, Calculus" style="background: #0b0c10; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 14px; color: #fff; font-size: 1rem;">
-                <button type="button" class="btn-submit" onclick="addNewSubject()" style="background: #00d2ff; color: #0b0c10; border: none; padding: 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem;">
-                    ADD SUBJECT TO SYSTEM ➕
-                </button>
-            </div>
+        <div style="background: #151a21; border-radius: 12px; padding: 2.5rem; border: 1px solid rgba(255,255,255,0.05); max-width: 900px; margin: 0 auto;">
+            <h2 style="color: #fff; font-size: 1.8rem; margin-top: 0; margin-bottom: 0.5rem;">Master Subject Catalog Setup</h2>
+            <p style="color: #a0a0c0; font-size: 0.95rem; margin-bottom: 2rem;">
+                Input the courses offered by the school. The auto-generation algorithm looks at this list and cross-references it with teacher targets to keep schedules fair (*patas*).
+            </p>
             
-            <div>
-                <label style="display: block; margin-bottom: 0.5rem; color: #a0a0c0;">Active Institution Offerings</label>
-                <div class="catalog-box" id="catalog-list" style="background: #0b0c10; border-radius: 8px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05); max-height: 350px; overflow-y: auto;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    
+                    <label style="color: #a0a0c0; font-size: 0.95rem; font-weight: 500;">New Subject Title</label>
+                    <input type="text" id="new-subject-name" placeholder="e.g., Computer Science, Calculus" style="background: #0b0c10; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 14px; color: #fff; font-size: 1rem;">
+                    
+                    <label style="color: #a0a0c0; font-size: 0.95rem; font-weight: 500; margin-top: 0.5rem;">Grade Level Assignment</label>
+                    <select id="grade-level-select" style="background: #0b0c10; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 14px; color: #fff; font-size: 1rem; margin-bottom: 1rem; cursor: pointer;">
+                        <option value="Junior High School">Junior High School</option>
+                        <option value="Senior High School - Grade 11">Senior High School - Grade 11</option>
+                        <option value="Senior High School - Grade 12">Senior High School - Grade 12</option>
+                    </select>
+
+                    <button type="button" class="btn-submit" onclick="addNewSubject()" style="background: #00d2ff; color: #0b0c10; border: none; padding: 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem;">
+                        ADD SUBJECT TO SYSTEM ➕
+                    </button>
+                </div>
+                
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; color: #a0a0c0;">Active Institution Offerings</label>
+                    <div class="catalog-box" id="catalog-list" style="background: #0b0c10; border-radius: 8px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05); max-height: 420px; overflow-y: auto;">
+                        
+                        <h4 style="color: #7C3AED; margin: 0 0 10px 0; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Junior High School</h4>
+                        <div id="list-junior" style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 8px;"></div>
+
+                        <h4 style="color: #00d2ff; margin: 0 0 10px 0; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Senior High - Grade 11</h4>
+                        <div id="list-grade11" style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 8px;"></div>
+
+                        <h4 style="color: #00d2ff; margin: 0 0 10px 0; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Senior High - Grade 12</h4>
+                        <div id="list-grade12" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
                     </div>
+                </div>
             </div>
         </div>
-    </div>
-</main>
+    </main>
     <script src="../js/subject.js"></script>
 </body>
 </html>
