@@ -11,15 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Fetch and populate subjects partitioned into Junior High, Grade 11, and Grade 12
+ * Fetch and automatically organize ALL grade levels dynamically
  */
 async function fetchActiveSubjects() {
   const listJunior = document.getElementById('list-junior');
   const listGrade11 = document.getElementById('list-grade11');
   const listGrade12 = document.getElementById('list-grade12');
-
-  // Fallback kung iisang main container lang ang gamit sa HTML
-  const singleContainer = document.querySelector('.active-offerings-box') || document.querySelector('.offerings-container') || document.getElementById('subject-list-container');
 
   try {
     const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
@@ -31,35 +28,51 @@ async function fetchActiveSubjects() {
 
     const data = await response.json();
 
-    // Kung partitioned na mula sa backend (junior, grade11, grade12)
-    if (data.junior || data.grade11 || data.grade12) {
-      renderPartition(listJunior, data.junior || []);
-      renderPartition(listGrade11, data.grade11 || []);
-      renderPartition(listGrade12, data.grade12 || []);
-      return;
+    // 1. Kunan ang buong listahan ng subjects mula sa server response
+    let rawList = [];
+    if (Array.isArray(data)) {
+      rawList = data;
+    } else if (data.subjects && Array.isArray(data.subjects)) {
+      rawList = data.subjects;
+    } else {
+      // Kung ipinasa na naka-partition
+      rawList = [
+        ...(data.junior || []),
+        ...(data.grade11 || []),
+        ...(data.grade12 || []),
+        ...(data.other || [])
+      ];
     }
 
-    // Kung Flat Array ang binigay ng backend, i-filter natin sa frontend
-    const subjectsArray = Array.isArray(data) ? data : (data.subjects || []);
+    // 2. I-filter nang tama bawat Grade Level papunta sa kani-kanilang HTML list container:
+    
+    // Junior High (Grade 7, Grade 8, Grade 9, Grade 10)
+    const juniorSubjects = rawList.filter(item => {
+      const g = (typeof item === 'object' ? item.gradeLevel || item.grade_level || '' : '').toLowerCase();
+      return g.includes('junior') || g.includes('grade 7') || g.includes('grade 8') || g.includes('grade 9') || g.includes('grade 10') || (!g.includes('11') && !g.includes('12'));
+    });
 
-    if (listJunior || listGrade11 || listGrade12) {
-      const junior = subjectsArray.filter(s => !(s.grade_level || '').includes('11') && !(s.grade_level || '').includes('12'));
-      const g11 = subjectsArray.filter(s => (s.grade_level || '').includes('11'));
-      const g12 = subjectsArray.filter(s => (s.grade_level || '').includes('12'));
+    // Grade 11
+    const g11Subjects = rawList.filter(item => {
+      const g = (typeof item === 'object' ? item.gradeLevel || item.grade_level || '' : '').toLowerCase();
+      return g.includes('11');
+    });
 
-      renderPartition(listJunior, junior);
-      renderPartition(listGrade11, g11);
-      renderPartition(listGrade12, g12);
-    } else if (singleContainer) {
-      // Direct render sa solong container
-      renderPartition(singleContainer, subjectsArray);
-    }
+    // Grade 12
+    const g12Subjects = rawList.filter(item => {
+      const g = (typeof item === 'object' ? item.gradeLevel || item.grade_level || '' : '').toLowerCase();
+      return g.includes('12');
+    });
+
+    // 3. I-render sa HTML boxes
+    renderPartition(listJunior, juniorSubjects);
+    renderPartition(listGrade11, g11Subjects);
+    renderPartition(listGrade12, g12Subjects);
 
   } catch (err) {
     console.error("Catalog load error:", err);
-    const errHtml = '<div style="color: #ff5f5f; padding: 5px; font-size: 0.85rem;">Failed to load subjects.</div>';
+    const errHtml = '<div style="color: #ff5f5f; padding: 5px; font-size: 0.85rem;">Failed to fetch subjects.</div>';
     if (listJunior) listJunior.innerHTML = errHtml;
-    if (singleContainer) singleContainer.innerHTML = errHtml;
   }
 }
 
@@ -85,31 +98,32 @@ function toggleSelectionMode() {
  * Render HTML list items for a specific partition container
  */
 function renderPartition(container, items) {
-    if (!container) return;
+  if (!container) return;
 
-    if (items.length === 0) {
-        container.innerHTML = '<div style="color: #a0a0c0; font-size: 0.85rem; font-style: italic; padding: 4px 0;">No subjects listed.</div>';
-        return;
-    }
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div style="color: #a0a0c0; font-size: 0.8rem; font-style: italic; padding: 4px 0;">No subjects added yet.</div>';
+    return;
+  }
 
-    container.innerHTML = items.map(sub => {
-        const subName = typeof sub === 'string' ? sub : sub.name;
-        const isChecked = selectedSubjectNames.has(subName);
+  container.innerHTML = items.map(sub => {
+    const subName = typeof sub === 'string' ? sub : (sub.name || sub.subjectName || sub.title);
+    const gradeTag = typeof sub === 'object' && (sub.gradeLevel || sub.grade_level) ? `<span style="font-size: 0.7rem; background: rgba(0,210,255,0.15); color: #00d2ff; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${sub.gradeLevel || sub.grade_level}</span>` : '';
+    const isChecked = selectedSubjectNames.has(subName);
 
-        return `
-            <div class="subject-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    ${isSelectionMode ? `
-                        <input type="checkbox" class="subject-checkbox" value="${encodeURIComponent(subName)}" ${isChecked ? 'checked' : ''} onchange="handleCheckboxChange(event, '${encodeURIComponent(subName)}')" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
-                    ` : ''}
-                    <span style="font-weight: 500; color: #fff; font-size: 0.9rem;">📚 ${subName}</span>
-                </div>
-                ${!isSelectionMode ? `
-                    <button class="btn-delete-sub" onclick="deleteSubject('${encodeURIComponent(subName)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem;">🗑️</button>
-                ` : ''}
-            </div>
-        `;
-    }).join('');
+    return `
+      <div class="subject-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          ${isSelectionMode ? `
+            <input type="checkbox" class="subject-checkbox" value="${encodeURIComponent(subName)}" ${isChecked ? 'checked' : ''} onchange="handleCheckboxChange(event, '${encodeURIComponent(subName)}')" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
+          ` : ''}
+          <span style="font-weight: 500; color: #fff; font-size: 0.85rem;">📚 ${subName} ${gradeTag}</span>
+        </div>
+        ${!isSelectionMode ? `
+          <button class="btn-delete-sub" onclick="deleteSubject('${encodeURIComponent(subName)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.85rem;">🗑️</button>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
 }
 
 /**
