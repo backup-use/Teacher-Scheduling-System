@@ -21,7 +21,7 @@ async function renderRoomsUIList() {
         if (!response.ok) throw new Error("Failed to fetch rooms.");
 
         const savedRooms = await response.json();
-        console.log("Rooms returned from server:", savedRooms); // Check key names in browser console
+        console.log("Rooms returned from server:", savedRooms);
         
         if (!Array.isArray(savedRooms) || savedRooms.length === 0) {
             listContainer.innerHTML = `<div class="empty-notice-state" style="color: #a0a0c0; padding: 15px;">No rooms configured yet.</div>`;
@@ -34,7 +34,6 @@ async function renderRoomsUIList() {
             const itemDiv = document.createElement('div');
             itemDiv.className = "room-card-item";
             
-            // Extract the room name from any possible backend property name
             const roomName = room.name || room.roomName || room.roomNumber || room.designation || room.room_name || 'Unnamed Room';
             const capacity = room.capacity || room.maxCapacity || room.seatingCapacity || 0;
             const roomId = room._id || room.id;
@@ -71,7 +70,6 @@ async function addNewRoom() {
         return;
     }
 
-    // Include multiple property formats so your backend route catches the payload
     const newlyConfiguredRoom = {
         name: nameValue,
         roomName: nameValue,
@@ -121,6 +119,11 @@ async function deleteRoomItem(id) {
         alert("⚠️ Database Error: Failed to remove room.");
     }
 }
+
+// ─── Attach functions globally to window so HTML onsubmit can trigger them ───
+window.addNewRoom = addNewRoom;
+window.deleteRoomItem = deleteRoomItem;
+window.renderRoomsUIList = renderRoomsUIList;
 
 // Initial rendering on page load
 window.addEventListener('DOMContentLoaded', renderRoomsUIList);
