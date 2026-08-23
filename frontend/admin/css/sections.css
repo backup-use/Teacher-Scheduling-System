@@ -233,3 +233,26 @@ h1, h2, h3, label {
     color: #ff8585 !important;
     padding-left: 22px !important;
 }
+
+.toast-popup {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #10B981;
+    color: #ffffff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateY(-10px);
+}
+
+.toast-popup.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}

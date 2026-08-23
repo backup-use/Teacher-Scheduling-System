@@ -8,6 +8,27 @@ function getAuthHeaders() {
     return headers;
 }
 
+// Function to trigger the auto-fading toast notification
+function showToastMessage(msg) {
+    let toast = document.getElementById('toast-notification');
+    
+    // Create element dynamically if missing from HTML
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        toast.className = 'toast-popup';
+        document.body.appendChild(toast);
+    }
+    
+    toast.innerText = msg;
+    toast.classList.add('show');
+
+    // Automatically hide after 2 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2000);
+}
+
 // Renders the section row cards down the list column panel from Backend API
 async function renderSectionsUIList() {
     const listContainer = document.getElementById('sections-list');
@@ -84,6 +105,9 @@ async function addNewSection() {
         nameField.value = "";
         studentsField.value = "";
         
+        // Show auto-vanishing success message
+        showToastMessage("✅ Section registered successfully!");
+
         renderSectionsUIList();
     } catch (error) {
         console.error("Error adding section:", error);
@@ -109,5 +133,9 @@ async function deleteSectionItem(id) {
         alert("⚠️ Database Error: Failed to remove the section entry.");
     }
 }
+
+window.addNewSection = addNewSection;
+window.deleteSectionItem = deleteSectionItem;
+window.renderSectionsUIList = renderSectionsUIList;
 
 window.addEventListener('DOMContentLoaded', renderSectionsUIList);
