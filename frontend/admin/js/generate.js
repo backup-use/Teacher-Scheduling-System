@@ -167,12 +167,31 @@ async function processSystemTimetable() {
             };
         });
 
-        // 2. GRADE-LEVEL TEACHER COVERAGE VALIDATOR
+        // Dynamic Sub-Grade Level Resolution Engine
         const gradeLevelStatus = {};
-        const distinctGradeLevels = [...new Set(normalizedSubjects.map(s => s.gradeLevel || "General"))];
+
+        // Hinahati nito ang bawat subject batay sa specific Grade Level
+        normalizedSubjects.forEach(s => {
+            let rawGrade = s.gradeLevel || "General";
+            
+            // Kung nakasulat lang ay "Junior High School", susubukan nitong alamin kung may Grade (7-10) sa pangalan
+            if (rawGrade === "Junior High School") {
+                const matchedGrade = s.name.match(/Grade\s*(7|8|9|10)/i);
+                if (matchedGrade) {
+                    s.specificGrade = `Junior High School - Grade ${matchedGrade[1]}`;
+                } else {
+                    s.specificGrade = "Junior High School (General)";
+                }
+            } else {
+                s.specificGrade = rawGrade;
+            }
+        });
+
+        // Kumuha ng listahan ng LAHAT ng specific grade levels (Grade 7, Grade 8, etc.)
+        const distinctGradeLevels = [...new Set(normalizedSubjects.map(s => s.specificGrade))];
 
         distinctGradeLevels.forEach(grade => {
-            const subjectsInGrade = normalizedSubjects.filter(s => (s.gradeLevel || "General") === grade);
+            const subjectsInGrade = normalizedSubjects.filter(s => s.specificGrade === grade);
             const missingTeacherSubjects = [];
 
             subjectsInGrade.forEach(subj => {
