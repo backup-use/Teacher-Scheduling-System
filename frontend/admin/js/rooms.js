@@ -56,6 +56,19 @@ async function renderRoomsUIList() {
 /**
  * Handles adding a room when clicking the REGISTER ROOM button
  */
+function showToastMessage(msg) {
+    const toast = document.getElementById('toast-notification');
+    if (!toast) return;
+    
+    toast.innerText = msg;
+    toast.classList.add('show');
+
+    // Automatically remove after 2 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2000);
+}
+
 async function addNewRoom() {
     const roomNameField = document.getElementById('room-name');
     const roomCapacityField = document.getElementById('room-capacity');
@@ -87,14 +100,12 @@ async function addNewRoom() {
 
         if (!response.ok) throw new Error("Failed to save room.");
 
-        // Clear input values
         roomNameField.value = "";
         roomCapacityField.value = "";
 
-        // 1. Alert the user that it succeeded! 🎉
-        alert("✅ Room registered successfully!");
+        // Trigger auto-vanishing toast
+        showToastMessage("✅ Room registered successfully!");
 
-        // 2. Reload room list instantly
         renderRoomsUIList();
     } catch (error) {
         console.error("Error adding room:", error);
