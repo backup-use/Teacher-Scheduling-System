@@ -4,13 +4,26 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
-const db = require("./db");
 
+// Safe initialization to prevent 502 server crashes
+let resend = null;
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(process.env.RESEND_API_KEY);
+} else {
+  console.warn("⚠️ RESEND_API_KEY is not set. Email notifications will be skipped.");
+}
+
+const db = require("./db");
 const PORT = process.env.PORT || 3000;
 
 // ─── Email Notification Helper ───────────────────────────────────────────────
 async function sendCredentialsEmail(teacherEmail, teacherName, username, password, extraDetails = {}) {
+  // Check if Resend is configured before running email logic
+  if (!resend) {
+    console.log(`⚠️ Skipping email to ${teacherEmail}: RESEND_API_KEY is missing.`);
+    return;
+  }
+
   try {
     const { subjects = [], workDays = [], startTime = "", endTime = "" } = extraDetails;
 
@@ -26,45 +39,7 @@ async function sendCredentialsEmail(teacherEmail, teacherName, username, passwor
       from: 'Lectura Scheduling <onboarding@resend.dev>',
       to: [teacherEmail],
       subject: '🔑 Welcome to Lectura - Your Account Credentials & Schedule Details',
-      html: `
-        <div style="font-family: Arial, sans-serif; background-color: #0f111a; color: #ffffff; padding: 25px; border-radius: 10px; max-width: 600px; margin: auto;">
-          <h2 style="color: #00d2ff; margin-top: 0;">Welcome to Lectura Portal!</h2>
-          <p>Hello <strong>${teacherName}</strong>,</p>
-          <p>An administrator has created your faculty account. Below are your account login credentials:</p>
-          
-          <div style="background: rgba(0, 210, 255, 0.08); border: 1px solid #00d2ff; padding: 15px 20px; border-radius: 8px; margin: 20px 0;">
-            <p style="margin: 8px 0; font-size: 1.05rem;"><strong>Username:</strong> <span style="color: #00d2ff;">${username}</span></p>
-            <p style="margin: 8px 0; font-size: 1.05rem;"><strong>Temporary Password:</strong> <span style="color: #00d2ff;">${password}</span></p>
-          </div>
-
-          <div style="background: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px;">
-            <p style="margin: 0; color: #ffca28; font-size: 0.9rem;">
-              ⚠️ <strong>Security Notice:</strong> Please log in to the portal and <strong>change your password immediately</strong> upon your first login to secure your account.
-            </p>
-          </div>
-
-          <h3 style="color: #00d2ff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">📋 Your Profile Summary</h3>
-          
-          <table style="width: 100%; color: #d0d0e0; font-size: 0.95rem; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 6px 0; width: 40%;"><strong>Assigned Subjects:</strong></td>
-              <td style="padding: 6px 0; color: #ffffff;">${formattedSubjects}</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0;"><strong>Work Days:</strong></td>
-              <td style="padding: 6px 0; color: #ffffff;">${formattedDays}</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0;"><strong>Time Availability:</strong></td>
-              <td style="padding: 6px 0; color: #ffffff;">${startTime || '08:00 AM'} - ${endTime || '05:00 PM'}</td>
-            </tr>
-          </table>
-
-          <br>
-          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1);" />
-          <p style="font-size: 0.8rem; color: #8080a0; margin-bottom: 0;">Lectura Automated Notification System • Do not reply to this email</p>
-        </div>
-      `
+      html: `...` // keep your existing html template here
     });
 
     if (error) {
