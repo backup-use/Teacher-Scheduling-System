@@ -3,6 +3,32 @@
  * Renders an isolated Master Directory List view of teachers with a targeted drill-down schedule viewer.
  * Retains comprehensive, scannable system diagnostics logs block above the workflow board.
  */
+
+// Helper to handle stringified JSON array fields safely
+function safeParseArray(val) {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+/**
+ * Helper function to return placeholder soft colors for subjects inside admin panel preview canvas
+ */
+function getSubjectColor(subjectName) {
+    const name = (subjectName || "").toLowerCase();
+    if (name.includes("math")) return "#fed7aa";
+    if (name.includes("science")) return "#bbf7d0";
+    if (name.includes("english")) return "#bfdbfe";
+    if (name.includes("history") || name.includes("ap")) return "#fef08a";
+    if (name.includes("filipino")) return "#fbcfe8";
+    return "#e2e8f0";
+}
+
 async function processSystemTimetable() {
     console.log("⚡ Generating Synchronized 8-Period Student Timetable Matrix with Directory & Diagnostics...");
     const tableBody = document.getElementById("timetable-matrix-output-body");
@@ -34,7 +60,7 @@ async function processSystemTimetable() {
         const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
         const baseOrigin = window.location.origin;
 
-        // KINUKUHA ANG LAHAT NG DATA MULA SA API
+        // Fetch data from endpoints
         const [teachersResponse, subjectsResponse, roomsResponse, sectionsResponse] = await Promise.all([
             fetch(`${baseOrigin}/api/admin/teachers`, { headers }),
             fetch(`${baseOrigin}/api/admin/subjects`, { headers }),
@@ -67,7 +93,7 @@ async function processSystemTimetable() {
             return;
         }
 
-        // CONFIGURATION NG MGA ARAW AT TIME SLOTS
+        // Time slot & day configuration
         const daySlots = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         const timeSlots = [
             "07:30 AM - 08:30 AM", // Period 1
@@ -80,7 +106,7 @@ async function processSystemTimetable() {
             "04:00 PM - 05:00 PM"  // Period 8
         ];
 
-        // INITIALIZATION NG CONFLICT REGISTRY
+        // Conflict registries
         const teacherConflictMatrix = {}; 
         const sectionConflictMatrix = {}; 
         const roomConflictMatrix = {};    
@@ -90,22 +116,38 @@ async function processSystemTimetable() {
         const systemDiagnosticsLogs = [];
         const teacherSchedulesMap = {};
 
-        rawTeachers.forEach(t => {
-            const fullName = `${t.firstName} ${t.lastName}`;
-            teacherSchedulesMap[fullName] = {
+        // Normalize raw teacher data structures
+        const normalizedTeachers = rawTeachers.map(t => {
+            const firstName = t.firstName || t.first_name || "Instructor";
+            const lastName = t.lastName || t.last_name || "";
+            const fullName = `${firstName} ${lastName}`.trim();
+            
+            const subjects = safeParseArray(t.subjects || t.subject_list);
+            const workDays = safeParseArray(t.workDays || t.work_days);
+
+            return {
+                ...t,
+                fullName,
+                subjects,
+                workDays: workDays.length > 0 ? workDays : daySlots
+            };
+        });
+
+        normalizedTeachers.forEach(t => {
+            teacherSchedulesMap[t.fullName] = {
                 details: t,
                 slots: []
             };
         });
 
-        // PRE-FLIGHT DIAGNOSTICS
+        // Pre-flight diagnostics
         for (const day of daySlots) {
             for (const subjectObj of rawSubjects) {
                 const subjectName = typeof subjectObj === 'string' ? subjectObj : subjectObj.name;
                 
-                const hasTeacherForDay = rawTeachers.some(t => {
-                    const conductsSubject = (t.subjects || []).some(s => s.toLowerCase() === subjectName.toLowerCase());
-                    const worksThisDay = t.workDays && t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
+                const hasTeacherForDay = normalizedTeachers.some(t => {
+                    const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
+                    const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
                     return conductsSubject && worksThisDay;
                 });
 
@@ -115,7 +157,7 @@ async function processSystemTimetable() {
             }
         }
 
-        // AUTOMATED RUNTIME SCHEDULING PARSER ENGINE
+        // Automated runtime scheduling parser engine
         for (const section of savedSections) {
             for (const day of daySlots) {
                 let dailyFilledCount = 0;
@@ -135,17 +177,15 @@ async function processSystemTimetable() {
                             continue; 
                         }
 
-                        const eligibleTeacher = rawTeachers.find(t => {
-                            const fullName = `${t.firstName} ${t.lastName}`;
-                            const subjectList = t.subjects || [];
-                            const conductsSubject = subjectList.some(s => s.toLowerCase() === subjectName.toLowerCase());
-                            const worksThisDay = t.workDays && t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
+                        const eligibleTeacher = normalizedTeachers.find(t => {
+                            const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
+                            const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
                             
-                            const teacherKey = `${fullName}-${day}-${currentTime}`;
+                            const teacherKey = `${t.fullName}-${day}-${currentTime}`;
                             const isTeacherBusy = teacherConflictMatrix[teacherKey];
 
                             let hasTeacherFatigue = false;
-                            if (lastSessionData && lastSessionData.teacher === fullName) {
+                            if (lastSessionData && lastSessionData.teacher === t.fullName) {
                                 hasTeacherFatigue = true; 
                             }
 
@@ -154,12 +194,10 @@ async function processSystemTimetable() {
 
                         let teacherToUse = eligibleTeacher;
                         if (!teacherToUse) {
-                            teacherToUse = rawTeachers.find(t => {
-                                const fullName = `${t.firstName} ${t.lastName}`;
-                                const subjectList = t.subjects || [];
-                                const conductsSubject = subjectList.some(s => s.toLowerCase() === subjectName.toLowerCase());
-                                const worksThisDay = t.workDays && t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
-                                const teacherKey = `${fullName}-${day}-${currentTime}`;
+                            teacherToUse = normalizedTeachers.find(t => {
+                                const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
+                                const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
+                                const teacherKey = `${t.fullName}-${day}-${currentTime}`;
                                 return conductsSubject && worksThisDay && !teacherConflictMatrix[teacherKey];
                             });
                         }
@@ -177,7 +215,7 @@ async function processSystemTimetable() {
 
                         if (!availableRoom) continue; 
 
-                        const teacherFullName = `${teacherToUse.firstName} ${teacherToUse.lastName}`;
+                        const teacherFullName = teacherToUse.fullName;
                         const finalTeacherKey = `${teacherFullName}-${day}-${currentTime}`;
                         const finalSectionKey = `${section.name}-${day}-${currentTime}`;
                         const finalRoomKey = `${availableRoom}-${day}-${currentTime}`;
@@ -211,10 +249,9 @@ async function processSystemTimetable() {
             }
         }
 
-        // I-render ang pinal na layout view kasama ang kumpletong diagnostics panel at list table
         renderSearchableDirectoryDashboard(container, teacherSchedulesMap, daySlots, timeSlots, systemDiagnosticsLogs);
 
-        // 🔥 COMMIT ENGINE GENERATED SLOTS DIRECTLY TO THE SERVER FOR TEACHERS TO SEE
+        // Commit engine results
         try {
             console.log("💾 Automatically committing computed timetables over old server targets...");
             const saveResponse = await fetch(`${baseOrigin}/api/admin/schedules/save-bulk`, {
@@ -247,12 +284,11 @@ async function processSystemTimetable() {
 }
 
 /**
- * Builds an isolated interactive view separating the directory database from the calendar matrix layout
+ * Builds an isolated interactive view separating directory view from grid viewer
  */
 function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, daySlots, timeSlots, diagnosticsLogs) {
     container.innerHTML = ""; 
 
-    // Gumawa ng wrapper para sa dalawang magkahiwalay na view panels
     const directoryPanel = document.createElement("div");
     directoryPanel.id = "engine-directory-panel-view";
     
@@ -263,7 +299,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
     container.appendChild(directoryPanel);
     container.appendChild(scheduleViewerPanel);
 
-    // 📢 IBINALIK NA KUMPLETONG LIST DIAGNOSTICS LOG PANEL (Naka-scrollable table list)
     if (diagnosticsLogs && diagnosticsLogs.length > 0) {
         const diagPanel = document.createElement("div");
         diagPanel.className = "system-diagnostics-card";
@@ -290,7 +325,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         directoryPanel.appendChild(diagPanel);
     }
 
-    // 🔍 SEARCH INPUT CONTROL DECK
     const filterHeaderBox = document.createElement("div");
     filterHeaderBox.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; background: rgba(15,23,42,0.3); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.04);";
     filterHeaderBox.innerHTML = `
@@ -302,7 +336,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
     `;
     directoryPanel.appendChild(filterHeaderBox);
 
-    // 📋 RENDER THE CLEAN MASTER INSTRUCTORS TABLE
     const tableContainer = document.createElement("div");
     tableContainer.style.cssText = "overflow-x: auto; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;";
     
@@ -358,7 +391,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         tableContainer.innerHTML = `<div style="text-align: center; color: #64748b; padding: 40px; font-style: italic;">⚠️ No active teacher schedule grids could be rendered inside the database matrix.</div>`;
     }
 
-    // 🔍 ATTACHING REAL-TIME DIRECTORY SEARCH ALGORITHM
     const searchBar = document.getElementById("directory-search-bar");
     if (searchBar) {
         searchBar.addEventListener("input", (e) => {
@@ -377,7 +409,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         searchBar.addEventListener("blur", () => searchBar.style.borderColor = "rgba(255,255,255,0.12)");
     }
 
-    // 🔄 DRILL-DOWN ROUTING LOGIC
     document.querySelectorAll(".view-single-schedule-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const selectedTeacher = btn.getAttribute("data-teacher-key");
@@ -389,9 +420,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
 }
 
 /**
- * Renders an isolated single timeline calendar layout sheet for the clicked instructor.
- * Fully optimized to clear canvas color matrices and auto-scale smoothly onto one structural bond paper sheet.
- * Fixed: Reduces vertical spaces dynamically during compilation to guarantee a 1-page fit.
+ * Renders an isolated timeline sheet for the instructor
  */
 function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherData, teacherName, daySlots, timeSlots) {
     displayTarget.innerHTML = ""; 
@@ -402,12 +431,10 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
         day: 'numeric'
     });
 
-// 🖨️ STRICT PRINT & PDF ENGINE RULE INJECTION (Clean slate rendering pipeline)
     if (!document.getElementById("print-isolated-matrix-rules")) {
         const printStyles = document.createElement("style");
         printStyles.id = "print-isolated-matrix-rules";
         printStyles.innerHTML = `
-            /* --- Screen Base Styles inside the Application Dashboard (Dark Mode UI) --- */
             .custom-timetable-card {
                 background: rgba(30, 41, 59, 0.7); 
                 border: 1px solid rgba(255, 255, 255, 0.08); 
@@ -430,9 +457,7 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
                 background: rgba(15, 23, 42, 0.4); color: #e2e8f0; padding: 10px; border-radius: 6px; font-size: 0.85rem;
             }
 
-            /* --- Hardcopy Print Window Styles Sheet --- */
             @media print {
-                /* Tinanggal ang p at h2 title selectors sa display, partikular ang lumalabas sa pinakataas */
                 div.control-deck-panel, header, nav, .sidebar, .nav-container, .btn-print-trigger, button, 
                 #btn-generate, #engine-processing-status, .dashboard-card-panel > h3, .system-diagnostics-card,
                 #engine-directory-panel-view, .isolated-action-routing-header,
@@ -463,7 +488,6 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
                     padding: 0 !important;
                 }
 
-                /* TINANGGAL ANG KAHON SA INSTRUCTOR AT DATE AREA */
                 .timetable-controls, .instructor-header-box, .custom-timetable-card {
                     border: none !important;
                     box-shadow: none !important;
@@ -495,9 +519,6 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
                 }
             }
 
-            /* ==========================================================================
-               📥 DYNAMIC FIXED html2pdf ENGINE CONTROLLER DECK
-               ========================================================================== */
             .pdf-export-mode {
                 background: #ffffff !important;
                 color: #000000 !important;
@@ -509,7 +530,6 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
                 page-break-inside: avoid !important; 
             }
 
-            /* SINIGURADONG WALANG KAHON AT LABIS NA BORDER SA PDF VIEW CONTAINER NG MGA HEADERS */
             .pdf-export-mode .custom-timetable-card, 
             .pdf-export-mode .timetable-controls,
             .pdf-export-mode .instructor-header-box {
@@ -605,7 +625,6 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
         document.head.appendChild(printStyles);
     }
 
-    // 🔙 TOP ROUTING ACTION BAR (BACK, PRINT & DOWNLOAD ACTIONS)
     const actionHeader = document.createElement("div");
     actionHeader.className = "isolated-action-routing-header";
     actionHeader.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 15px;";
@@ -698,11 +717,11 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
         printCanvasBlock.classList.add("pdf-export-mode");
 
         const configOptions = {
-            margin:       [5, 5, 5, 5], // Pinaliit ang margins para mas malawak ang sakop ng table
+            margin:       [5, 5, 5, 5],
             filename:     `Schedule_Matrix_${teacherName.replace(/\s+/g, '_')}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { 
-                scale: 2.3, // Binabaan ng bahagya (mula 2.5 patungong 2.3) para mag-fit ang rendering bounding box
+                scale: 2.3, 
                 useCORS: true, 
                 backgroundColor: '#ffffff', 
                 logging: false 
@@ -717,17 +736,4 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
             printCanvasBlock.classList.remove("pdf-export-mode");
         });
     });
-}
-
-/**
- * Helper function to return placeholder soft colors for subjects inside admin panel preview canvas
- */
-function getSubjectColor(subjectName) {
-    const name = (subjectName || "").toLowerCase();
-    if (name.includes("math")) return "#fed7aa";
-    if (name.includes("science")) return "#bbf7d0";
-    if (name.includes("english")) return "#bfdbfe";
-    if (name.includes("history") || name.includes("ap")) return "#fef08a";
-    if (name.includes("filipino")) return "#fbcfe8";
-    return "#e2e8f0";
 }

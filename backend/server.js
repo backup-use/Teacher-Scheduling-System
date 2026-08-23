@@ -86,6 +86,15 @@ function genId() {
   return crypto.randomBytes(8).toString("hex");
 }
 
+function safeJsonParse(data, fallback = []) {
+  if (typeof data === 'object' && data !== null) return data;
+  try {
+    return JSON.parse(data);
+  } catch {
+    return fallback;
+  }
+}
+
 async function initAdmin() {
   try {
     await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);");
@@ -187,13 +196,14 @@ async function generateSchedule(teacher) {
     console.error("Error fetching subjects for schedule generator:", err);
   }
 
-  const teacherSubjects = teacher.subjects || [];
+  const teacherSubjects = safeJsonParse(teacher.subjects, []);
   const validSubjects = teacherSubjects.filter(sub => availableSchoolSubjects.includes(sub));
   const primarySubject = validSubjects.length > 0 ? validSubjects[0] : (teacherSubjects[0] || "General Class");
 
+  const availabilityList = safeJsonParse(teacher.availability, []);
+
   days.forEach((day) => {
     timeSlots.forEach((slot) => {
-      const availabilityList = teacher.availability || [];
       const isAvailable = availabilityList.length === 0 || availabilityList.some(
         (a) => a.day === day && isTimeInRange(slot.start, a.from || "08:00", a.to || "16:00")
       );
@@ -346,7 +356,6 @@ const server = http.createServer(async (req, res) => {
           return send(res, 400, { error: "Please enter your Username or Email address." });
         }
 
-        // Searches by Username OR Email across both USERS and TEACHERS tables
         let { rows } = await db.query(
           `SELECT u.id, u.username, u.name, u.role, COALESCE(u.email, t.email) AS email 
           FROM users u 
@@ -361,7 +370,6 @@ const server = http.createServer(async (req, res) => {
 
         const user = rows[0];
 
-        // If account exists but has no email linked
         if (!user.email) {
           const MASTER_SECURITY_KEY = process.env.MASTER_KEY || "LECTURA_SECURE_2024";
 
@@ -377,19 +385,17 @@ const server = http.createServer(async (req, res) => {
             return send(res, 400, { error: "Please enter a valid email address." });
           }
 
-          // Bind email to account for future logins
           await db.query("UPDATE users SET email = $1 WHERE id = $2", [temporaryEmail, user.id]);
           user.email = temporaryEmail;
         }
 
-        // Generate reset token and send email
         const resetToken = signToken({ id: user.id, email: user.email });
         const resetLink = `https://lectura-mdvz.onrender.com/shared/reset-password.html?token=${resetToken}`;
 
-        await transporter.sendMail({
-          from: `"Lectura Security" <${process.env.EMAIL_USER}>`,
-          to: user.email,
-          subject: "🔒 Reset Your Lectura Account Password",
+        const { data, error } = await resend.emails.send({
+          from: 'Lectura Security <onboarding@resend.dev>',
+          to: [user.email],
+          subject: '🔒 Reset Your Lectura Account Password',
           html: `
             <div style="font-family: Arial, sans-serif; background: #0f111a; color: #fff; padding: 20px; border-radius: 8px;">
               <h2 style="color: #00d2ff;">Password Reset Request</h2>
@@ -401,6 +407,10 @@ const server = http.createServer(async (req, res) => {
             </div>
           `
         });
+
+        if (error) {
+          return send(res, 500, { error: "Failed to send reset email: " + error.message });
+        }
 
         return send(res, 200, { message: `Password reset link successfully sent to ${user.email}!` });
 
@@ -633,7 +643,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // POST /api/admin/teachers (INAYOS NA ITO PARA ISAVE DIN ANG EMAIL SA USERS TABLE)
+      // POST /api/admin/teachers
       if (pathname === "/api/admin/teachers" && req.method === "POST") {
         try {
           const body = await parseBody(req);
@@ -719,7 +729,6 @@ const server = http.createServer(async (req, res) => {
           const teacherIdStr = String(newTeacher.id);
           const userId = "usr-" + genId();
 
-          // Sguraduhing may email column sa users at i-save ang email doon
           await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);");
           await db.query(
             "INSERT INTO users (id, username, password, role, name, teacher_id, email) VALUES ($1, $2, $3, $4, $5, $6, $7)",
@@ -773,9 +782,21 @@ const server = http.createServer(async (req, res) => {
           if (rows.length === 0) return send(res, 404, { error: "Not found" });
 
           const updated = { ...rows[0], ...body };
+          
+          const subjectsJSON = typeof updated.subjects === 'string' ? updated.subjects : JSON.stringify(updated.subjects || []);
+          const workDaysJSON = typeof updated.work_days === 'string' ? updated.work_days : JSON.stringify(updated.work_days || updated.workDays || []);
+
           await db.query(
             `UPDATE teachers SET first_name=$1, last_name=$2, email=$3, subjects=$4, target_grade=$5, work_days=$6 WHERE id=$7`,
-            [updated.first_name || updated.firstName, updated.last_name || updated.lastName, updated.email, updated.subjects, updated.target_grade || updated.targetGrade, updated.work_days || updated.workDays, id]
+            [
+              updated.first_name || updated.firstName, 
+              updated.last_name || updated.lastName, 
+              updated.email, 
+              subjectsJSON, 
+              updated.target_grade || updated.targetGrade, 
+              workDaysJSON, 
+              id
+            ]
           );
 
           const newSlots = await generateSchedule(updated);
@@ -812,7 +833,7 @@ const server = http.createServer(async (req, res) => {
 
           const full = schedules.map((s) => {
             const teacher = teachers.find((t) => String(t.id) === String(s.teacher_id));
-            return { ...s, slots: typeof s.slots === 'string' ? JSON.parse(s.slots) : s.slots, teacher };
+            return { ...s, slots: safeJsonParse(s.slots, []), teacher };
           });
           return send(res, 200, full);
         } catch (err) {
@@ -836,7 +857,7 @@ const server = http.createServer(async (req, res) => {
           for (const [fullName, scheduleObj] of Object.entries(compiledSchedules)) {
             const foundTeacher = teachers.find(t => `${t.first_name} ${t.last_name}` === fullName || `${t.firstName} ${t.lastName}` === fullName);
             
-            if (foundTeacher) {
+            if (foundTeacher && scheduleObj && Array.isArray(scheduleObj.slots)) {
               const parsedSlots = scheduleObj.slots.map(slot => ({
                 id: crypto.randomBytes(4).toString("hex"),
                 day: slot.day,
@@ -896,7 +917,7 @@ const server = http.createServer(async (req, res) => {
           const structuralTeacher = teachers.find(t => String(t.id) === String(scheduleSet.teacher_id));
           const instructorName = structuralTeacher ? `${structuralTeacher.first_name || structuralTeacher.firstName} ${structuralTeacher.last_name || structuralTeacher.lastName}` : "Unknown Instructor";
 
-          const slots = typeof scheduleSet.slots === 'string' ? JSON.parse(scheduleSet.slots) : scheduleSet.slots;
+          const slots = safeJsonParse(scheduleSet.slots, []);
 
           if (Array.isArray(slots)) {
             slots.forEach(slot => {
@@ -965,8 +986,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, "0.0.0.0", async () => {
   await initAdmin();
   console.log(`\n Scheduler running locally at http://localhost:${PORT}`);
-  console.log(` On Network: 192.168.0.103:${PORT}`);
-  console.log(`\n Admin login: admin / admin123`);
+  console.log(` Admin login: admin / admin123`);
 });
 
 // Test connection on server start
