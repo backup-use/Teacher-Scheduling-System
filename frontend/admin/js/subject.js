@@ -23,9 +23,15 @@ async function fetchActiveSubjects() {
     if (listGrade12) listGrade12.innerHTML = '<div style="color: #00d2ff; padding: 5px; font-size: 0.85rem;">Syncing...</div>';
 
     try {
+        const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
         const response = await fetch('/api/admin/subjects', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
+
+        if (!response.ok) {
+            throw new Error(`Failed to load: ${response.statusText}`);
+        }
+
         const partitions = await response.json();
 
         renderPartition(listJunior, partitions.junior || []);
@@ -56,7 +62,7 @@ function toggleSelectionMode() {
     }
 
     updateBatchDeleteBar();
-    fetchActiveSubjects(); // Re-render lists with/without checkboxes
+    fetchActiveSubjects(); 
 }
 
 /**
@@ -117,7 +123,7 @@ function updateBatchDeleteBar() {
 }
 
 /**
- * Execute Batch Add (Splits comma-separated subjects)
+ * Execute Batch Add (Splits comma-separated subjects) - FIXED AUTH & ERROR PARSING
  */
 async function addNewSubject(event) {
   if (event) event.preventDefault();
@@ -133,47 +139,52 @@ async function addNewSubject(event) {
     return;
   }
 
+  const token = localStorage.getItem("token") || localStorage.getItem("jwt") || "";
+
   try {
     const response = await fetch("/api/admin/subjects", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : ""
       },
+      credentials: "include",
       body: JSON.stringify({
         subjectName: rawTitle,
         gradeLevel: gradeLevel
       })
     });
 
-    // Basahin muna bilang text para maiwasan ang SyntaxError sa JSON parse
     const responseText = await response.text();
     let data = {};
     try {
       data = JSON.parse(responseText);
     } catch (e) {
       console.error("Server raw response:", responseText);
-      throw new Error(`Server returned status ${response.status}. Please check Render server logs.`);
+      throw new Error(`Server returned status ${response.status}. Please check backend logs.`);
     }
 
     if (!response.ok) {
-      throw new Error(data.error || `Server Error (${response.status})`);
+      throw new Error(data.error || `Error ${response.status}: Action prohibited.`);
     }
 
-    // Clear input on success
+    // Clear textarea/input
     if (titleInput) titleInput.value = "";
     
-    alert(data.message || "Subject(s) added successfully!");
+    showToastMessage(data.message || "Subject(s) added successfully!", "success");
     
-    // Refresh list if function exists
-    if (typeof loadSubjects === "function") {
-      loadSubjects();
+    // Update partitioning in DOM live
+    if (data.partitions) {
+      renderPartition(document.getElementById('list-junior'), data.partitions.junior || []);
+      renderPartition(document.getElementById('list-grade11'), data.partitions.grade11 || []);
+      renderPartition(document.getElementById('list-grade12'), data.partitions.grade12 || []);
     } else {
-      window.location.reload();
+      fetchActiveSubjects();
     }
 
   } catch (error) {
     console.error("Post error:", error);
-    alert("Failed to add subject: " + error.message);
+    showToastMessage("Failed to add subject: " + error.message, "error");
   }
 }
 
@@ -189,10 +200,11 @@ async function executeBatchDelete() {
     }
 
     try {
+        const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
         const response = await fetch('/api/admin/subjects/batch-delete', {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Authorization': token ? `Bearer ${token}` : '',
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ subjectNames: targets })
@@ -202,7 +214,7 @@ async function executeBatchDelete() {
 
         if (response.ok) {
             selectedSubjectNames.clear();
-            toggleSelectionMode(); // Reset selection mode
+            toggleSelectionMode();
 
             const partitions = data.partitions || data.data || data;
             renderPartition(document.getElementById('list-junior'), partitions.junior || []);
@@ -220,7 +232,7 @@ async function executeBatchDelete() {
 }
 
 /**
- * Non-blocking floating status notification positioned at TOP CENTER
+ * Non-blocking floating status notification
  */
 function showToastMessage(message, type = 'success') {
     let toast = document.getElementById('toast-notification');
@@ -269,10 +281,11 @@ async function deleteSubject(encodedName) {
     }
 
     try {
+        const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
         const response = await fetch(`/api/admin/subjects/${encodeURIComponent(name)}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': token ? `Bearer ${token}` : ''
             }
         });
 
