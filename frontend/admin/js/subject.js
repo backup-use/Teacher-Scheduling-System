@@ -119,63 +119,62 @@ function updateBatchDeleteBar() {
 /**
  * Execute Batch Add (Splits comma-separated subjects)
  */
-async function addNewSubject() {
-    const input = document.getElementById('new-subject-name') 
-               || document.getElementById('subjectName') 
-               || document.querySelector('input[type="text"]')
-               || document.querySelector('textarea');
+async function addNewSubject(event) {
+  if (event) event.preventDefault();
 
-    const gradeSelect = document.getElementById('grade-level-select') 
-                     || document.getElementById('gradeLevel') 
-                     || document.querySelector('select');
+  const titleInput = document.getElementById("subjectTitle") || document.querySelector("textarea") || document.querySelector("input[type='text']");
+  const gradeSelect = document.getElementById("gradeLevel") || document.querySelector("select");
 
-    if (!input) return;
+  const rawTitle = titleInput ? titleInput.value.trim() : "";
+  const gradeLevel = gradeSelect ? gradeSelect.value : "Junior High School";
 
-    const rawInput = input.value.trim();
-    const gradeLevel = gradeSelect ? gradeSelect.value : 'Junior High School - Grade 7';
+  if (!rawTitle) {
+    alert("Please enter at least one subject title.");
+    return;
+  }
 
-    if (!rawInput) return;
+  try {
+    const response = await fetch("/api/admin/subjects", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        subjectName: rawTitle,
+        gradeLevel: gradeLevel
+      })
+    });
 
-    // Hahatiin nito ang input gamit ang koma (,) para suportahan ang Single at Batch Add
-    const subjectsList = rawInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
-
-    if (subjectsList.length === 0) return;
-
+    // Basahin muna bilang text para maiwasan ang SyntaxError sa JSON parse
+    const responseText = await response.text();
+    let data = {};
     try {
-        const response = await fetch('/api/admin/subjects', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-                subjectName: subjectsList.length === 1 ? subjectsList[0] : subjectsList,
-                gradeLevel 
-            })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            input.value = ""; 
-
-            const partitions = data.partitions || data.data || data;
-            renderPartition(document.getElementById('list-junior'), partitions.junior || []);
-            renderPartition(document.getElementById('list-grade11'), partitions.grade11 || []);
-            renderPartition(document.getElementById('list-grade12'), partitions.grade12 || []);
-
-            const msg = subjectsList.length > 1 
-                ? `${subjectsList.length} subjects added to ${gradeLevel}!`
-                : `Subject "${subjectsList[0]}" added successfully!`;
-
-            showToastMessage(data.message || msg, 'success');
-        } else {
-            showToastMessage(data.error || "Failed to insert course entries.", 'error');
-        }
-    } catch (err) {
-        console.error("Post error:", err);
-        showToastMessage("Network error while adding subject(s).", 'error');
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Server raw response:", responseText);
+      throw new Error(`Server returned status ${response.status}. Please check Render server logs.`);
     }
+
+    if (!response.ok) {
+      throw new Error(data.error || `Server Error (${response.status})`);
+    }
+
+    // Clear input on success
+    if (titleInput) titleInput.value = "";
+    
+    alert(data.message || "Subject(s) added successfully!");
+    
+    // Refresh list if function exists
+    if (typeof loadSubjects === "function") {
+      loadSubjects();
+    } else {
+      window.location.reload();
+    }
+
+  } catch (error) {
+    console.error("Post error:", error);
+    alert("Failed to add subject: " + error.message);
+  }
 }
 
 /**
