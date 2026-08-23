@@ -427,40 +427,55 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // POST /api/admin/subjects
+// POST /api/admin/subjects (WITH BATCH & ERROR HANDLING)
       if (pathname === "/api/admin/subjects" && req.method === "POST") {
-        const body = await parseBody(req);
-        const subjectName = (body.subjectName || body.name || "").trim();
-        const gradeLevel = (body.gradeLevel || "Junior High School").trim();
-
-        if (!subjectName) {
-          return send(res, 400, { error: "Subject title required." });
-        }
-
         try {
-          await db.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS grade_level VARCHAR(255);");
+          const body = await parseBody(req);
+          const rawInput = (body.subjectName || body.name || body.subjects || "").trim();
+          const gradeLevel = (body.gradeLevel || "Junior High School").trim();
 
-          const existing = await db.query(
-            "SELECT id FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1) AND LOWER(TRIM(COALESCE(grade_level, ''))) = LOWER($2)",
-            [subjectName, gradeLevel]
-          );
-
-          if (existing.rows.length > 0) {
-            return send(res, 400, { error: `This subject already exists in ${gradeLevel}.` });
+          if (!rawInput) {
+            return send(res, 400, { error: "Subject title required." });
           }
 
-          await db.query("INSERT INTO subjects (name, grade_level) VALUES ($1, $2)", [subjectName, gradeLevel]);
-          
+          // Siguraduhing umiiral ang kinakailangang column
+          await db.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS grade_level VARCHAR(255);");
+
+          // I-split sa commas para suportahan ang Batch Add
+          const rawList = rawInput.split(",").map(s => s.trim()).filter(Boolean);
+          const addedSubjects = [];
+          const skippedSubjects = [];
+
+          for (const subjectName of rawList) {
+            // Suriin kung umiiral na ang subject
+            const existing = await db.query(
+              "SELECT id FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1) AND LOWER(TRIM(COALESCE(grade_level, ''))) = LOWER($2)",
+              [subjectName, gradeLevel]
+            );
+
+            if (existing.rows.length === 0) {
+              await db.query("INSERT INTO subjects (name, grade_level) VALUES ($1, $2)", [subjectName, gradeLevel]);
+              addedSubjects.push(subjectName);
+            } else {
+              skippedSubjects.push(subjectName);
+            }
+          }
+
           const partitions = await getPartitionedSubjects();
 
           return send(res, 201, {
             success: true,
-            message: `Subject "${subjectName}" added successfully to ${gradeLevel}!`,
+            message: addedSubjects.length > 0 
+              ? `Successfully added ${addedSubjects.length} subject(s) to ${gradeLevel}!` 
+              : `All provided subjects already exist in ${gradeLevel}.`,
+            added: addedSubjects,
+            skipped: skippedSubjects,
             partitions: partitions
           });
+
         } catch (err) {
-          console.error("Database error inserting subject:", err);
-          return send(res, 500, { error: "Failed to insert subject entry into database." });
+          console.error("❌ Database/POST error inserting subject:", err);
+          return send(res, 500, { error: "Failed to process subject entry in database: " + err.message });
         }
       }
 
