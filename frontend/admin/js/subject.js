@@ -1,8 +1,10 @@
+let isSelectionMode = false;
+let selectedSubjectNames = new Set();
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchActiveSubjects();
 
-    // Attach click handler to the add button if present
-    const addBtn = document.getElementById('add-subject-btn') || document.querySelector('.btn-add-subject');
+    const addBtn = document.getElementById('add-subject-btn') || document.querySelector('.btn-add-subject') || document.querySelector('.btn-submit');
     if (addBtn) {
         addBtn.addEventListener('click', addNewSubject);
     }
@@ -40,6 +42,24 @@ async function fetchActiveSubjects() {
 }
 
 /**
+ * Toggle selection mode for checkbox-based batch deletion
+ */
+function toggleSelectionMode() {
+    isSelectionMode = !isSelectionMode;
+    selectedSubjectNames.clear();
+
+    const toggleBtn = document.getElementById('btn-toggle-selection');
+    if (toggleBtn) {
+        toggleBtn.style.background = isSelectionMode ? '#00d2ff' : 'rgba(0, 210, 255, 0.1)';
+        toggleBtn.style.color = isSelectionMode ? '#000' : '#00d2ff';
+        toggleBtn.innerText = isSelectionMode ? '❌ Cancel Selection' : '☑️ Select / Batch Delete';
+    }
+
+    updateBatchDeleteBar();
+    fetchActiveSubjects(); // Re-render lists with/without checkboxes
+}
+
+/**
  * Render HTML list items for a specific partition container
  */
 function renderPartition(container, items) {
@@ -50,21 +70,60 @@ function renderPartition(container, items) {
         return;
     }
 
-    container.innerHTML = items.map(sub => `
-        <div class="subject-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
-            <span style="font-weight: 500; color: #fff; font-size: 0.9rem;">📚 ${sub.name}</span>
-            <button class="btn-delete-sub" onclick="deleteSubject('${encodeURIComponent(sub.name)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem;">🗑️</button>
-        </div>
-    `).join('');
+    container.innerHTML = items.map(sub => {
+        const subName = typeof sub === 'string' ? sub : sub.name;
+        const isChecked = selectedSubjectNames.has(subName);
+
+        return `
+            <div class="subject-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    ${isSelectionMode ? `
+                        <input type="checkbox" class="subject-checkbox" value="${encodeURIComponent(subName)}" ${isChecked ? 'checked' : ''} onchange="handleCheckboxChange(event, '${encodeURIComponent(subName)}')" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
+                    ` : ''}
+                    <span style="font-weight: 500; color: #fff; font-size: 0.9rem;">📚 ${subName}</span>
+                </div>
+                ${!isSelectionMode ? `
+                    <button class="btn-delete-sub" onclick="deleteSubject('${encodeURIComponent(subName)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem;">🗑️</button>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
 }
 
 /**
- * Send a POST request with subject title and selected grade level (No confirmation popups)
+ * Track checked/unchecked items in selection mode
+ */
+function handleCheckboxChange(e, encodedName) {
+    const subName = decodeURIComponent(encodedName);
+    if (e.target.checked) {
+        selectedSubjectNames.add(subName);
+    } else {
+        selectedSubjectNames.delete(subName);
+    }
+    updateBatchDeleteBar();
+}
+
+/**
+ * Show/Hide batch delete bar and update count
+ */
+function updateBatchDeleteBar() {
+    const bar = document.getElementById('batch-delete-bar');
+    const countSpan = document.getElementById('selected-count');
+
+    if (bar && countSpan) {
+        countSpan.innerText = selectedSubjectNames.size;
+        bar.style.display = (isSelectionMode && selectedSubjectNames.size > 0) ? 'flex' : 'none';
+    }
+}
+
+/**
+ * Execute Batch Add (Splits comma-separated subjects)
  */
 async function addNewSubject() {
     const input = document.getElementById('new-subject-name') 
                || document.getElementById('subjectName') 
-               || document.querySelector('input[type="text"]');
+               || document.querySelector('input[type="text"]')
+               || document.querySelector('textarea');
 
     const gradeSelect = document.getElementById('grade-level-select') 
                      || document.getElementById('gradeLevel') 
@@ -72,10 +131,15 @@ async function addNewSubject() {
 
     if (!input) return;
 
-    const subjectName = input.value.trim();
-    const gradeLevel = gradeSelect ? gradeSelect.value : 'Junior High School';
+    const rawInput = input.value.trim();
+    const gradeLevel = gradeSelect ? gradeSelect.value : 'Junior High School - Grade 7';
 
-    if (!subjectName) return;
+    if (!rawInput) return;
+
+    // Hahatiin nito ang input gamit ang koma (,) para suportahan ang Single at Batch Add
+    const subjectsList = rawInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+    if (subjectsList.length === 0) return;
 
     try {
         const response = await fetch('/api/admin/subjects', {
@@ -84,29 +148,75 @@ async function addNewSubject() {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ subjectName, gradeLevel })
+            body: JSON.stringify({ 
+                subjectName: subjectsList.length === 1 ? subjectsList[0] : subjectsList,
+                gradeLevel 
+            })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            // 1. Immediately clear input field
             input.value = ""; 
 
-            // 2. Extract and update UI lists instantly
             const partitions = data.partitions || data.data || data;
             renderPartition(document.getElementById('list-junior'), partitions.junior || []);
             renderPartition(document.getElementById('list-grade11'), partitions.grade11 || []);
             renderPartition(document.getElementById('list-grade12'), partitions.grade12 || []);
 
-            // 3. Show non-blocking floating success message (No OK button)
-            showToastMessage(data.message || `Subject "${subjectName}" added successfully!`, 'success');
+            const msg = subjectsList.length > 1 
+                ? `${subjectsList.length} subjects added to ${gradeLevel}!`
+                : `Subject "${subjectsList[0]}" added successfully!`;
+
+            showToastMessage(data.message || msg, 'success');
         } else {
-            showToastMessage(data.error || "Failed to insert course entry.", 'error');
+            showToastMessage(data.error || "Failed to insert course entries.", 'error');
         }
     } catch (err) {
         console.error("Post error:", err);
-        showToastMessage("Network error while adding subject.", 'error');
+        showToastMessage("Network error while adding subject(s).", 'error');
+    }
+}
+
+/**
+ * Execute Batch Delete on checked items
+ */
+async function executeBatchDelete() {
+    const targets = Array.from(selectedSubjectNames);
+    if (targets.length === 0) return;
+
+    if (!confirm(`Are you sure you want to delete ${targets.length} selected subject(s)?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/admin/subjects/batch-delete', {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ subjectNames: targets })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            selectedSubjectNames.clear();
+            toggleSelectionMode(); // Reset selection mode
+
+            const partitions = data.partitions || data.data || data;
+            renderPartition(document.getElementById('list-junior'), partitions.junior || []);
+            renderPartition(document.getElementById('list-grade11'), partitions.grade11 || []);
+            renderPartition(document.getElementById('list-grade12'), partitions.grade12 || []);
+
+            showToastMessage(`Successfully deleted ${targets.length} subjects.`, 'success');
+        } else {
+            showToastMessage(data.error || "Failed to delete selected subjects.", 'error');
+        }
+    } catch (err) {
+        console.error("Batch delete network error:", err);
+        showToastMessage("System error during batch delete.", 'error');
     }
 }
 
@@ -116,14 +226,13 @@ async function addNewSubject() {
 function showToastMessage(message, type = 'success') {
     let toast = document.getElementById('toast-notification');
     
-    // Create element if it doesn't exist
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'toast-notification';
         toast.style.position = 'fixed';
-        toast.style.top = '20px'; // Position at top
-        toast.style.left = '50%'; // Center horizontally
-        toast.style.transform = 'translateX(-50%) translateY(-20px)'; // Perfect horizontal centering offset
+        toast.style.top = '20px';
+        toast.style.left = '50%';
+        toast.style.transform = 'translateX(-50%) translateY(-20px)';
         toast.style.padding = '12px 24px';
         toast.style.borderRadius = '8px';
         toast.style.color = '#fff';
@@ -138,13 +247,12 @@ function showToastMessage(message, type = 'success') {
     }
 
     toast.style.background = type === 'success' ? '#00d2ff' : '#ff5f5f';
-    toast.style.color = type === 'success' ? '#000' : '#fff'; // Dark text on cyan for crisp contrast
+    toast.style.color = type === 'success' ? '#000' : '#fff';
     toast.style.border = type === 'success' ? '1px solid #00d2ff' : '1px solid #ff5f5f';
     toast.textContent = message;
     toast.style.opacity = '1';
     toast.style.transform = 'translateX(-50%) translateY(0)';
 
-    // Automatically slide up and fade out after 3 seconds
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateX(-50%) translateY(-20px)';
@@ -152,7 +260,7 @@ function showToastMessage(message, type = 'success') {
 }
 
 /**
- * Permanently delete a subject entry from the backend database
+ * Permanently delete a single subject entry from backend
  */
 async function deleteSubject(encodedName) {
     const name = decodeURIComponent(encodedName);
@@ -175,6 +283,7 @@ async function deleteSubject(encodedName) {
             renderPartition(document.getElementById('list-junior'), data.junior || []);
             renderPartition(document.getElementById('list-grade11'), data.grade11 || []);
             renderPartition(document.getElementById('list-grade12'), data.grade12 || []);
+            showToastMessage(`Deleted "${name}"`, 'success');
         } else {
             alert(data.error || "Failed to drop entry from system database.");
         }
