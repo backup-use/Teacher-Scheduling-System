@@ -60,10 +60,7 @@ async function addNewRoom() {
     const roomNameField = document.getElementById('room-name');
     const roomCapacityField = document.getElementById('room-capacity');
 
-    if (!roomNameField || !roomCapacityField) {
-        console.error("Room form fields not found");
-        return;
-    }
+    if (!roomNameField || !roomCapacityField) return;
 
     const nameValue = roomNameField.value.trim();
     const capacityValue = parseInt(roomCapacityField.value, 10);
@@ -72,8 +69,6 @@ async function addNewRoom() {
         alert("⚠️ Validation Error: Please provide a valid Room Designation Name and Seating Capacity.");
         return;
     }
-
-    console.log("Adding room:", { name: nameValue, capacity: capacityValue });
 
     const newlyConfiguredRoom = {
         name: nameValue,
@@ -90,22 +85,20 @@ async function addNewRoom() {
             body: JSON.stringify(newlyConfiguredRoom)
         });
 
-        if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(`Failed to save room: ${response.status} ${errorData}`);
-        }
+        if (!response.ok) throw new Error("Failed to save room.");
 
         // Clear input values
         roomNameField.value = "";
         roomCapacityField.value = "";
 
-        // Reload room list
-        await renderRoomsUIList();
-        
-        console.log("Room added successfully!");
+        // 1. Alert the user that it succeeded! 🎉
+        alert("✅ Room registered successfully!");
+
+        // 2. Reload room list instantly
+        renderRoomsUIList();
     } catch (error) {
         console.error("Error adding room:", error);
-        alert(`⚠️ Database Error: Could not save the room facility. ${error.message}`);
+        alert("⚠️ Database Error: Could not save the room facility.");
     }
 }
 
