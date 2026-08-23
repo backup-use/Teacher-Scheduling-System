@@ -1,5 +1,4 @@
-let isSelectionMode = false;
-let selectedSubjectNames = new Set();
+let selectedSubjects = new Map(); // Stores checked subjects: { key => { name, gradeLevel } }
 
 document.addEventListener('DOMContentLoaded', () => {
     ensureDOMContainersExist();
@@ -16,9 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function ensureDOMContainersExist() {
     let listJunior = document.getElementById('list-junior');
-    if (listJunior) return; // Containers exist, no action needed
+    if (listJunior) return; 
 
-    // Hanapin ang Right Panel Box under "Active Institution Offerings"
     const headings = Array.from(document.querySelectorAll('*'));
     const offeringLabel = headings.find(el => el.textContent && el.textContent.includes('Active Institution Offerings'));
     
@@ -57,21 +55,12 @@ function ensureDOMContainersExist() {
     }
 }
 
-let selectedSubjects = new Map(); // Stores key-value pairs of ID/Name and Grade
-
-document.addEventListener('DOMContentLoaded', () => {
-    fetchActiveSubjects();
-
-    const addBtn = document.getElementById('add-subject-btn') || document.querySelector('.btn-add-subject') || document.querySelector('.btn-submit');
-    if (addBtn) {
-        addBtn.addEventListener('click', addNewSubject);
-    }
-});
-
 /**
  * Fetch and display active subjects partitioned by Grade Level
  */
 async function fetchActiveSubjects() {
+    ensureDOMContainersExist();
+
     const listJunior = document.getElementById('list-junior');
     const listGrade11 = document.getElementById('list-grade11');
     const listGrade12 = document.getElementById('list-grade12');
@@ -100,7 +89,6 @@ async function fetchActiveSubjects() {
             ];
         }
 
-        // Filter into grade categories
         const junior = rawList.filter(s => {
             const lvl = String(typeof s === 'object' ? (s.gradeLevel || s.grade_level || '') : '').toLowerCase();
             return lvl.includes('junior') || lvl.includes('7') || lvl.includes('8') || lvl.includes('9') || lvl.includes('10') || (!lvl.includes('11') && !lvl.includes('12'));
@@ -127,7 +115,7 @@ async function fetchActiveSubjects() {
 }
 
 /**
- * Render items with always-visible checkboxes and direct delete action
+ * Render items with individual checkboxes and action buttons
  */
 function renderPartition(container, items) {
     if (!container) return;
@@ -138,7 +126,6 @@ function renderPartition(container, items) {
     }
 
     container.innerHTML = items.map(sub => {
-        const subId = typeof sub === 'object' ? (sub._id || sub.id || sub.name || sub.subjectName) : sub;
         const subName = typeof sub === 'object' ? (sub.name || sub.subjectName || sub.title || 'Unknown Subject') : sub;
         const gradeLevel = typeof sub === 'object' ? (sub.gradeLevel || sub.grade_level || '') : '';
         const gradeTag = gradeLevel ? `<span style="font-size: 0.7rem; background: rgba(0,210,255,0.15); color: #00d2ff; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${gradeLevel}</span>` : '';
@@ -152,14 +139,14 @@ function renderPartition(container, items) {
                     <input type="checkbox" class="subject-checkbox" ${isChecked ? 'checked' : ''} onchange="handleCheckboxChange(event, '${encodeURIComponent(subName)}', '${encodeURIComponent(gradeLevel)}')" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
                     <span style="font-weight: 500; color: #fff; font-size: 0.85rem;">📚 ${subName} ${gradeTag}</span>
                 </div>
-                <button onclick="deleteSingleSubject('${encodeURIComponent(subName)}', '${encodeURIComponent(gradeLevel)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem;">🗑️</button>
+                <button onclick="deleteSingleSubject('${encodeURIComponent(subName)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem;">🗑️</button>
             </div>
         `;
     }).join('');
 }
 
 /**
- * Checkbox tracking and dynamic delete bar display
+ * Track checkbox updates and count
  */
 function handleCheckboxChange(e, encodedName, encodedGrade) {
     const subName = decodeURIComponent(encodedName);
@@ -171,69 +158,40 @@ function handleCheckboxChange(e, encodedName, encodedGrade) {
     } else {
         selectedSubjects.delete(key);
     }
-    updateDeleteBar();
+    updateCount();
 }
 
-/**
- * Show/Hide Batch Delete Toolbar based on selection count
- */
-function updateDeleteBar() {
-    const bar = document.getElementById('batch-delete-bar');
+function updateCount() {
     const countSpan = document.getElementById('selected-count');
+    if (countSpan) countSpan.innerText = selectedSubjects.size;
+}
 
-    if (bar && countSpan) {
-        countSpan.innerText = selectedSubjects.size;
-        bar.style.display = selectedSubjects.size > 0 ? 'flex' : 'none';
-    }
+function toggleSelectAll(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('.subject-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = masterCheckbox.checked;
+        cb.dispatchEvent(new Event('change'));
+    });
 }
 
 /**
- * Batch Delete Action
+ * Delete ALL selected/checked subjects
  */
 async function executeBatchDelete() {
-    if (selectedSubjects.size === 0) return;
+    if (selectedSubjects.size === 0) {
+        alert("Please select at least one subject to delete.");
+        return;
+    }
 
-    if (!confirm(`Are you sure you want to delete ${selectedSubjects.size} selected subject(s)?`)) {
+    if (!confirm(`Are you sure you want to delete ${selectedSubjects.size} checked subject(s)?`)) {
         return;
     }
 
     const itemsToDelete = Array.from(selectedSubjects.values());
     const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
 
-    try {
-        const response = await fetch('/api/admin/subjects/batch-delete', {
-            method: 'DELETE',
-            headers: {
-                'Authorization': token ? `Bearer ${token}` : '',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ items: itemsToDelete, subjectNames: itemsToDelete.map(i => i.name) })
-        });
-
-        if (response.ok) {
-            showToastMessage(`Successfully deleted ${selectedSubjects.size} subject(s)!`, 'success');
-            selectedSubjects.clear();
-            updateDeleteBar();
-            fetchActiveSubjects();
-        } else {
-            const data = await response.json().catch(() => ({}));
-            // Fallback: Delete item by item if batch endpoint is missing on server
-            await fallbackDeleteItems(itemsToDelete);
-        }
-    } catch (err) {
-        console.error("Batch delete error, executing fallback:", err);
-        await fallbackDeleteItems(itemsToDelete);
-    }
-}
-
-/**
- * Fallback to delete items individually if endpoint doesn't support batch object payloads
- */
-async function fallbackDeleteItems(items) {
-    const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
     let deletedCount = 0;
-
-    for (const item of items) {
+    for (const item of itemsToDelete) {
         try {
             const res = await fetch(`/api/admin/subjects/${encodeURIComponent(item.name)}`, {
                 method: 'DELETE',
@@ -241,20 +199,23 @@ async function fallbackDeleteItems(items) {
             });
             if (res.ok) deletedCount++;
         } catch (e) {
-            console.error("Item delete failed:", e);
+            console.error("Delete error:", e);
         }
     }
 
     selectedSubjects.clear();
-    updateDeleteBar();
-    showToastMessage(`Deleted ${deletedCount} subject(s).`, 'success');
+    const selectAllCb = document.getElementById('select-all-checkbox');
+    if (selectAllCb) selectAllCb.checked = false;
+
+    updateCount();
+    showToastMessage(`Successfully deleted ${deletedCount} subject(s)!`, 'success');
     fetchActiveSubjects();
 }
 
 /**
- * Delete single subject entry
+ * Delete single subject
  */
-async function deleteSingleSubject(encodedName, encodedGrade) {
+async function deleteSingleSubject(encodedName) {
     const subName = decodeURIComponent(encodedName);
     if (!confirm(`Delete "${subName}" from catalog?`)) return;
 
@@ -290,7 +251,7 @@ async function addNewSubject(event) {
     const gradeLevel = gradeSelect ? gradeSelect.value : "Junior High School - Grade 7";
 
     if (!rawTitle) {
-        alert("Please enter at least one subject title.");
+        alert("Please enter a subject title.");
         return;
     }
 
@@ -321,7 +282,7 @@ async function addNewSubject(event) {
 }
 
 /**
- * Floating status notification
+ * Dynamic Notification Banner
  */
 function showToastMessage(message, type = 'success') {
     let toast = document.getElementById('toast-notification');
@@ -345,65 +306,4 @@ function showToastMessage(message, type = 'success') {
     toast.style.display = 'block';
 
     setTimeout(() => { toast.style.display = 'none'; }, 3000);
-}
-
-/**
- * Selection and Toast Utilities
- */
-function toggleSelectionMode() {
-    isSelectionMode = !isSelectionMode;
-    selectedSubjectNames.clear();
-    fetchActiveSubjects();
-}
-
-function handleCheckboxChange(e, encodedName) {
-    const subName = decodeURIComponent(encodedName);
-    if (e.target.checked) selectedSubjectNames.add(subName);
-    else selectedSubjectNames.delete(subName);
-}
-
-function showToastMessage(message, type = 'success') {
-    let toast = document.getElementById('toast-notification');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'toast-notification';
-        toast.style.position = 'fixed';
-        toast.style.top = '20px';
-        toast.style.left = '50%';
-        toast.style.transform = 'translateX(-50%)';
-        toast.style.padding = '10px 20px';
-        toast.style.borderRadius = '6px';
-        toast.style.zIndex = '9999';
-        toast.style.fontSize = '0.85rem';
-        toast.style.fontWeight = 'bold';
-        document.body.appendChild(toast);
-    }
-    toast.style.background = type === 'success' ? '#00d2ff' : '#ff5f5f';
-    toast.style.color = '#000';
-    toast.textContent = message;
-    toast.style.display = 'block';
-
-    setTimeout(() => { toast.style.display = 'none'; }, 3000);
-}
-
-async function deleteSubject(encodedName) {
-    const name = decodeURIComponent(encodedName);
-    if (!confirm(`Delete "${name}"?`)) return;
-
-    try {
-        const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
-        const response = await fetch(`/api/admin/subjects/${encodeURIComponent(name)}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-        });
-
-        if (response.ok) {
-            showToastMessage(`Deleted ${name}`, 'success');
-            fetchActiveSubjects();
-        } else {
-            alert("Could not delete subject.");
-        }
-    } catch (err) {
-        console.error("Delete error:", err);
-    }
 }
