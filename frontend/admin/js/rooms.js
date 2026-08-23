@@ -60,7 +60,10 @@ async function addNewRoom() {
     const roomNameField = document.getElementById('room-name');
     const roomCapacityField = document.getElementById('room-capacity');
 
-    if (!roomNameField || !roomCapacityField) return;
+    if (!roomNameField || !roomCapacityField) {
+        console.error("Room form fields not found");
+        return;
+    }
 
     const nameValue = roomNameField.value.trim();
     const capacityValue = parseInt(roomCapacityField.value, 10);
@@ -69,6 +72,8 @@ async function addNewRoom() {
         alert("⚠️ Validation Error: Please provide a valid Room Designation Name and Seating Capacity.");
         return;
     }
+
+    console.log("Adding room:", { name: nameValue, capacity: capacityValue });
 
     const newlyConfiguredRoom = {
         name: nameValue,
@@ -85,17 +90,22 @@ async function addNewRoom() {
             body: JSON.stringify(newlyConfiguredRoom)
         });
 
-        if (!response.ok) throw new Error("Failed to save room.");
+        if (!response.ok) {
+            const errorData = await response.text();
+            throw new Error(`Failed to save room: ${response.status} ${errorData}`);
+        }
 
         // Clear input values
         roomNameField.value = "";
         roomCapacityField.value = "";
 
         // Reload room list
-        renderRoomsUIList();
+        await renderRoomsUIList();
+        
+        console.log("Room added successfully!");
     } catch (error) {
         console.error("Error adding room:", error);
-        alert("⚠️ Database Error: Could not save the room facility.");
+        alert(`⚠️ Database Error: Could not save the room facility. ${error.message}`);
     }
 }
 
@@ -111,12 +121,16 @@ async function deleteRoomItem(id) {
             headers: getAuthHeaders()
         });
 
-        if (!response.ok) throw new Error("Failed to delete room.");
+        if (!response.ok) {
+            const errorData = await response.text();
+            throw new Error(`Failed to delete room: ${response.status} ${errorData}`);
+        }
         
-        renderRoomsUIList();
+        await renderRoomsUIList();
+        console.log("Room deleted successfully!");
     } catch (error) {
         console.error("Error deleting room:", error);
-        alert("⚠️ Database Error: Failed to remove room.");
+        alert(`⚠️ Database Error: Failed to remove room. ${error.message}`);
     }
 }
 
@@ -125,5 +139,20 @@ window.addNewRoom = addNewRoom;
 window.deleteRoomItem = deleteRoomItem;
 window.renderRoomsUIList = renderRoomsUIList;
 
-// Initial rendering on page load
-window.addEventListener('DOMContentLoaded', renderRoomsUIList);
+// ─── Setup form submission handler ───
+document.addEventListener('DOMContentLoaded', function() {
+    // Initial rendering on page load
+    renderRoomsUIList();
+    
+    // Attach the submit event to the form
+    const roomForm = document.getElementById('room-form');
+    if (roomForm) {
+        roomForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            addNewRoom();
+        });
+        console.log("Room form submit handler attached");
+    } else {
+        console.warn("Room form not found");
+    }
+});
