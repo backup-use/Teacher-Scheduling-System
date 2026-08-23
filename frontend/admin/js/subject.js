@@ -14,37 +14,53 @@ document.addEventListener('DOMContentLoaded', () => {
  * Fetch and populate subjects partitioned into Junior High, Grade 11, and Grade 12
  */
 async function fetchActiveSubjects() {
-    const listJunior = document.getElementById('list-junior');
-    const listGrade11 = document.getElementById('list-grade11');
-    const listGrade12 = document.getElementById('list-grade12');
+  const listJunior = document.getElementById('list-junior');
+  const listGrade11 = document.getElementById('list-grade11');
+  const listGrade12 = document.getElementById('list-grade12');
 
-    if (listJunior) listJunior.innerHTML = '<div style="color: #00d2ff; padding: 5px; font-size: 0.85rem;">Syncing...</div>';
-    if (listGrade11) listGrade11.innerHTML = '<div style="color: #00d2ff; padding: 5px; font-size: 0.85rem;">Syncing...</div>';
-    if (listGrade12) listGrade12.innerHTML = '<div style="color: #00d2ff; padding: 5px; font-size: 0.85rem;">Syncing...</div>';
+  // Fallback kung iisang main container lang ang gamit sa HTML
+  const singleContainer = document.querySelector('.active-offerings-box') || document.querySelector('.offerings-container') || document.getElementById('subject-list-container');
 
-    try {
-        const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
-        const response = await fetch('/api/admin/subjects', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+  try {
+    const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
+    const response = await fetch('/api/admin/subjects', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
 
-        if (!response.ok) {
-            throw new Error(`Failed to load: ${response.statusText}`);
-        }
+    if (!response.ok) throw new Error(`Status ${response.status}`);
 
-        const partitions = await response.json();
+    const data = await response.json();
 
-        renderPartition(listJunior, partitions.junior || []);
-        renderPartition(listGrade11, partitions.grade11 || []);
-        renderPartition(listGrade12, partitions.grade12 || []);
-
-    } catch (err) {
-        console.error("Catalog load error:", err);
-        const errHtml = '<div style="color: #ff5f5f; padding: 5px; font-size: 0.85rem;">Connection failed.</div>';
-        if (listJunior) listJunior.innerHTML = errHtml;
-        if (listGrade11) listGrade11.innerHTML = errHtml;
-        if (listGrade12) listGrade12.innerHTML = errHtml;
+    // Kung partitioned na mula sa backend (junior, grade11, grade12)
+    if (data.junior || data.grade11 || data.grade12) {
+      renderPartition(listJunior, data.junior || []);
+      renderPartition(listGrade11, data.grade11 || []);
+      renderPartition(listGrade12, data.grade12 || []);
+      return;
     }
+
+    // Kung Flat Array ang binigay ng backend, i-filter natin sa frontend
+    const subjectsArray = Array.isArray(data) ? data : (data.subjects || []);
+
+    if (listJunior || listGrade11 || listGrade12) {
+      const junior = subjectsArray.filter(s => !(s.grade_level || '').includes('11') && !(s.grade_level || '').includes('12'));
+      const g11 = subjectsArray.filter(s => (s.grade_level || '').includes('11'));
+      const g12 = subjectsArray.filter(s => (s.grade_level || '').includes('12'));
+
+      renderPartition(listJunior, junior);
+      renderPartition(listGrade11, g11);
+      renderPartition(listGrade12, g12);
+    } else if (singleContainer) {
+      // Direct render sa solong container
+      renderPartition(singleContainer, subjectsArray);
+    }
+
+  } catch (err) {
+    console.error("Catalog load error:", err);
+    const errHtml = '<div style="color: #ff5f5f; padding: 5px; font-size: 0.85rem;">Failed to load subjects.</div>';
+    if (listJunior) listJunior.innerHTML = errHtml;
+    if (singleContainer) singleContainer.innerHTML = errHtml;
+  }
 }
 
 /**
