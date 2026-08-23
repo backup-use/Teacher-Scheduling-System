@@ -31,9 +31,12 @@ function getSubjectColor(subjectName) {
 
 async function processSystemTimetable() {
     console.log("⚡ Generating Synchronized 8-Period Student Timetable Matrix with Directory & Diagnostics...");
-    const tableBody = document.getElementById("timetable-matrix-output-body");
     
-    const container = tableBody ? tableBody.closest('.dashboard-card-panel') || tableBody.parentElement : null;
+    // Dynamic fallback para maiwasan ang "Container element not found" layout error
+    const tableBody = document.getElementById("timetable-matrix-output-body");
+    const container = tableBody 
+        ? (tableBody.closest('.dashboard-card-panel') || tableBody.parentElement)
+        : (document.querySelector('.dashboard-card-panel') || document.querySelector('.main-content'));
     
     if (!container) {
         console.error("Layout Error: Container element for timetable display not found.");
@@ -72,14 +75,38 @@ async function processSystemTimetable() {
             throw new Error("API Database Synchronization Failed.");
         }
 
-        const rawTeachers = await teachersResponse.json();
-        const rawSubjects = await subjectsResponse.json();
-        const savedRooms = await roomsResponse.json();
-        const savedSections = await sectionsResponse.json();
+        const rawTeachersData = await teachersResponse.json();
+        const rawSubjectsData = await subjectsResponse.json();
+        const savedRoomsData = await roomsResponse.json();
+        const savedSectionsData = await sectionsResponse.json();
+
+        // 1. Safe Normalization Converters (Inaayos ang "rawSubjects is not iterable")
+        const rawTeachers = Array.isArray(rawTeachersData) ? rawTeachersData : (rawTeachersData.teachers || rawTeachersData.data || []);
+        const savedRooms = Array.isArray(savedRoomsData) ? savedRoomsData : (savedRoomsData.rooms || savedRoomsData.data || []);
+        const savedSections = Array.isArray(savedSectionsData) ? savedSectionsData : (savedSectionsData.sections || savedSectionsData.data || []);
+
+        // Grouped Subject Normalizer
+        let normalizedSubjects = [];
+        if (Array.isArray(rawSubjectsData)) {
+            normalizedSubjects = rawSubjectsData.map(s => typeof s === 'string' ? { name: s, gradeLevel: "General" } : s);
+        } else if (typeof rawSubjectsData === 'object' && rawSubjectsData !== null) {
+            Object.keys(rawSubjectsData).forEach(gradeCategory => {
+                const list = rawSubjectsData[gradeCategory];
+                if (Array.isArray(list)) {
+                    list.forEach(subj => {
+                        if (typeof subj === 'string') {
+                            normalizedSubjects.push({ name: subj, gradeLevel: gradeCategory });
+                        } else {
+                            normalizedSubjects.push({ ...subj, gradeLevel: subj.gradeLevel || gradeCategory });
+                        }
+                    });
+                }
+            });
+        }
 
         let missingTabs = [];
         if (rawTeachers.length === 0) missingTabs.push("Teachers 👤");
-        if (rawSubjects.length === 0) missingTabs.push("Subjects 📚");
+        if (normalizedSubjects.length === 0) missingTabs.push("Subjects 📚");
         if (savedRooms.length === 0) missingTabs.push("Rooms 🏠");
         if (savedSections.length === 0) missingTabs.push("Sections 📅");
 
@@ -140,24 +167,53 @@ async function processSystemTimetable() {
             };
         });
 
-        // Pre-flight diagnostics
-        for (const day of daySlots) {
-            for (const subjectObj of rawSubjects) {
-                const subjectName = typeof subjectObj === 'string' ? subjectObj : subjectObj.name;
-                
-                const hasTeacherForDay = normalizedTeachers.some(t => {
-                    const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
-                    const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
-                    return conductsSubject && worksThisDay;
+        // 2. GRADE-LEVEL TEACHER COVERAGE VALIDATOR
+        const gradeLevelStatus = {};
+        const distinctGradeLevels = [...new Set(normalizedSubjects.map(s => s.gradeLevel || "General"))];
+
+        distinctGradeLevels.forEach(grade => {
+            const subjectsInGrade = normalizedSubjects.filter(s => (s.gradeLevel || "General") === grade);
+            const missingTeacherSubjects = [];
+
+            subjectsInGrade.forEach(subj => {
+                const subjName = typeof subj === 'string' ? subj : subj.name;
+                const hasTeacher = normalizedTeachers.some(t => {
+                    return t.subjects.some(s => s.toLowerCase() === subjName.toLowerCase());
                 });
 
-                if (!hasTeacherForDay) {
-                    systemDiagnosticsLogs.push(`❌ Quota Threat: Walang pwedeng magturo ng [${subjectName}] tuwing [${day}].`);
+                if (!hasTeacher) {
+                    missingTeacherSubjects.push(subjName);
                 }
+            });
+
+            if (missingTeacherSubjects.length > 0) {
+                gradeLevelStatus[grade] = { ready: false, missing: missingTeacherSubjects };
+                systemDiagnosticsLogs.push(
+                    `⛔ [${grade}] Skipped (Incomplete Teachers): Missing teacher for [${missingTeacherSubjects.join(', ')}]`
+                );
+            } else {
+                gradeLevelStatus[grade] = { ready: true, missing: [] };
+                systemDiagnosticsLogs.push(`✅ [${grade}] Teacher Coverage Complete: Ready for scheduling.`);
             }
+        });
+
+        // Kumuha lamang ng subjects mula sa Grade Levels na KUMPLETO ANG GURO
+        const validSubjectsToSchedule = normalizedSubjects.filter(s => {
+            const grade = s.gradeLevel || "General";
+            return gradeLevelStatus[grade] && gradeLevelStatus[grade].ready;
+        });
+
+        if (validSubjectsToSchedule.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; color: #ff5f5f; padding: 40px; border: 1px solid rgba(255,95,95,0.2); border-radius: 8px;">
+                    ⚠️ Generation Halted: No Grade Level has complete teacher coverage.<br><br>
+                    <span style="color: #a0a0c0; font-size: 0.9rem;">Please assign teachers to all subjects in at least one Grade Level.</span>
+                </div>
+            `;
+            return;
         }
 
-        // Automated runtime scheduling parser engine
+        // 3. Automated Runtime Scheduling Parser Engine
         for (const section of savedSections) {
             for (const day of daySlots) {
                 let dailyFilledCount = 0;
@@ -165,7 +221,7 @@ async function processSystemTimetable() {
                 for (let timeIndex = 0; timeIndex < timeSlots.length; timeIndex++) {
                     const currentTime = timeSlots[timeIndex];
 
-                    for (const subjectObj of rawSubjects) {
+                    for (const subjectObj of validSubjectsToSchedule) {
                         const subjectName = typeof subjectObj === 'string' ? subjectObj : subjectObj.name;
 
                         const dailySubjectKey = `${section.name}-${day}-${subjectName.toLowerCase()}`;
@@ -282,7 +338,6 @@ async function processSystemTimetable() {
         `;
     }
 }
-
 /**
  * Builds an isolated interactive view separating directory view from grid viewer
  */
