@@ -40,9 +40,7 @@ function ensureDOMContainersExist() {
                     <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
                     <label for="select-all-checkbox" style="color: #cbd5e1; font-size: 0.8rem; cursor: pointer; font-weight: 600; user-select: none;">Select All Subjects</label>
                 </div>
-                <button id="btn-delete-checked" onclick="executeBatchDelete()" style="background: #ff5f5f; color: #ffffff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;">
-                    🗑️ DELETE CHECKED (<span id="selected-count">0</span>)
-                </button>
+                
             </div>
         `;
         offeringLabel.insertAdjacentHTML('afterend', toolbarHtml);
