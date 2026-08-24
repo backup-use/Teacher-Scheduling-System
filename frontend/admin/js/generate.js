@@ -358,7 +358,7 @@ async function processSystemTimetable() {
 }
 
 /**
- * Builds an isolated interactive view separating directory view from grid viewer
+ * Builds a Grade-Level Card Dashboard separating teachers by their active scheduled grade levels.
  */
 function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, daySlots, timeSlots, diagnosticsLogs) {
     container.innerHTML = ""; 
@@ -373,6 +373,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
     container.appendChild(directoryPanel);
     container.appendChild(scheduleViewerPanel);
 
+    // 1. Render Diagnostics Header (if any)
     if (diagnosticsLogs && diagnosticsLogs.length > 0) {
         const diagPanel = document.createElement("div");
         diagPanel.className = "system-diagnostics-card";
@@ -392,97 +393,146 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         logsHTML += `</div><div style="font-size: 0.8rem; color: #94a3b8; margin-top: 10px; font-style: italic;">Tip: Ang mga guro ay maaari nang magturo sa kahit anong section o grade level na may hawak ng kanilang paksa nang walang restriksyon.</div>`;
         diagPanel.innerHTML = logsHTML;
         directoryPanel.appendChild(diagPanel);
-    } else {
-        const diagPanel = document.createElement("div");
-        diagPanel.style.cssText = "background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 10px; padding: 14px; margin-bottom: 25px; color: #34d399; font-size: 0.9rem; font-weight: 500;";
-        diagPanel.innerHTML = "✅ Database Verification Complete: Balanced system teacher metrics deployed across universal section clusters.";
-        directoryPanel.appendChild(diagPanel);
     }
 
+    // 2. Map Teachers to their respective Grade Levels based on section naming/assignments
+    const gradeLevelTeacherMap = {};
+
+    for (const teacherName in teacherSchedulesMap) {
+        const item = teacherSchedulesMap[teacherName];
+        if (!item.slots || item.slots.length === 0) continue;
+
+        item.slots.forEach(slot => {
+            // Extract Grade Level from section name or fall back to general category
+            const match = slot.section ? slot.section.match(/Grade\s*\d+/i) : null;
+            const gradeKey = match ? match[0].toUpperCase() : (slot.section || "General");
+
+            if (!gradeLevelTeacherMap[gradeKey]) {
+                gradeLevelTeacherMap[gradeKey] = {};
+            }
+
+            if (!gradeLevelTeacherMap[gradeKey][teacherName]) {
+                gradeLevelTeacherMap[gradeKey][teacherName] = {
+                    details: item.details,
+                    slots: []
+                };
+            }
+
+            gradeLevelTeacherMap[gradeKey][teacherName].slots.push(slot);
+        });
+    }
+
+    // 3. Search and Header Bar
     const filterHeaderBox = document.createElement("div");
-    filterHeaderBox.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; background: rgba(15,23,42,0.3); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.04);";
+    filterHeaderBox.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 12px; background: rgba(15,23,42,0.4); padding: 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);";
     filterHeaderBox.innerHTML = `
         <div>
-            <h4 style="color: #ffffff; margin: 0; font-size: 1.2rem; font-weight: bold;">👤 Registered Instructors Directory</h4>
-            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.85rem;">Select an instructor below to view, export, or print their isolated active calendar matrix.</p>
+            <h4 style="color: #ffffff; margin: 0; font-size: 1.25rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                🏫 Grade-Level Instructor Directories
+            </h4>
+            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.85rem;">Instructors are grouped below by the grade levels they actively teach.</p>
         </div>
-        <input type="text" id="directory-search-bar" placeholder="Type name to filter list instantly..." style="background: rgba(30, 41, 59, 0.9); color: #fff; border: 1px solid rgba(255,255,255,0.12); padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; width: 320px; outline: none; transition: all 0.2s;">
+        <input type="text" id="directory-search-bar" placeholder="🔍 Search teacher or subject..." style="background: rgba(30, 41, 59, 0.9); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; width: 300px; outline: none; transition: border 0.2s;">
     `;
     directoryPanel.appendChild(filterHeaderBox);
 
-    const tableContainer = document.createElement("div");
-    tableContainer.style.cssText = "overflow-x: auto; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;";
-    
-    let tableHTML = `
-        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
-            <thead>
-                <tr style="background: rgba(15, 23, 42, 0.7); border-bottom: 1px solid rgba(255,255,255,0.08);">
-                    <th style="padding: 14px 20px; color: #94a3b8; font-weight: 600;">Instructor Full Name</th>
-                    <th style="padding: 14px 20px; color: #94a3b8; font-weight: 600;">Handled Subject Competencies</th>
-                    <th style="padding: 14px 20px; color: #94a3b8; font-weight: 600; text-align: center;">Total Scheduled Slots</th>
-                    <th style="padding: 14px 20px; color: #94a3b8; font-weight: 600; text-align: right;">Action Control</th>
-                </tr>
-            </thead>
-            <tbody id="directory-table-body-rows">
-    `;
+    const gradeCardsContainer = document.createElement("div");
+    gradeCardsContainer.style.cssText = "display: flex; flex-direction: column; gap: 24px;";
+    directoryPanel.appendChild(gradeCardsContainer);
 
-    let activeRecords = 0;
-    for (const name in teacherSchedulesMap) {
-        const item = teacherSchedulesMap[name];
-        if (item.slots.length === 0) continue; 
-        activeRecords++;
+    const sortedGrades = Object.keys(gradeLevelTeacherMap).sort();
 
-        tableHTML += `
-            <tr class="directory-teacher-row" data-name="${name.toLowerCase()}" style="border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
-                <td style="padding: 14px 20px; color: #ffffff; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                    <span style="background: rgba(0,210,255,0.1); color: #00d2ff; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 0.85rem;">👤</span>
-                    ${name}
-                </td>
-                <td style="padding: 14px 20px;">
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                        ${item.details.subjects.map(s => `<span style="background: rgba(148, 163, 184, 0.1); color: #cbd5e1; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">📚 ${s}</span>`).join('')}
-                    </div>
-                </td>
-                <td style="padding: 14px 20px; text-align: center;">
-                    <span style="background: rgba(16, 185, 129, 0.1); color: #34d399; font-size: 0.8rem; font-weight: bold; padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.15);">
-                        ${item.slots.length} Assigned Periods
-                    </span>
-                </td>
-                <td style="padding: 14px 20px; text-align: right;">
-                    <button class="view-single-schedule-btn" data-teacher-key="${name}" style="background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #fff; border: none; padding: 8px 16px; font-size: 0.85rem; font-weight: bold; border-radius: 6px; cursor: pointer; transition: transform 0.1s; box-shadow: 0 2px 8px rgba(0,210,255,0.2);" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
-                        📅 View Schedule ⚡
-                    </button>
-                </td>
-            </tr>
+    if (sortedGrades.length === 0) {
+        gradeCardsContainer.innerHTML = `
+            <div style="text-align: center; color: #64748b; padding: 40px; font-style: italic; background: rgba(15,23,42,0.3); border-radius: 12px;">
+                ⚠️ No active schedules assigned to any grade level.
+            </div>
         `;
+        return;
     }
 
-    tableHTML += `</tbody></table>`;
-    tableContainer.innerHTML = tableHTML;
-    directoryPanel.appendChild(tableContainer);
+    // 4. Render Box Cards per Grade Level
+    sortedGrades.forEach(gradeName => {
+        const teachersInGrade = gradeLevelTeacherMap[gradeName];
 
-    if (activeRecords === 0) {
-        tableContainer.innerHTML = `<div style="text-align: center; color: #64748b; padding: 40px; font-style: italic;">⚠️ No active teacher schedule grids could be rendered inside the database matrix.</div>`;
-    }
+        const gradeBox = document.createElement("div");
+        gradeBox.className = "grade-level-card-box";
+        gradeBox.style.cssText = "background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);";
 
+        let boxHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
+                <h3 style="color: #00d2ff; margin: 0; font-size: 1.15rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                    📌 ${gradeName}
+                </h3>
+                <span style="background: rgba(0,210,255,0.1); color: #00d2ff; font-size: 0.8rem; font-weight: bold; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(0,210,255,0.2);">
+                    ${Object.keys(teachersInGrade).length} Active Teachers
+                </span>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+        `;
+
+        for (const teacherName in teachersInGrade) {
+            const teacherObj = teachersInGrade[teacherName];
+            const subjects = teacherObj.details.subjects || [];
+
+            boxHTML += `
+                <div class="teacher-item-row" data-teacher-search="${teacherName.toLowerCase()} ${subjects.join(' ').toLowerCase()}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 12px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;" onmouseover="this.style.background='rgba(15, 23, 42, 0.9)'" onmouseout="this.style.background='rgba(15, 23, 42, 0.6)'">
+                    
+                    <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
+                        <span style="background: rgba(0,210,255,0.1); color: #00d2ff; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 1rem; flex-shrink: 0;">👤</span>
+                        <div>
+                            <div style="color: #ffffff; font-weight: bold; font-size: 0.95rem;">${teacherName}</div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                                ${subjects.map(s => `<span style="background: rgba(148, 163, 184, 0.12); color: #cbd5e1; font-size: 0.73rem; padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">📚 ${s}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <span style="background: rgba(16, 185, 129, 0.1); color: #34d399; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.15);">
+                            ${teacherObj.slots.length} Classes
+                        </span>
+
+                        <button class="view-single-schedule-btn" data-teacher-key="${teacherName}" style="background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #fff; border: none; padding: 8px 14px; font-size: 0.82rem; font-weight: bold; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-shadow: 0 2px 8px rgba(0,210,255,0.2);" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                            📅 View Schedule ⚡
+                        </button>
+                    </div>
+
+                </div>
+            `;
+        }
+
+        boxHTML += `</div>`;
+        gradeBox.innerHTML = boxHTML;
+        gradeCardsContainer.appendChild(gradeBox);
+    });
+
+    // 5. Search Bar Filtering Engine
     const searchBar = document.getElementById("directory-search-bar");
     if (searchBar) {
         searchBar.addEventListener("input", (e) => {
             const query = e.target.value.toLowerCase().trim();
-            const rows = document.querySelectorAll(".directory-teacher-row");
-            rows.forEach(row => {
-                const nameAttr = row.getAttribute("data-name");
-                if (nameAttr.includes(query)) {
-                    row.style.display = "table-row";
+            const teacherRows = document.querySelectorAll(".teacher-item-row");
+
+            teacherRows.forEach(row => {
+                const searchData = row.getAttribute("data-teacher-search");
+                if (searchData.includes(query)) {
+                    row.style.display = "flex";
                 } else {
                     row.style.display = "none";
                 }
             });
+
+            // Hide empty grade boxes during search
+            document.querySelectorAll(".grade-level-card-box").forEach(box => {
+                const visibleRows = box.querySelectorAll('.teacher-item-row[style*="display: flex"]');
+                box.style.display = (visibleRows.length === 0 && query !== "") ? "none" : "block";
+            });
         });
-        searchBar.addEventListener("focus", () => searchBar.style.borderColor = "#00d2ff");
-        searchBar.addEventListener("blur", () => searchBar.style.borderColor = "rgba(255,255,255,0.12)");
     }
 
+    // 6. Action Button Click Handlers
     document.querySelectorAll(".view-single-schedule-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const selectedTeacher = btn.getAttribute("data-teacher-key");
