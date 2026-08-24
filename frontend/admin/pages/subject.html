@@ -65,21 +65,19 @@
                     <button type="button" id="add-subject-btn" class="btn-add-subject" style="width: 100%; padding: 12px; background: #00d2ff; color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase;">ADD SUBJECT(S) TO SYSTEM ➕</button>
                 </div>
                 
-                <!-- RIGHT COLUMN: ACTIVE OFFERINGS WITH DELETE ALL CHECKED BUTTON -->
+                <!-- RIGHT COLUMN: ACTIVE OFFERINGS -->
                 <div class="subject-panel-col">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; font-weight: 600;">Active Institution Offerings</label>
-                        
-                        <!-- MAIN DELETE BUTTON (Laging nakikita sa itaas) -->
-                        <button id="btn-delete-checked" onclick="executeBatchDelete()" style="background: #ff5f5f; color: #ffffff; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;">
+                    <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; font-weight: 600; display: block; margin-bottom: 10px;">Active Institution Offerings</label>
+
+                    <!-- CLEAN INTEGRATED TOOLBAR BAR -->
+                    <div id="batch-delete-bar" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
+                            <label for="select-all-checkbox" style="color: #cbd5e1; font-size: 0.8rem; cursor: pointer; font-weight: 600; user-select: none;">Select All Subjects</label>
+                        </div>
+                        <button id="btn-delete-checked" onclick="executeBatchDelete()" disabled style="background: rgba(239, 68, 68, 0.2); color: #64748b; border: 1px solid transparent; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.78rem; cursor: not-allowed; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                             🗑️ DELETE CHECKED (<span id="selected-count">0</span>)
                         </button>
-                    </div>
-
-                    <!-- SELECT ALL CONTROL BAR -->
-                    <div style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.08);">
-                        <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
-                        <label for="select-all-checkbox" style="color: #cbd5e1; font-size: 0.8rem; cursor: pointer; font-weight: 600;">Select All Subjects</label>
                     </div>
 
                     <!-- LIST CONTAINER BOX -->

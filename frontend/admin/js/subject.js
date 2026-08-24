@@ -1,7 +1,6 @@
 let selectedSubjects = new Map();
 
 document.addEventListener('DOMContentLoaded', () => {
-    ensureDOMContainersExist();
     fetchActiveSubjects();
 
     const addBtn = document.getElementById('add-subject-btn') || document.querySelector('.btn-add-subject') || document.querySelector('.btn-submit');
@@ -9,70 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
         addBtn.addEventListener('click', addNewSubject);
     }
 });
-
-/**
- * Autonomously inject controls and containers into the right panel if missing in HTML
- */
-function ensureDOMContainersExist() {
-    let listJunior = document.getElementById('list-junior');
-    
-    // Hanapin ang Right Panel Header under "Active Institution Offerings"
-    const headings = Array.from(document.querySelectorAll('*'));
-    const offeringLabel = headings.find(el => el.textContent && el.textContent.trim() === 'Active Institution Offerings');
-    
-    let targetBox = null;
-    let headerParent = null;
-
-    if (offeringLabel) {
-        headerParent = offeringLabel.parentElement;
-        let parent = offeringLabel.parentElement;
-        while (parent && !targetBox) {
-            targetBox = parent.querySelector('.subject-display-box') || parent.querySelector('div[style*="background"]');
-            if (!targetBox) parent = parent.parentElement;
-        }
-    }
-
-    // Inject Toolbar Control (Delete All Checked Button & Select All Checkbox)
-    if (headerParent && !document.getElementById('batch-delete-bar')) {
-        const toolbarHtml = `
-            <div id="batch-delete-bar" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px; background: rgba(255, 255, 255, 0.04); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.08);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
-                    <label for="select-all-checkbox" style="color: #cbd5e1; font-size: 0.8rem; cursor: pointer; font-weight: 600; user-select: none;">Select All Subjects</label>
-                </div>
-                
-            </div>
-        `;
-        offeringLabel.insertAdjacentHTML('afterend', toolbarHtml);
-    }
-
-    if (listJunior) return; // Containers exist
-
-    if (!targetBox) {
-        targetBox = document.querySelector('.subject-panel-col:nth-child(2)') || document.querySelector('.subject-workspace-grid > div:last-child');
-    }
-
-    if (targetBox) {
-        targetBox.style.minHeight = "200px";
-        targetBox.style.maxHeight = "450px";
-        targetBox.style.overflowY = "auto";
-        targetBox.style.padding = "12px";
-        targetBox.innerHTML = `
-            <div style="margin-bottom: 15px;">
-                <h4 style="color: #00d2ff; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Junior High School (Grades 7-10)</h4>
-                <div id="list-junior"></div>
-            </div>
-            <div style="margin-bottom: 15px;">
-                <h4 style="color: #00d2ff; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Senior High - Grade 11</h4>
-                <div id="list-grade11"></div>
-            </div>
-            <div>
-                <h4 style="color: #00d2ff; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Senior High - Grade 12</h4>
-                <div id="list-grade12"></div>
-            </div>
-        `;
-    }
-}
 
 /**
  * Fetch and display active subjects partitioned by Grade Level
@@ -132,7 +67,7 @@ async function fetchActiveSubjects() {
 }
 
 /**
- * Render items with individual checkboxes and delete buttons
+ * Render items with checkboxes and single action buttons
  */
 function renderPartition(container, items) {
     if (!container) return;
@@ -163,7 +98,7 @@ function renderPartition(container, items) {
 }
 
 /**
- * Handle individual Checkbox clicks
+ * Checkbox change dynamic state
  */
 function handleCheckboxChange(e, encodedName, encodedGrade) {
     const subName = decodeURIComponent(encodedName);
@@ -178,9 +113,6 @@ function handleCheckboxChange(e, encodedName, encodedGrade) {
     updateCount();
 }
 
-/**
- * Toggle Select All / Unselect All
- */
 function toggleSelectAll(masterCheckbox) {
     const checkboxes = document.querySelectorAll('.subject-checkbox');
     checkboxes.forEach(cb => {
@@ -191,22 +123,36 @@ function toggleSelectAll(masterCheckbox) {
     });
 }
 
-/**
- * Update Selected Counter
- */
 function updateCount() {
     const countSpan = document.getElementById('selected-count');
+    const deleteBtn = document.getElementById('btn-delete-checked');
+
     if (countSpan) countSpan.innerText = selectedSubjects.size;
+
+    if (deleteBtn) {
+        if (selectedSubjects.size > 0) {
+            deleteBtn.disabled = false;
+            deleteBtn.style.background = '#ef4444';
+            deleteBtn.style.color = '#ffffff';
+            deleteBtn.style.borderColor = '#ef4444';
+            deleteBtn.style.cursor = 'pointer';
+            deleteBtn.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.4)';
+        } else {
+            deleteBtn.disabled = true;
+            deleteBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+            deleteBtn.style.color = '#64748b';
+            deleteBtn.style.borderColor = 'transparent';
+            deleteBtn.style.cursor = 'not-allowed';
+            deleteBtn.style.boxShadow = 'none';
+        }
+    }
 }
 
 /**
- * Execute Batch Delete on Checked Items
+ * Delete Checked Batch Action
  */
 async function executeBatchDelete() {
-    if (selectedSubjects.size === 0) {
-        alert("Please select at least one subject to delete.");
-        return;
-    }
+    if (selectedSubjects.size === 0) return;
 
     if (!confirm(`Are you sure you want to delete ${selectedSubjects.size} selected subject(s)?`)) {
         return;
@@ -238,9 +184,6 @@ async function executeBatchDelete() {
     }
 }
 
-/**
- * Fallback: Delete item-by-item if batch endpoint isn't supported by backend
- */
 async function fallbackDeleteItems(items) {
     const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
     let deletedCount = 0;
@@ -262,9 +205,6 @@ async function fallbackDeleteItems(items) {
     fetchActiveSubjects();
 }
 
-/**
- * Clear selection state and uncheck select-all
- */
 function resetSelection() {
     selectedSubjects.clear();
     const selectAllCb = document.getElementById('select-all-checkbox');
@@ -272,9 +212,6 @@ function resetSelection() {
     updateCount();
 }
 
-/**
- * Delete Single Subject
- */
 async function deleteSingleSubject(encodedName, encodedGrade) {
     const subName = decodeURIComponent(encodedName);
     if (!confirm(`Delete "${subName}" from catalog?`)) return;
@@ -298,9 +235,6 @@ async function deleteSingleSubject(encodedName, encodedGrade) {
     }
 }
 
-/**
- * Add New Subject Action
- */
 async function addNewSubject(event) {
     if (event) event.preventDefault();
 
@@ -341,9 +275,6 @@ async function addNewSubject(event) {
     }
 }
 
-/**
- * Floating status notification
- */
 function showToastMessage(message, type = 'success') {
     let toast = document.getElementById('toast-notification');
     if (!toast) {
