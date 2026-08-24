@@ -174,7 +174,6 @@ async function processSystemTimetable() {
         normalizedSubjects.forEach(s => {
             let rawGrade = s.gradeLevel || "General";
             
-            // Kung nakasulat lang ay "Junior High School", susubukan nitong alamin kung may Grade (7-10) sa pangalan
             if (rawGrade === "Junior High School") {
                 const matchedGrade = s.name.match(/Grade\s*(7|8|9|10)/i);
                 if (matchedGrade) {
@@ -187,7 +186,7 @@ async function processSystemTimetable() {
             }
         });
 
-        // Kumuha ng listahan ng LAHAT ng specific grade levels (Grade 7, Grade 8, etc.)
+        // Kumuha ng listahan ng LAHAT ng specific grade levels
         const distinctGradeLevels = [...new Set(normalizedSubjects.map(s => s.specificGrade))];
 
         distinctGradeLevels.forEach(grade => {
@@ -357,6 +356,7 @@ async function processSystemTimetable() {
         `;
     }
 }
+
 /**
  * Builds an isolated interactive view separating directory view from grid viewer
  */
@@ -786,8 +786,13 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
     gridHTML += `</tbody></table></div>`;
     printCanvasBlock.innerHTML = gridHTML;
 
-    // 📥 HIGH-CONTRAST SECURE PDF EXPORT CONTROLLER
+    // 📥 HIGH-CONTRAST SECURE PDF EXPORT CONTROLLER WITH GUARD CHECK
     document.getElementById("btn-isolated-download-pdf").addEventListener("click", () => {
+        if (typeof html2pdf === "undefined") {
+            alert("PDF export library is missing or still loading. Please check if html2pdf.bundle.min.js is included in your HTML file.");
+            return;
+        }
+
         printCanvasBlock.classList.add("pdf-export-mode");
 
         const configOptions = {
@@ -800,7 +805,7 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
                 backgroundColor: '#ffffff', 
                 logging: false 
             },
-            jsPDF:        { unit: 'mm', format: 'letter', orientation: 'landscape' }
+            jsPDF:         { unit: 'mm', format: 'letter', orientation: 'landscape' }
         };
 
         html2pdf().set(configOptions).from(printCanvasBlock).save().then(() => {
@@ -808,6 +813,7 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
         }).catch((err) => {
             console.error("PDF generation exception error:", err);
             printCanvasBlock.classList.remove("pdf-export-mode");
+            alert("Failed to export PDF document. Please check console logs.");
         });
     });
 }

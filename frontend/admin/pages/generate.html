@@ -6,7 +6,6 @@
     <title>Lectura | Timetable Generation</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
     <link rel="stylesheet" href="../css/generate.css">
-    
 </head>
 <body>
 
@@ -42,11 +41,57 @@
                 </div>
             </header>
 
-            <div class="control-deck-panel">
-                <p>The core scheduling matching matrix engine automatically resolves structural system conflicts for assigned classroom targets, instructor shift times, availability blocks, and student body cohorts.</p>
-                <button type="button" class="btn-initialize-engine" onclick="processSystemTimetable()">
+            <div class="control-deck-panel" style="margin-bottom: 25px;">
+                <p style="color: #cbd5e1; margin-bottom: 15px;">The core scheduling matching matrix engine automatically resolves structural system conflicts for assigned classroom targets, instructor shift times, availability blocks, and student body cohorts.</p>
+                <button type="button" class="btn-initialize-engine" onclick="processSystemTimetable()" style="background: #00d2ff; color: #000; font-weight: bold; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer;">
                     ⚡ Initialize Scheduling Generator
                 </button>
+            </div>
+
+            <!-- TIMETABLE DIAGNOSTICS CONTAINER -->
+            <div id="diagnostics-container" style="margin-bottom: 25px;"></div>
+
+            <!-- ISOLATED GRADE LEVEL TEACHER DIRECTORY PANEL -->
+            <div class="dashboard-card-panel" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 10px; margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h2 style="color: #ffffff; font-size: 1.1rem; margin: 0 0 4px 0;">
+                            🧑‍🏫 Grade-Level Instructor Directory
+                        </h2>
+                        <p style="color: #94a3b8; font-size: 0.8rem; margin: 0;">Filter schedules by isolated grade level buckets.</p>
+                    </div>
+                    <input type="text" id="teacher-search-input" onkeyup="renderTeacherDirectory()" placeholder="Filter by teacher name or subject..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; width: 260px;">
+                </div>
+
+                <!-- HIWA-HIWALAY NA GRADE LEVEL TABS (7 TO 12 ISOLATED) -->
+                <div class="grade-tabs-wrapper" style="display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 6px;">
+                    <button class="grade-tab-btn active" onclick="switchGradeTab('all', this)" style="padding: 8px 14px; background: #00d2ff; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.8rem; white-space: nowrap;">
+                        🌐 All Teachers
+                    </button>
+                    <button class="grade-tab-btn" onclick="switchGradeTab('Grade 7', this)" style="padding: 8px 14px; background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; white-space: nowrap;">
+                        📘 Grade 7 <span id="badge-g7" style="background: #22c55e; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; margin-left: 4px; font-weight: bold;">Ready</span>
+                    </button>
+                    <button class="grade-tab-btn" onclick="switchGradeTab('Grade 8', this)" style="padding: 8px 14px; background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; white-space: nowrap;">
+                        📘 Grade 8 <span id="badge-g8" style="background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; margin-left: 4px; font-weight: bold;">Missing</span>
+                    </button>
+                    <button class="grade-tab-btn" onclick="switchGradeTab('Grade 9', this)" style="padding: 8px 14px; background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; white-space: nowrap;">
+                        📘 Grade 9 <span id="badge-g9" style="background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; margin-left: 4px; font-weight: bold;">Missing</span>
+                    </button>
+                    <button class="grade-tab-btn" onclick="switchGradeTab('Grade 10', this)" style="padding: 8px 14px; background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; white-space: nowrap;">
+                        📘 Grade 10 <span id="badge-g10" style="background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; margin-left: 4px; font-weight: bold;">Missing</span>
+                    </button>
+                    <button class="grade-tab-btn" onclick="switchGradeTab('Grade 11', this)" style="padding: 8px 14px; background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; white-space: nowrap;">
+                        📙 Grade 11 <span id="badge-g11" style="background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; margin-left: 4px; font-weight: bold;">Missing</span>
+                    </button>
+                    <button class="grade-tab-btn" onclick="switchGradeTab('Grade 12', this)" style="padding: 8px 14px; background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; white-space: nowrap;">
+                        📙 Grade 12 <span id="badge-g12" style="background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; margin-left: 4px; font-weight: bold;">Missing</span>
+                    </button>
+                </div>
+
+                <!-- TEACHER LIST TABLE DISPLAY -->
+                <div id="teachers-table-container">
+                    <!-- Dynamic Javascript Table Inject Here -->
+                </div>
             </div>
 
             <h2 style="color: #ffffff; font-size: 1.3rem; margin-bottom: 15px; font-weight: 500;">Generated Academic Schedule Output</h2>
@@ -75,7 +120,6 @@
         </main>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
     <script src="../js/generate.js"></script>
 </body>
 </html>
