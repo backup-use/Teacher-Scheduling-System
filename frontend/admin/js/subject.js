@@ -1,4 +1,4 @@
-let selectedSubjects = new Map(); // Stores checked subjects: { key => { name, gradeLevel } }
+let selectedSubjects = new Map();
 
 document.addEventListener('DOMContentLoaded', () => {
     ensureDOMContainersExist();
@@ -11,23 +11,44 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Autonomously inject list containers into the right panel if missing in HTML
+ * Autonomously inject controls and containers into the right panel if missing in HTML
  */
 function ensureDOMContainersExist() {
     let listJunior = document.getElementById('list-junior');
-    if (listJunior) return; 
-
+    
+    // Hanapin ang Right Panel Header under "Active Institution Offerings"
     const headings = Array.from(document.querySelectorAll('*'));
-    const offeringLabel = headings.find(el => el.textContent && el.textContent.includes('Active Institution Offerings'));
+    const offeringLabel = headings.find(el => el.textContent && el.textContent.trim() === 'Active Institution Offerings');
     
     let targetBox = null;
+    let headerParent = null;
+
     if (offeringLabel) {
+        headerParent = offeringLabel.parentElement;
         let parent = offeringLabel.parentElement;
         while (parent && !targetBox) {
             targetBox = parent.querySelector('.subject-display-box') || parent.querySelector('div[style*="background"]');
             if (!targetBox) parent = parent.parentElement;
         }
     }
+
+    // Inject Toolbar Control (Delete All Checked Button & Select All Checkbox)
+    if (headerParent && !document.getElementById('batch-delete-bar')) {
+        const toolbarHtml = `
+            <div id="batch-delete-bar" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px; background: rgba(255, 255, 255, 0.04); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.08);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
+                    <label for="select-all-checkbox" style="color: #cbd5e1; font-size: 0.8rem; cursor: pointer; font-weight: 600; user-select: none;">Select All Subjects</label>
+                </div>
+                <button id="btn-delete-checked" onclick="executeBatchDelete()" style="background: #ff5f5f; color: #ffffff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;">
+                    🗑️ DELETE CHECKED (<span id="selected-count">0</span>)
+                </button>
+            </div>
+        `;
+        offeringLabel.insertAdjacentHTML('afterend', toolbarHtml);
+    }
+
+    if (listJunior) return; // Containers exist
 
     if (!targetBox) {
         targetBox = document.querySelector('.subject-panel-col:nth-child(2)') || document.querySelector('.subject-workspace-grid > div:last-child');
@@ -59,8 +80,6 @@ function ensureDOMContainersExist() {
  * Fetch and display active subjects partitioned by Grade Level
  */
 async function fetchActiveSubjects() {
-    ensureDOMContainersExist();
-
     const listJunior = document.getElementById('list-junior');
     const listGrade11 = document.getElementById('list-grade11');
     const listGrade12 = document.getElementById('list-grade12');
@@ -115,7 +134,7 @@ async function fetchActiveSubjects() {
 }
 
 /**
- * Render items with individual checkboxes and action buttons
+ * Render items with individual checkboxes and delete buttons
  */
 function renderPartition(container, items) {
     if (!container) return;
@@ -139,14 +158,14 @@ function renderPartition(container, items) {
                     <input type="checkbox" class="subject-checkbox" ${isChecked ? 'checked' : ''} onchange="handleCheckboxChange(event, '${encodeURIComponent(subName)}', '${encodeURIComponent(gradeLevel)}')" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
                     <span style="font-weight: 500; color: #fff; font-size: 0.85rem;">📚 ${subName} ${gradeTag}</span>
                 </div>
-                <button onclick="deleteSingleSubject('${encodeURIComponent(subName)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem;">🗑️</button>
+                <button onclick="deleteSingleSubject('${encodeURIComponent(subName)}', '${encodeURIComponent(gradeLevel)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem;">🗑️</button>
             </div>
         `;
     }).join('');
 }
 
 /**
- * Track checkbox updates and count
+ * Handle individual Checkbox clicks
  */
 function handleCheckboxChange(e, encodedName, encodedGrade) {
     const subName = decodeURIComponent(encodedName);
@@ -161,21 +180,29 @@ function handleCheckboxChange(e, encodedName, encodedGrade) {
     updateCount();
 }
 
+/**
+ * Toggle Select All / Unselect All
+ */
+function toggleSelectAll(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('.subject-checkbox');
+    checkboxes.forEach(cb => {
+        if (cb.checked !== masterCheckbox.checked) {
+            cb.checked = masterCheckbox.checked;
+            cb.dispatchEvent(new Event('change'));
+        }
+    });
+}
+
+/**
+ * Update Selected Counter
+ */
 function updateCount() {
     const countSpan = document.getElementById('selected-count');
     if (countSpan) countSpan.innerText = selectedSubjects.size;
 }
 
-function toggleSelectAll(masterCheckbox) {
-    const checkboxes = document.querySelectorAll('.subject-checkbox');
-    checkboxes.forEach(cb => {
-        cb.checked = masterCheckbox.checked;
-        cb.dispatchEvent(new Event('change'));
-    });
-}
-
 /**
- * Delete ALL selected/checked subjects
+ * Execute Batch Delete on Checked Items
  */
 async function executeBatchDelete() {
     if (selectedSubjects.size === 0) {
@@ -183,15 +210,44 @@ async function executeBatchDelete() {
         return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedSubjects.size} checked subject(s)?`)) {
+    if (!confirm(`Are you sure you want to delete ${selectedSubjects.size} selected subject(s)?`)) {
         return;
     }
 
     const itemsToDelete = Array.from(selectedSubjects.values());
     const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
 
+    try {
+        const response = await fetch('/api/admin/subjects/batch-delete', {
+            method: 'DELETE',
+            headers: {
+                'Authorization': token ? `Bearer ${token}` : '',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ items: itemsToDelete, subjectNames: itemsToDelete.map(i => i.name) })
+        });
+
+        if (response.ok) {
+            showToastMessage(`Successfully deleted ${selectedSubjects.size} subject(s)!`, 'success');
+            resetSelection();
+            fetchActiveSubjects();
+        } else {
+            await fallbackDeleteItems(itemsToDelete);
+        }
+    } catch (err) {
+        console.error("Batch delete error, running fallback:", err);
+        await fallbackDeleteItems(itemsToDelete);
+    }
+}
+
+/**
+ * Fallback: Delete item-by-item if batch endpoint isn't supported by backend
+ */
+async function fallbackDeleteItems(items) {
+    const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
     let deletedCount = 0;
-    for (const item of itemsToDelete) {
+
+    for (const item of items) {
         try {
             const res = await fetch(`/api/admin/subjects/${encodeURIComponent(item.name)}`, {
                 method: 'DELETE',
@@ -199,23 +255,29 @@ async function executeBatchDelete() {
             });
             if (res.ok) deletedCount++;
         } catch (e) {
-            console.error("Delete error:", e);
+            console.error("Item delete failed:", e);
         }
     }
 
-    selectedSubjects.clear();
-    const selectAllCb = document.getElementById('select-all-checkbox');
-    if (selectAllCb) selectAllCb.checked = false;
-
-    updateCount();
-    showToastMessage(`Successfully deleted ${deletedCount} subject(s)!`, 'success');
+    resetSelection();
+    showToastMessage(`Deleted ${deletedCount} subject(s).`, 'success');
     fetchActiveSubjects();
 }
 
 /**
- * Delete single subject
+ * Clear selection state and uncheck select-all
  */
-async function deleteSingleSubject(encodedName) {
+function resetSelection() {
+    selectedSubjects.clear();
+    const selectAllCb = document.getElementById('select-all-checkbox');
+    if (selectAllCb) selectAllCb.checked = false;
+    updateCount();
+}
+
+/**
+ * Delete Single Subject
+ */
+async function deleteSingleSubject(encodedName, encodedGrade) {
     const subName = decodeURIComponent(encodedName);
     if (!confirm(`Delete "${subName}" from catalog?`)) return;
 
@@ -251,7 +313,7 @@ async function addNewSubject(event) {
     const gradeLevel = gradeSelect ? gradeSelect.value : "Junior High School - Grade 7";
 
     if (!rawTitle) {
-        alert("Please enter a subject title.");
+        alert("Please enter at least one subject title.");
         return;
     }
 
@@ -282,7 +344,7 @@ async function addNewSubject(event) {
 }
 
 /**
- * Dynamic Notification Banner
+ * Floating status notification
  */
 function showToastMessage(message, type = 'success') {
     let toast = document.getElementById('toast-notification');
