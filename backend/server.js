@@ -501,26 +501,48 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // GET /api/admin/sections
+      // GET /api/admin/sections (Fetches sections along with assigned room details)
       if (pathname === "/api/admin/sections" && req.method === "GET") {
         try {
-          const { rows } = await db.query("SELECT * FROM sections ORDER BY name ASC");
+          const queryText = `
+            SELECT 
+              s.id,
+              s.name,
+              s.students,
+              s.grade_level AS "gradeLevel",
+              s.room_id AS "roomId",
+              r.name AS "roomName",
+              r.capacity AS "roomCapacity"
+            FROM sections s
+            LEFT JOIN rooms r ON s.room_id = r.id
+            ORDER BY s.name ASC
+          `;
+          const { rows } = await db.query(queryText);
           return send(res, 200, rows);
         } catch (err) {
           return send(res, 500, { error: err.message });
         }
       }
 
-      // POST /api/admin/sections
+      // POST /api/admin/sections (Saves grade level and room assignment)
       if (pathname === "/api/admin/sections" && req.method === "POST") {
         try {
           const body = await parseBody(req);
-          const sectionName = (body.name || "").trim();
+          
+          // Accept variations in incoming field names from frontend
+          const sectionName = (body.sectionName || body.name || "").trim();
+          const gradeLevel = (body.gradeLevel || body.grade || "").trim();
+          const roomIdRaw = body.assignedRoom || body.room_id || body.roomId || null;
+          const students = body.students !== undefined ? parseInt(body.students, 10) : 0;
 
-          if (!sectionName || body.students === undefined) {
-            return send(res, 400, { error: "Section Name and Student count are required." });
+          if (!sectionName) {
+            return send(res, 400, { error: "Section Name is required." });
           }
 
+          // Parse roomId or set null if missing/empty string
+          const roomId = roomIdRaw && !isNaN(parseInt(roomIdRaw, 10)) ? parseInt(roomIdRaw, 10) : null;
+
+          // Check if section name already exists
           const existing = await db.query(
             "SELECT id FROM sections WHERE LOWER(TRIM(name)) = LOWER($1)",
             [sectionName]
@@ -529,13 +551,29 @@ const server = http.createServer(async (req, res) => {
             return send(res, 400, { error: "This section already exists." });
           }
 
+          // Insert into PostgreSQL with updated columns
           await db.query(
-            "INSERT INTO sections (name, students) VALUES ($1, $2)",
-            [sectionName, body.students]
+            "INSERT INTO sections (name, students, grade_level, room_id) VALUES ($1, $2, $3, $4)",
+            [sectionName, students, gradeLevel, roomId]
           );
-          const { rows } = await db.query("SELECT * FROM sections ORDER BY name ASC");
+
+          // Return updated sections list joined with room names
+          const { rows } = await db.query(`
+            SELECT 
+              s.id,
+              s.name,
+              s.students,
+              s.grade_level AS "gradeLevel",
+              s.room_id AS "roomId",
+              r.name AS "roomName"
+            FROM sections s
+            LEFT JOIN rooms r ON s.room_id = r.id
+            ORDER BY s.name ASC
+          `);
+          
           return send(res, 201, rows);
         } catch (err) {
+          console.error("Error inserting section:", err);
           return send(res, 500, { error: err.message });
         }
       }

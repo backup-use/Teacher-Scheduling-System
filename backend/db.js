@@ -57,14 +57,6 @@ async function initializeSchema() {
       created_at TIMESTAMP DEFAULT NOW()
     )`,
     
-    // Sections table
-    `CREATE TABLE IF NOT EXISTS sections (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      students INTEGER DEFAULT 0,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`,
-    
     // Rooms table
     `CREATE TABLE IF NOT EXISTS rooms (
       id SERIAL PRIMARY KEY,
@@ -73,6 +65,20 @@ async function initializeSchema() {
       capacity INTEGER DEFAULT 30,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
+    
+    // Sections table (Updated with grade_level and room_id foreign key)
+    `CREATE TABLE IF NOT EXISTS sections (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      students INTEGER DEFAULT 0,
+      grade_level VARCHAR(255),
+      room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+
+    // Auto-migrations for existing databases
+    `ALTER TABLE sections ADD COLUMN IF NOT EXISTS grade_level VARCHAR(255)`,
+    `ALTER TABLE sections ADD COLUMN IF NOT EXISTS room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL`,
     
     // Schedules table
     `CREATE TABLE IF NOT EXISTS schedules (
