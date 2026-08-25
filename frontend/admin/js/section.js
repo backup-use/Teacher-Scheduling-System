@@ -199,4 +199,4 @@ window.addEventListener('DOMContentLoaded', () => {
 
 window.addNewSection = addNewSection;
 window.deleteSectionItem = deleteSectionItem;
-window.renderSectionsUIList = renderSectionsUIList;
+window.renderSectionsUIList = renderSectionsUIList
