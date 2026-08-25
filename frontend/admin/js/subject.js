@@ -10,12 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Fetch and display active subjects partitioned by Grade Level
+ * Fetch active subjects and group them by individual Grade Levels (7 to 12)
  */
 async function fetchActiveSubjects() {
-    const listJunior = document.getElementById('list-junior');
-    const listGrade11 = document.getElementById('list-grade11');
-    const listGrade12 = document.getElementById('list-grade12');
+    const mainContainer = document.getElementById('subjects-list-container') || 
+                          document.getElementById('list-junior')?.parentElement || 
+                          document.querySelector('.subjects-display-area');
 
     try {
         const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
@@ -41,60 +41,112 @@ async function fetchActiveSubjects() {
             ];
         }
 
-        const junior = rawList.filter(s => {
-            const lvl = String(typeof s === 'object' ? (s.gradeLevel || s.grade_level || '') : '').toLowerCase();
-            return lvl.includes('junior') || lvl.includes('7') || lvl.includes('8') || lvl.includes('9') || lvl.includes('10') || (!lvl.includes('11') && !lvl.includes('12'));
-        });
-
-        const g11 = rawList.filter(s => {
-            const lvl = String(typeof s === 'object' ? (s.gradeLevel || s.grade_level || '') : '').toLowerCase();
-            return lvl.includes('11');
-        });
-
-        const g12 = rawList.filter(s => {
-            const lvl = String(typeof s === 'object' ? (s.gradeLevel || s.grade_level || '') : '').toLowerCase();
-            return lvl.includes('12');
-        });
-
-        renderPartition(listJunior, junior);
-        renderPartition(listGrade11, g11);
-        renderPartition(listGrade12, g12);
+        renderGradeFolders(mainContainer, rawList);
 
     } catch (err) {
         console.error("Fetch Error:", err);
-        if (listJunior) listJunior.innerHTML = '<div style="color: #ff5f5f; font-size: 0.8rem;">Failed to load subjects.</div>';
+        if (mainContainer) {
+            mainContainer.innerHTML = '<div style="color: #ff5f5f; font-size: 0.85rem; padding: 10px;">Failed to load subjects.</div>';
+        }
     }
 }
 
 /**
- * Render items with checkboxes and single action buttons
+ * Render Clickable Accordion Folders for Grades 7 to 12
  */
-function renderPartition(container, items) {
+function renderGradeFolders(container, rawList) {
     if (!container) return;
 
-    if (!items || items.length === 0) {
-        container.innerHTML = '<div style="color: #64748b; font-size: 0.8rem; font-style: italic; padding: 4px 0;">No subjects registered.</div>';
-        return;
-    }
+    const gradeLevels = [
+        "Junior High School - Grade 7",
+        "Junior High School - Grade 8",
+        "Junior High School - Grade 9",
+        "Junior High School - Grade 10",
+        "Senior High School - Grade 11",
+        "Senior High School - Grade 12"
+    ];
 
-    container.innerHTML = items.map(sub => {
-        const subName = typeof sub === 'object' ? (sub.name || sub.subjectName || sub.title || 'Unknown Subject') : sub;
-        const gradeLevel = typeof sub === 'object' ? (sub.gradeLevel || sub.grade_level || '') : '';
-        const gradeTag = gradeLevel ? `<span style="font-size: 0.7rem; background: rgba(0,210,255,0.15); color: #00d2ff; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${gradeLevel}</span>` : '';
+    // Group subjects into their specific grade categories
+    const groupedData = {};
+    gradeLevels.forEach(gl => groupedData[gl] = []);
+
+    rawList.forEach(sub => {
+        const subGrade = String(typeof sub === 'object' ? (sub.gradeLevel || sub.grade_level || '') : '').toLowerCase();
         
-        const key = `${subName}::${gradeLevel}`;
-        const isChecked = selectedSubjects.has(key);
+        if (subGrade.includes('7')) groupedData["Junior High School - Grade 7"].push(sub);
+        else if (subGrade.includes('8')) groupedData["Junior High School - Grade 8"].push(sub);
+        else if (subGrade.includes('9')) groupedData["Junior High School - Grade 9"].push(sub);
+        else if (subGrade.includes('10')) groupedData["Junior High School - Grade 10"].push(sub);
+        else if (subGrade.includes('11')) groupedData["Senior High School - Grade 11"].push(sub);
+        else if (subGrade.includes('12')) groupedData["Senior High School - Grade 12"].push(sub);
+        else groupedData["Junior High School - Grade 7"].push(sub); // Default fallback
+    });
+
+    container.innerHTML = gradeLevels.map((gradeTitle, idx) => {
+        const items = groupedData[gradeTitle] || [];
+        const folderId = `folder-grade-${idx + 7}`;
+
+        const itemsHTML = items.length === 0 
+            ? `<div style="color: #64748b; font-size: 0.8rem; font-style: italic; padding: 8px 12px;">No subjects registered.</div>`
+            : items.map(sub => {
+                const subName = typeof sub === 'object' ? (sub.name || sub.subjectName || sub.title || 'Unknown Subject') : sub;
+                const gradeLevel = typeof sub === 'object' ? (sub.gradeLevel || sub.grade_level || gradeTitle) : gradeTitle;
+                
+                const key = `${subName}::${gradeLevel}`;
+                const isChecked = selectedSubjects.has(key);
+
+                return `
+                    <div class="subject-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.5); padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" class="subject-checkbox" ${isChecked ? 'checked' : ''} onchange="handleCheckboxChange(event, '${encodeURIComponent(subName)}', '${encodeURIComponent(gradeLevel)}')" style="width: 16px; height: 16px; cursor: pointer; accent-color: #00d2ff;">
+                            <span style="font-weight: 500; color: #e2e8f0; font-size: 0.85rem;">📚 ${subName}</span>
+                        </div>
+                        <button onclick="deleteSingleSubject('${encodeURIComponent(subName)}', '${encodeURIComponent(gradeLevel)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">🗑️</button>
+                    </div>
+                `;
+            }).join('');
 
         return `
-            <div class="subject-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; margin-bottom: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" class="subject-checkbox" ${isChecked ? 'checked' : ''} onchange="handleCheckboxChange(event, '${encodeURIComponent(subName)}', '${encodeURIComponent(gradeLevel)}')" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
-                    <span style="font-weight: 500; color: #fff; font-size: 0.85rem;">📚 ${subName} ${gradeTag}</span>
+            <div class="grade-folder-card" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(0, 210, 255, 0.2); border-radius: 8px; margin-bottom: 10px; overflow: hidden;">
+                <div class="folder-header" onclick="toggleGradeFolder('${folderId}')" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(30, 41, 59, 0.8); cursor: pointer; user-select: none;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span id="${folderId}-icon" style="color: #00d2ff; font-size: 1rem;">📁</span>
+                        <h4 style="color: #ffffff; margin: 0; font-size: 0.9rem; font-weight: bold;">${gradeTitle}</h4>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: rgba(0, 210, 255, 0.15); color: #00d2ff; font-size: 0.72rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(0, 210, 255, 0.3);">
+                            ${items.length} Subject${items.length !== 1 ? 's' : ''}
+                        </span>
+                        <span id="${folderId}-arrow" style="color: #94a3b8; font-size: 0.75rem; transition: transform 0.2s;">▼</span>
+                    </div>
                 </div>
-                <button onclick="deleteSingleSubject('${encodeURIComponent(subName)}', '${encodeURIComponent(gradeLevel)}')" title="Delete Subject" style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem;">🗑️</button>
+                <div id="${folderId}" class="folder-body" style="display: none; padding: 8px 12px; background: rgba(15, 23, 42, 0.4); border-top: 1px solid rgba(255, 255, 255, 0.05);">
+                    ${itemsHTML}
+                </div>
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Dynamic Expand / Collapse Toggle Event
+ */
+function toggleGradeFolder(folderId) {
+    const body = document.getElementById(folderId);
+    const arrow = document.getElementById(`${folderId}-arrow`);
+    const icon = document.getElementById(`${folderId}-icon`);
+
+    if (!body) return;
+
+    if (body.style.display === "none") {
+        body.style.display = "block";
+        if (arrow) arrow.style.transform = "rotate(180deg)";
+        if (icon) icon.innerText = "📂";
+    } else {
+        body.style.display = "none";
+        if (arrow) arrow.style.transform = "rotate(0deg)";
+        if (icon) icon.innerText = "📁";
+    }
 }
 
 /**
