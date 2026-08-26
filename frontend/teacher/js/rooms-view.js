@@ -11,13 +11,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let allRooms = []; // Cache variable to hold data for quick local searching
 
-    // 2. Fetch Rooms Data from your existing Backend API
+    // 2. Fetch Rooms Data from Backend API
     async function fetchRoomsDirectory() {
         try {
-            // GRAB THE TOKEN: To authenticate against protected backend routes
             const sessionToken = localStorage.getItem('token');
 
-            const response = await fetch('/api/admin/rooms', {
+            // CHANGED: Pointing to /api/teacher/rooms instead of /api/admin/rooms
+            const response = await fetch('/api/teacher/rooms', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${sessionToken}`,
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Render Table HTML Rows Function
     function renderRoomsTable(roomsArray) {
         const tbody = document.getElementById('rooms-rows');
-        tbody.innerHTML = ''; // Clear out the loading placeholder
+        tbody.innerHTML = ''; // Clear out loading placeholder
 
         if (roomsArray.length === 0) {
             tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #aaa; padding: 2rem;">No matching rooms found.</td></tr>`;
@@ -50,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
         roomsArray.forEach(room => {
             const tr = document.createElement('tr');
 
-            // Handle property fallback names based on your database schema strings (e.g., roomName vs name)
             const roomName = room.roomName || room.name || 'Unnamed Room';
             const roomType = room.roomType || room.type || 'General Classroom';
             const capacity = room.capacity || room.maxStudents || '--';
@@ -90,6 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fire the data engine fetch loop
+    // Fire data engine fetch
     fetchRoomsDirectory();
 });

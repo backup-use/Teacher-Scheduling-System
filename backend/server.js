@@ -590,22 +590,24 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // GET /api/admin/rooms
-      if (pathname === "/api/admin/rooms" && req.method === "GET") {
+      // 1. GET ROOMS (Accessible by both Admin and Teacher portals)
+      if ((pathname === "/api/admin/rooms" || pathname === "/api/teacher/rooms" || pathname === "/api/rooms") && req.method === "GET") {
         try {
           const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
           const normalizedRooms = rows.map(r => ({
             id: r.id,
             name: r.name || r.room_name || "",
-            capacity: r.capacity || r.max_capacity || 0
+            capacity: r.capacity || r.max_capacity || 0,
+            type: r.type || r.room_type || "Standard Classroom"
           }));
           return send(res, 200, normalizedRooms);
         } catch (err) {
+          console.error("Fetch rooms failure:", err);
           return send(res, 500, { error: err.message });
         }
       }
 
-      // POST /api/admin/rooms
+      // 2. POST /api/admin/rooms (Admin only: Register new room)
       if (pathname === "/api/admin/rooms" && req.method === "POST") {
         try {
           const body = await parseBody(req);
@@ -659,7 +661,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // DELETE /api/admin/rooms/:id
+      // 3. DELETE /api/admin/rooms/:id (Admin only: Delete room)
       if (pathname.startsWith("/api/admin/rooms/") && req.method === "DELETE") {
         try {
           const roomId = pathname.split("/").pop();
@@ -667,6 +669,7 @@ const server = http.createServer(async (req, res) => {
           if (result.rowCount === 0) return send(res, 404, { error: "Room not found." });
           return send(res, 200, { success: true });
         } catch (err) {
+          console.error("Room deletion failure:", err);
           return send(res, 500, { error: err.message });
         }
       }
