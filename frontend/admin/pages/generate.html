@@ -53,9 +53,12 @@
 
         <h2 style="color: #ffffff; font-size: 1.3rem; margin-bottom: 15px; font-weight: 500;">Generated Academic Schedule Output</h2>
         
-        <!-- 🚀 DYNAMIC INJECTION TARGET CONTAINER -->
+        <!-- Palitan ang container na ito sa iyong HTML -->
         <div class="dashboard-card-panel" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 10px; margin-bottom: 30px;">
             <div id="timetable-matrix-output-body">
+                <!-- Siguraduhing mayroon ding fallback IDs kung kinakailangan -->
+                <div id="grade-level-directory-container"></div>
+                <div id="instructor-matrix-display-target" style="display: none;"></div>
                 <div style="text-align: center; color: #64748b; padding: 40px; font-style: italic;">
                     No active schedule has been compiled yet. Click the initialize button above to process data.
                 </div>
