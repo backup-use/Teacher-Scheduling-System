@@ -359,7 +359,7 @@ async function processSystemTimetable() {
 }
 
 /**
- * Builds a Grade-Level Card Dashboard separating teachers by their active scheduled grade levels.
+ * Builds a Grade-Level Card Dashboard compressing all sections under their parent Grade Level.
  */
 function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, daySlots, timeSlots, diagnosticsLogs) {
     container.innerHTML = "";
@@ -374,7 +374,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
     container.appendChild(directoryPanel);
     container.appendChild(scheduleViewerPanel);
 
-    // 1. Render Diagnostics Header (if any)
+    // 1. Render Diagnostics Header
     if (diagnosticsLogs && diagnosticsLogs.length > 0) {
         const diagPanel = document.createElement("div");
         diagPanel.className = "system-diagnostics-card";
@@ -396,7 +396,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         directoryPanel.appendChild(diagPanel);
     }
 
-    // 2. Map Teachers to Grade Levels
+    // 2. Map Teachers strictly to Official Grade Levels (matching subject catalog logic)
     const gradeLevelTeacherMap = {};
 
     for (const teacherName in teacherSchedulesMap) {
@@ -404,8 +404,15 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         if (!item.slots || item.slots.length === 0) continue;
 
         item.slots.forEach(slot => {
-            const match = slot.section ? slot.section.match(/Grade\s*\d+/i) : null;
-            const gradeKey = match ? match[0].toUpperCase() : (slot.section || "General");
+            // Priority 1: Check if slot has an attached grade level
+            // Priority 2: Extract "Grade X" pattern
+            // Priority 3: Default to General Grade Category
+            let gradeKey = slot.gradeLevel || slot.grade_level;
+
+            if (!gradeKey) {
+                const match = slot.section ? slot.section.match(/Grade\s*\d+/i) : null;
+                gradeKey = match ? `Junior High School - ${match[0]}` : "Junior High School - Grade 7"; // Standard catalog fallback
+            }
 
             if (!gradeLevelTeacherMap[gradeKey]) {
                 gradeLevelTeacherMap[gradeKey] = {};
@@ -430,9 +437,9 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
             <h4 style="color: #ffffff; margin: 0; font-size: 1.25rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">
                 🏫 Grade-Level Instructor Directories
             </h4>
-            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.85rem;">Instructors are grouped below by the grade levels they actively teach.</p>
+            <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.85rem;">Instructors are grouped below by their umbrella grade levels.</p>
         </div>
-        <input type="text" id="directory-search-bar" placeholder="🔍 Search teacher or subject..." style="background: rgba(30, 41, 59, 0.9); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; width: 300px; outline: none; transition: border 0.2s;">
+        <input type="text" id="directory-search-bar" placeholder="🔍 Search teacher or subject..." style="background: rgba(30, 41, 59, 0.9); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; width: 300px; outline: none;">
     `;
     directoryPanel.appendChild(filterHeaderBox);
 
@@ -451,7 +458,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         return;
     }
 
-    // 4. Render Box Cards per Grade Level
+    // 4. Render Compressed Grade Level Boxes (📁 Folder-style like Manage Subjects)
     sortedGrades.forEach(gradeName => {
         const teachersInGrade = gradeLevelTeacherMap[gradeName];
 
@@ -462,10 +469,10 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         let boxHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
                 <h3 style="color: #00d2ff; margin: 0; font-size: 1.15rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">
-                    📌 ${gradeName}
+                    📁 ${gradeName}
                 </h3>
                 <span style="background: rgba(0,210,255,0.1); color: #00d2ff; font-size: 0.8rem; font-weight: bold; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(0,210,255,0.2);">
-                    ${Object.keys(teachersInGrade).length} Active Teachers
+                    ${Object.keys(teachersInGrade).length} Teachers Assigned
                 </span>
             </div>
            
@@ -477,14 +484,14 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
             const subjects = teacherObj.details.subjects || [];
 
             boxHTML += `
-                <div class="teacher-item-row" data-teacher-search="${teacherName.toLowerCase()} ${subjects.join(' ').toLowerCase()}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 12px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;" onmouseover="this.style.background='rgba(15, 23, 42, 0.9)'" onmouseout="this.style.background='rgba(15, 23, 42, 0.6)'">
+                <div class="teacher-item-row" data-teacher-search="${teacherName.toLowerCase()} ${subjects.join(' ').toLowerCase()}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 12px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
                    
                     <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
                         <span style="background: rgba(0,210,255,0.1); color: #00d2ff; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 1rem; flex-shrink: 0;">👤</span>
                         <div>
                             <div style="color: #ffffff; font-weight: bold; font-size: 0.95rem;">${teacherName}</div>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
-                                ${subjects.map(s => `<span style="background: rgba(148, 163, 184, 0.12); color: #cbd5e1; font-size: 0.73rem; padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">📚 ${s}</span>`).join('')}
+                                ${subjects.map(s => `<span style="background: rgba(148, 163, 184, 0.12); color: #cbd5e1; font-size: 0.73rem; padding: 2px 7px; border-radius: 4px;">📚 ${s}</span>`).join('')}
                             </div>
                         </div>
                     </div>
@@ -494,7 +501,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
                             ${teacherObj.slots.length} Classes
                         </span>
 
-                        <button class="view-single-schedule-btn" data-teacher-key="${teacherName}" style="background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #fff; border: none; padding: 8px 14px; font-size: 0.82rem; font-weight: bold; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-shadow: 0 2px 8px rgba(0,210,255,0.2);" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                        <button class="view-single-schedule-btn" data-teacher-key="${teacherName}" style="background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #fff; border: none; padding: 8px 14px; font-size: 0.82rem; font-weight: bold; border-radius: 6px; cursor: pointer;">
                             📅 View Schedule ⚡
                         </button>
                     </div>
@@ -508,30 +515,19 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         gradeCardsContainer.appendChild(gradeBox);
     });
 
-    // 5. Search Bar Filtering Engine
+    // 5. Search Bar Handler
     const searchBar = document.getElementById("directory-search-bar");
     if (searchBar) {
         searchBar.addEventListener("input", (e) => {
             const query = e.target.value.toLowerCase().trim();
-            const teacherRows = document.querySelectorAll(".teacher-item-row");
-
-            teacherRows.forEach(row => {
+            document.querySelectorAll(".teacher-item-row").forEach(row => {
                 const searchData = row.getAttribute("data-teacher-search");
-                if (searchData.includes(query)) {
-                    row.style.display = "flex";
-                } else {
-                    row.style.display = "none";
-                }
-            });
-
-            document.querySelectorAll(".grade-level-card-box").forEach(box => {
-                const visibleRows = box.querySelectorAll('.teacher-item-row[style*="display: flex"]');
-                box.style.display = (visibleRows.length === 0 && query !== "") ? "none" : "block";
+                row.style.display = searchData.includes(query) ? "flex" : "none";
             });
         });
     }
 
-    // 6. Action Button Handlers
+    // 6. View Schedule Action Handler
     document.querySelectorAll(".view-single-schedule-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const selectedTeacher = btn.getAttribute("data-teacher-key");
