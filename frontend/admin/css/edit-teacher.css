@@ -6,7 +6,11 @@ body {
     padding: 50px 20px;
     display: flex;
     justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    box-sizing: border-box;
 }
+
 .form-card {
     background: rgba(30, 41, 59, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -16,7 +20,9 @@ body {
     max-width: 550px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     backdrop-filter: blur(4px);
+    box-sizing: border-box;
 }
+
 h2 {
     margin-top: 0;
     color: #00d2ff;
@@ -25,33 +31,42 @@ h2 {
     padding-bottom: 15px;
     margin-bottom: 25px;
 }
+
 .form-row {
     display: flex;
     gap: 15px;
     margin-bottom: 15px;
 }
+
 .form-row.align-center {
     align-items: center;
     margin-bottom: 0;
 }
+
 .form-group {
     flex: 1;
     display: flex;
     flex-direction: column;
 }
+
 .style-group {
     margin-bottom: 15px;
 }
+
 .style-group-large {
     margin-bottom: 25px;
 }
+
 label {
     font-size: 0.85rem;
     color: #94a3b8;
     margin-bottom: 6px;
     font-weight: 500;
 }
-input[type="text"], input[type="email"] {
+
+input[type="text"], 
+input[type="email"],
+input[type="time"] {
     padding: 12px;
     background: #0f172a;
     border: 1px solid #334155;
@@ -59,21 +74,27 @@ input[type="text"], input[type="email"] {
     color: #fff;
     font-size: 0.95rem;
     transition: border-color 0.15s;
+    width: 100%;
+    box-sizing: border-box;
 }
+
 input:focus {
     outline: none;
     border-color: #00d2ff;
 }
+
 .info-note {
     font-size: 0.75rem;
     color: #64748b;
     margin-top: 4px;
 }
+
 .availability-section {
     border-top: 1px solid rgba(255,255,255,0.08); 
     padding-top: 20px; 
     margin-bottom: 15px;
 }
+
 .section-title {
     color: #00d2ff; 
     font-weight: 600; 
@@ -81,6 +102,7 @@ input:focus {
     display: block; 
     margin-bottom: 15px;
 }
+
 .days-container {
     display: flex;
     gap: 15px;
@@ -88,6 +110,7 @@ input:focus {
     margin-top: 5px;
     margin-bottom: 20px;
 }
+
 .day-label {
     display: flex;
     align-items: center;
@@ -96,19 +119,23 @@ input:focus {
     color: #e2e8f0;
     font-size: 0.9rem;
 }
+
 .day-label input[type="checkbox"] {
     accent-color: #00d2ff;
     width: 16px;
     height: 16px;
     cursor: pointer;
 }
+
 .time-separator {
     color: #64748b; 
     font-weight: 600; 
-    padding-top: 20px; 
     font-size: 0.9rem;
     margin: 0 5px;
+    align-self: flex-end;
+    margin-bottom: 14px;
 }
+
 .btn-container {
     display: flex;
     justify-content: flex-end;
@@ -117,6 +144,7 @@ input:focus {
     border-top: 1px solid rgba(255,255,255,0.08);
     padding-top: 20px;
 }
+
 .btn-cancel {
     background: #334155;
     color: #fff;
@@ -127,7 +155,11 @@ input:focus {
     text-decoration: none;
     font-size: 0.95rem;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
+
 .btn-save {
     background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
     color: #0f172a;
@@ -138,7 +170,14 @@ input:focus {
     font-size: 0.95rem;
     font-weight: 700;
     box-shadow: 0 4px 12px rgba(0, 210, 255, 0.2);
+    transition: opacity 0.2s ease;
 }
+
 .btn-save:hover, .btn-cancel:hover {
     opacity: 0.9;
+}
+
+.btn-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

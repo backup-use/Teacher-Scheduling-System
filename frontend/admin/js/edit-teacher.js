@@ -1,4 +1,4 @@
-// 1️⃣ KUNIN ANG TEACHER ID MULA SA URL PARAMETER
+// 1️⃣ EXTRACT TEACHER ID FROM URL QUERY PARAMETER
 const urlParams = new URLSearchParams(window.location.search);
 const teacherId = urlParams.get('id');
 
@@ -9,28 +9,29 @@ if (!teacherId) {
     window.location.href = "teacher-list.html";
 }
 
-// 2️⃣ I-FETCH AT I-PRE-FILL ANG DETALYE NG GURO (MATALINONG PAGHAHANAP)
+// 2️⃣ FETCH & PRE-FILL TEACHER PROFILE DATA
 async function loadTeacherProfile() {
     try {
         console.log("🌐 Initiating fetch request to secure API server context...");
-        const response = await fetch(`/api/admin/teachers`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
         
-        if (!response.ok) throw new Error(`HTTP network error status: ${response.status}`);
+        const token = localStorage.getItem('token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        const res = await fetch(`/api/admin/teachers`, { headers });
+        if (!res.ok) throw new Error(`HTTP network error status: ${res.status}`);
         
-        const teachers = await response.json();
-        console.log("📦 Total Teacher Array List fetched from database:", teachers);
+        const rawData = await res.json();
+        const teachersList = Array.isArray(rawData) ? rawData : (rawData.teachers || rawData.data || []);
         
-        // 🛠️ MATALINONG PAGHAHANAP (Loose comparison at fallback string testing)
-        const teacher = teachers.find(t => {
-            const currentDbId = t.id || t._id;
-            // Gagamit tayo ng double equals (==) para hindi sumablay kung String vs Number ang datatype discrepancy
-            return currentDbId == teacherId || String(currentDbId).trim() === String(teacherId).trim();
+        console.log("📦 Total Teacher Array List fetched from database:", teachersList);
+        
+        const teacher = teachersList.find(t => {
+            const dbId = t.id || t._id;
+            return dbId == teacherId || String(dbId).trim() === String(teacherId).trim();
         });
 
         if (!teacher) {
-            console.error(`❌ Data Match Failure: ID [${teacherId}] could not be found inside the fetched array records.`);
+            console.error(`❌ Data Match Failure: ID [${teacherId}] could not be found.`);
             alert("Teacher record match failed. Redirecting to table list.");
             window.location.href = "teacher-list.html";
             return;
@@ -38,24 +39,33 @@ async function loadTeacherProfile() {
 
         console.log("✅ Successfully matched teacher dataset record payload:", teacher);
 
-        // Ligtas at Direktang Pag-assign sa UI Inputs Panel
-        document.getElementById('firstName').value = teacher.firstName || '';
-        document.getElementById('lastName').value = teacher.lastName || '';
+        // Smart name extraction (Handles split names vs full string name)
+        let first = teacher.firstName || teacher.first_name || '';
+        let last = teacher.lastName || teacher.last_name || '';
+
+        if (!first && !last && (teacher.name || teacher.fullName)) {
+            const parts = (teacher.name || teacher.fullName).trim().split(' ');
+            first = parts[0] || '';
+            last = parts.slice(1).join(' ') || '';
+        }
+
+        document.getElementById('firstName').value = first;
+        document.getElementById('lastName').value = last;
         document.getElementById('email').value = teacher.email || '';
-        document.getElementById('targetGrade').value = teacher.targetGrade || '';
+        document.getElementById('targetGrade').value = teacher.targetGrade || teacher.target_grade || teacher.gradeLevel || '';
         
-        // Pag-aayos ng display area para sa mga nakatalagang Subjects
-        if (Array.isArray(teacher.subjects)) {
-            document.getElementById('subjects').value = teacher.subjects.join(', ');
+        // Format subjects field
+        const rawSubjects = teacher.subjects || teacher.subject_list || teacher.subject;
+        if (Array.isArray(rawSubjects)) {
+            document.getElementById('subjects').value = rawSubjects.join(', ');
         } else {
-            document.getElementById('subjects').value = teacher.subjects || '';
+            document.getElementById('subjects').value = rawSubjects || '';
         }
         
-        // 🕒 AUTOMATED SHIFT STRING PARSING CONFIGURATION
-        let extractedStart = teacher.startTime || '';
-        let extractedEnd = teacher.endTime || '';
+        // Extract start and end shift times
+        let extractedStart = teacher.startTime || teacher.start_time || '';
+        let extractedEnd = teacher.endTime || teacher.end_time || '';
 
-        // Fallback structure check kung nakaimbak ito sa column field na 'shift'
         if ((!extractedStart || !extractedEnd) && teacher.shift) {
             const parsedShift = teacher.shift.split('-');
             if (parsedShift.length === 2) {
@@ -64,19 +74,22 @@ async function loadTeacherProfile() {
             }
         }
 
-        // Ilagay ang values sa time inputs (o default kapag walang nakitang data record)
         document.getElementById('startTime').value = extractedStart || '08:00 am';
         document.getElementById('endTime').value = extractedEnd || '04:00 pm';
 
-        // 📅 AUTO-CHECK NG MGA ARAW NG TRABAHO (WORK DAYS)
-        if (teacher.workDays) {
-            const activeDays = Array.isArray(teacher.workDays) 
-                ? teacher.workDays 
-                : teacher.workDays.split(',').map(d => d.trim());
+        // Pre-select work days with case-insensitive matching
+        const rawDays = teacher.workDays || teacher.work_days;
+        if (rawDays) {
+            let activeDays = Array.isArray(rawDays) 
+                ? rawDays 
+                : String(rawDays).split(',').map(d => d.trim());
 
+            const normalizedActiveDays = activeDays.map(d => String(d).toLowerCase().trim());
             const checkboxes = document.querySelectorAll('.day-checkbox');
+            
             checkboxes.forEach(cb => {
-                if (activeDays.includes(cb.value)) {
+                const valLower = cb.value.toLowerCase().trim();
+                if (normalizedActiveDays.some(day => day.includes(valLower) || valLower.includes(day))) {
                     cb.checked = true;
                 }
             });
@@ -86,20 +99,23 @@ async function loadTeacherProfile() {
 
     } catch (err) {
         console.error("💥 Critical error triggered inside the script lifecycle:", err);
-        alert("API Error: Cannot read database context fields. Open your F12 browser console tab.");
+        alert("API Error: Cannot read database context fields. Check console.");
     }
 }
 
-// Patakbuhin ang interface renderer routine loop
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadTeacherProfile);
 } else {
     loadTeacherProfile();
 }
 
-// 3️⃣ PAGpapadala NG INPUT DATA KAPAG PININDOT ANG SAVE CHANGES
+// 3️⃣ SAVE FORM DATA
 document.getElementById('editTeacherForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    const saveBtn = e.target.querySelector('.btn-save');
+    saveBtn.disabled = true;
+    saveBtn.innerText = 'Saving...';
 
     const selectedDays = [];
     document.querySelectorAll('.day-checkbox:checked').forEach(cb => {
@@ -108,22 +124,43 @@ document.getElementById('editTeacherForm').addEventListener('submit', async (e) 
 
     if (selectedDays.length === 0) {
         alert("Please pick at least one available day configuration.");
+        saveBtn.disabled = false;
+        saveBtn.innerText = 'Save Changes';
         return;
     }
 
+    const firstNameVal = document.getElementById('firstName').value.trim();
+    const lastNameVal = document.getElementById('lastName').value.trim();
+    const fullNameVal = `${firstNameVal} ${lastNameVal}`.trim();
     const startVal = document.getElementById('startTime').value.trim();
     const endVal = document.getElementById('endTime').value.trim();
+    const targetGradeVal = document.getElementById('targetGrade').value.trim();
+    const subjectsArray = document.getElementById('subjects').value
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s !== "");
 
+    // Multi-schema compatibility payload
     const updatedPayload = {
-        firstName: document.getElementById('firstName').value.trim(),
-        lastName: document.getElementById('lastName').value.trim(),
+        name: fullNameVal,
+        fullName: fullNameVal,
+        firstName: firstNameVal,
+        first_name: firstNameVal,
+        lastName: lastNameVal,
+        last_name: lastNameVal,
         email: document.getElementById('email').value.trim(),
-        subjects: document.getElementById('subjects').value.split(',').map(s => s.trim()).filter(s => s !== ""),
-        targetGrade: document.getElementById('targetGrade').value.trim(),
+        subjects: subjectsArray,
+        subject_list: subjectsArray,
+        targetGrade: targetGradeVal,
+        target_grade: targetGradeVal,
+        gradeLevel: targetGradeVal,
         workDays: selectedDays,
+        work_days: selectedDays,
         startTime: startVal,
+        start_time: startVal,
         endTime: endVal,
-        shift: `${startVal} - ${endVal}` // Double-compatibility format para sa 'shift' data grid matrix table natin
+        end_time: endVal,
+        shift: `${startVal} - ${endVal}`
     };
 
     try {
@@ -136,16 +173,20 @@ document.getElementById('editTeacherForm').addEventListener('submit', async (e) 
             body: JSON.stringify(updatedPayload)
         });
 
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
 
         if (response.ok) {
-            alert("Teacher data node rewritten successfully!");
+            alert("Teacher data rewritten successfully!");
             window.location.href = "teacher-list.html";
         } else {
-            alert("Database Rejected: " + (result.error || "Validation error block."));
+            alert("Database Rejected: " + (result.error || result.message || "Validation error block."));
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Changes';
         }
     } catch (err) {
         console.error("Network upload pipeline crashed:", err);
         alert("Transmission Failure: Server connection lost.");
+        saveBtn.disabled = false;
+        saveBtn.innerText = 'Save Changes';
     }
 });

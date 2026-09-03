@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura | Edit Teacher Info </title>
+    <title>Lectura | Edit Teacher Info</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
-    <link rel="stylesheet" href="..//css/edit-teacher.css">
+    <link rel="stylesheet" href="../css/edit-teacher.css">
 </head>
 <body>
 
@@ -14,29 +14,29 @@
     <form id="editTeacherForm">
         <div class="form-row">
             <div class="form-group">
-                <label>First Name</label>
+                <label for="firstName">First Name</label>
                 <input type="text" id="firstName" required>
             </div>
             <div class="form-group">
-                <label>Last Name</label>
+                <label for="lastName">Last Name</label>
                 <input type="text" id="lastName" required>
             </div>
         </div>
 
         <div class="form-group style-group">
-            <label>Email Address</label>
+            <label for="email">Email Address</label>
             <input type="email" id="email" required>
         </div>
 
         <div class="form-group style-group">
-            <label>Subjects</label>
+            <label for="subjects">Subjects</label>
             <input type="text" id="subjects" required>
-            <span class="info-note">Separate multiple subjects with commas (e.g., math, science, ICT)</span>
+            <span class="info-note">Separate multiple subjects with commas (e.g., Math, Science, ICT)</span>
         </div>
 
         <div class="form-group style-group-large">
-            <label>Target Grade</label>
-            <input type="text" id="targetGrade" placeholder="e.g., Grade 7">
+            <label for="targetGrade">Target Grade</label>
+            <input type="text" id="targetGrade" placeholder="e.g., Grade 8">
         </div>
 
         <div class="availability-section">
@@ -53,12 +53,12 @@
 
             <div class="form-row align-center">
                 <div class="form-group">
-                    <label>Start Time</label>
+                    <label for="startTime">Start Time</label>
                     <input type="text" id="startTime" placeholder="e.g., 08:00 am" required>
                 </div>
                 <div class="time-separator">to</div>
                 <div class="form-group">
-                    <label>End Time</label>
+                    <label for="endTime">End Time</label>
                     <input type="text" id="endTime" placeholder="e.g., 04:00 pm" required>
                 </div>
             </div>
@@ -71,6 +71,6 @@
     </form>
 </div>
 
-<script src="..//js/edit-teacher.js"></script>
+<script src="../js/edit-teacher.js"></script>
 </body>
 </html>
