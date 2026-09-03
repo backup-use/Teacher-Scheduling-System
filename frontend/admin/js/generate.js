@@ -1,6 +1,7 @@
 /**
  * Advanced Automated Timetable Generator
- * Features Grade Name Normalization to eliminate duplicated audit groups.
+ * Features Standardized Grade Level Pre-population (Grade 7 - Grade 12)
+ * and Regex Normalization to prevent duplicate/missing grade entries.
  */
 
 function safeParseArray(val) {
@@ -23,18 +24,19 @@ function extractGradeNumber(str) {
     return match ? match[0] : str.toString().toLowerCase().trim();
 }
 
-// STANDARD-MAKER: Fixes duplicate names like "Grade 7" and "Junior High School - Grade 7"
+// STRONGER NORMALIZER: Standardizes any string format into standard Grade naming
 function normalizeGradeLevelName(str) {
     if (!str) return "General";
-    const clean = str.toString().trim();
-    const match = clean.match(/\d+/);
+    const cleanStr = str.toString().trim();
+    const match = cleanStr.match(/\d+/);
+    
     if (match) {
         const num = parseInt(match[0], 10);
         if (num >= 7 && num <= 10) return `Junior High School - Grade ${num}`;
         if (num >= 11 && num <= 12) return `Senior High School - Grade ${num}`;
         return `Grade ${num}`;
     }
-    return clean;
+    return cleanStr;
 }
 
 async function processSystemTimetable() {
@@ -47,7 +49,7 @@ async function processSystemTimetable() {
    
     container.innerHTML = `
         <div id="engine-processing-status" style="text-align: center; color: #00d2ff; font-weight: bold; padding: 40px; font-size: 1.1rem; background: rgba(15,23,42,0.6); border-radius: 12px; margin-top: 20px;">
-            🔄 Normalizing Grade Categories & Calculating Master Schedule...
+            🔄 Consolidating Grade Levels & Calculating Master Schedule...
         </div>
     `;
 
@@ -136,24 +138,35 @@ async function processSystemTimetable() {
             };
         });
 
-        // --- NORMALIZED GRADE AUDIT MAP ---
-        const gradeAuditMap = {};
+        // --- PRE-POPULATED AUDIT MAP (Grade 7 - Grade 12 Guaranteed) ---
+        const gradeAuditMap = {
+            "Junior High School - Grade 7": { missingSubjects: [], teacherCount: 0 },
+            "Junior High School - Grade 8": { missingSubjects: [], teacherCount: 0 },
+            "Junior High School - Grade 9": { missingSubjects: [], teacherCount: 0 },
+            "Junior High School - Grade 10": { missingSubjects: [], teacherCount: 0 },
+            "Senior High School - Grade 11": { missingSubjects: [], teacherCount: 0 },
+            "Senior High School - Grade 12": { missingSubjects: [], teacherCount: 0 }
+        };
 
-        // 1. Collect and standardize all sections
+        // Merge extra dynamic grades from sections if present
         savedSections.forEach(sec => {
-            const rawG = sec.grade_level || sec.target_grade || sec.gradeLevel || "General";
-            const normG = normalizeGradeLevelName(rawG);
-            if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
+            const rawG = sec.grade_level || sec.target_grade || sec.gradeLevel;
+            if (rawG) {
+                const normG = normalizeGradeLevelName(rawG);
+                if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
+            }
         });
 
-        // 2. Collect and standardize all subjects
+        // Merge extra dynamic grades from subjects
         normalizedSubjects.forEach(s => {
-            const rawG = s.gradeLevel || "General";
-            const normG = normalizeGradeLevelName(rawG);
-            if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
+            const rawG = s.gradeLevel;
+            if (rawG) {
+                const normG = normalizeGradeLevelName(rawG);
+                if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
+            }
         });
 
-        // 3. Count active teachers under normalized grade names
+        // Count active teachers per normalized grade category
         normalizedTeachers.forEach(t => {
             const normG = t.targetGrade;
             if (gradeAuditMap[normG]) {
@@ -163,7 +176,7 @@ async function processSystemTimetable() {
             }
         });
 
-        // 4. Match unassigned subjects to normalized grades
+        // Map unassigned subjects to standard grade levels
         normalizedSubjects.forEach(s => {
             const subjName = typeof s === 'string' ? s : s.name;
             const normG = normalizeGradeLevelName(s.gradeLevel || "General");
@@ -172,10 +185,7 @@ async function processSystemTimetable() {
                 t.subjects.some(sub => sub.toLowerCase().trim() === subjName.toLowerCase().trim())
             );
 
-            if (!hasTeacher) {
-                if (!gradeAuditMap[normG]) {
-                    gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
-                }
+            if (!hasTeacher && gradeAuditMap[normG]) {
                 if (!gradeAuditMap[normG].missingSubjects.includes(subjName)) {
                     gradeAuditMap[normG].missingSubjects.push(subjName);
                 }
@@ -189,7 +199,7 @@ async function processSystemTimetable() {
             gradeAuditMap: gradeAuditMap
         };
 
-        // Matrix Containers
+        // Matrix Structures
         const teacherConflictMatrix = {};
         const sectionConflictMatrix = {};
         const roomConflictMatrix = {};    
@@ -201,7 +211,7 @@ async function processSystemTimetable() {
             teacherSchedulesMap[t.fullName] = { details: t, slots: [] };
         });
 
-        // Schedule Matrix Core
+        // Schedule Generation Core Logic
         for (const section of savedSections) {
             const sectionGrade = section.grade_level || section.target_grade || section.gradeLevel || "Grade 8";
             const sectionGradeNum = extractGradeNumber(sectionGrade);
@@ -297,7 +307,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
         totalMissingSubjectsCount += g.missingSubjects.length;
     });
 
-    // --- COMPACT AUDIT CARD ---
     const summaryCard = document.createElement("div");
     summaryCard.style.cssText = "background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(0, 210, 255, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 25px;";
 
@@ -335,7 +344,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
             </div>
         </div>
 
-        <!-- COLLAPSIBLE GROUPED BY GRADE LEVEL PANEL -->
         <div id="grade-level-audit-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(255,255,255,0.1);">
             <div style="font-weight: bold; color: #ef4444; margin-bottom: 12px; font-size: 0.9rem;">
                 🚨 Resource Shortages Grouped by Grade Level:
