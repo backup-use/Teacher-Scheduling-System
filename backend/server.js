@@ -701,6 +701,27 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      // GET /api/admin/teachers
+      if (pathname === "/api/admin/teachers" && req.method === "GET") {
+        try {
+          const { rows } = await db.query("SELECT * FROM teachers ORDER BY id ASC");
+          
+          // Format JSON string fields so frontend gets valid objects/arrays
+          const formattedTeachers = rows.map(teacher => ({
+            ...teacher,
+            name: `${teacher.first_name} ${teacher.last_name}`,
+            subjects: typeof teacher.subjects === 'string' ? JSON.parse(teacher.subjects || '[]') : (teacher.subjects || []),
+            workDays: typeof teacher.work_days === 'string' ? JSON.parse(teacher.work_days || '[]') : (teacher.work_days || []),
+            availability: typeof teacher.availability === 'string' ? JSON.parse(teacher.availability || '[]') : (teacher.availability || [])
+          }));
+
+          return send(res, 200, formattedTeachers);
+        } catch (err) {
+          console.error('❌ Error fetching teachers:', err);
+          return send(res, 500, { error: err.message });
+        }
+      }
+
       // POST /api/admin/teachers
       if (pathname === "/api/admin/teachers" && req.method === "POST") {
         try {

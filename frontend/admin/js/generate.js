@@ -34,11 +34,11 @@ function getTeacherCardStyles() {
     };
 }
 
-/**
- * Primary Process Engine - Synchronizes backend API data and generates schedules
- */
 async function processSystemTimetable() {
-    const baseOrigin = window.location.origin;
+    // ADJUST THIS BASE URL: Point this directly to your Node.js/Express API server URL
+    // If your backend runs on a different port/subdomain, change it here (e.g., "https://your-backend.onrender.com")
+    const API_BASE_URL = window.location.origin; 
+
     const token = localStorage.getItem('token') || 
                   localStorage.getItem('jwt') || 
                   localStorage.getItem('authToken') || 
@@ -52,13 +52,19 @@ async function processSystemTimetable() {
     }
 
     try {
+        console.log("Fetching endpoints from:", API_BASE_URL);
+
         // Fetch source entities from API
         const [teachersResponse, subjectsResponse, roomsResponse, sectionsResponse] = await Promise.all([
-            fetch(`${baseOrigin}/api/admin/teachers`, { headers }),
-            fetch(`${baseOrigin}/api/admin/subjects`, { headers }),
-            fetch(`${baseOrigin}/api/admin/rooms`, { headers }),
-            fetch(`${baseOrigin}/api/admin/sections`, { headers })
+            fetch(`${API_BASE_URL}/api/admin/teachers`, { headers }),
+            fetch(`${API_BASE_URL}/api/admin/subjects`, { headers }),
+            fetch(`${API_BASE_URL}/api/admin/rooms`, { headers }),
+            fetch(`${API_BASE_URL}/api/admin/sections`, { headers })
         ]);
+
+        if (teachersResponse.status === 404) {
+            throw new Error(`Endpoint not found: ${API_BASE_URL}/api/admin/teachers (404). Please verify that your backend Express server exposes /api/admin/teachers.`);
+        }
 
         if (!teachersResponse.ok) {
             throw new Error(`API Database Synchronization Failed with Status Code: ${teachersResponse.status}`);
@@ -73,7 +79,7 @@ async function processSystemTimetable() {
         globalTimetableData = buildScheduleMatrix(teachers, subjects, rooms, sections);
 
         // Commit generated schedule back to backend
-        fetch(`${baseOrigin}/api/admin/schedules/save-bulk`, {
+        fetch(`${API_BASE_URL}/api/admin/schedules/save-bulk`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(globalTimetableData)
@@ -84,7 +90,17 @@ async function processSystemTimetable() {
 
     } catch (error) {
         console.error("Timetable Generation Error:", error);
-        alert(`Failed to generate timetable: ${error.message}`);
+        
+        // Render UI Error Message in the Output Container
+        const outputCard = document.querySelector(".dashboard-card-panel") || document.body;
+        const errNotice = document.createElement("div");
+        errNotice.style.cssText = "color: #ef4444; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 15px; border-radius: 8px; margin-top: 15px; text-align: center; font-weight: 600;";
+        errNotice.innerHTML = `⚠️ Connection Error: ${error.message}`;
+        
+        // Update display target directly
+        const displayTarget = document.getElementById("timetable-matrix-display-target") || outputCard;
+        displayTarget.style.display = "block";
+        displayTarget.appendChild(errNotice);
     }
 }
 
