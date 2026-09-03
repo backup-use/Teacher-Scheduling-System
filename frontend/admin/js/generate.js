@@ -351,7 +351,14 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
             <div style="display: flex; flex-direction: column; gap: 12px;">
     `;
 
-    Object.keys(auditSummary.gradeAuditMap).sort().forEach(grade => {
+    // AFTER (Numerical Grade Level sort)
+    Object.keys(auditSummary.gradeAuditMap)
+        .sort((a, b) => {
+            const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
+            const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
+            return numA - numB;
+        })
+        .forEach(grade => {
         const item = auditSummary.gradeAuditMap[grade];
         if (item.missingSubjects.length > 0 || item.teacherCount === 0) {
             auditHTML += `
