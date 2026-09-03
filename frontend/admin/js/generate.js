@@ -158,12 +158,7 @@ async function processSystemTimetable() {
 
         const validSubjectsToSchedule = normalizedSubjects;
 
-        const preferredGradeCounts = {};
-        normalizedTeachers.forEach(t => {
-            const g = t.targetGrade;
-            preferredGradeCounts[g] = (preferredGradeCounts[g] || 0) + 1;
-        });
-
+        // --- SCHEDULING LOOP WITH STRICT GRADE CONSTRAINTS ---
         for (const section of savedSections) {
             const sectionGrade = section.grade_level || section.target_grade || section.gradeLevel;
 
@@ -185,41 +180,25 @@ async function processSystemTimetable() {
                             continue;
                         }
 
-                        const filterTeacher = (t) => {
+                        // Strictly require teacher's designated target grade to match the section's grade
+                        let teacherToUse = normalizedTeachers.find(t => {
                             const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
                             const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
                             const teacherKey = `${t.fullName}-${day}-${currentTime}`;
                             const isTeacherBusy = teacherConflictMatrix[teacherKey];
+
+                            // Strict Grade Matching
+                            const targetGradeClean = (t.targetGrade || "").toString().toLowerCase().replace(/grade\s*/g, '').trim();
+                            const sectionGradeClean = (sectionGrade || "").toString().toLowerCase().replace(/grade\s*/g, '').trim();
+                            const isExactGradeMatch = sectionGrade ? (targetGradeClean === sectionGradeClean) : true;
 
                             let hasFatigue = false;
                             if (lastSessionData && lastSessionData.teacher === t.fullName) {
                                 hasFatigue = true;
                             }
 
-                            return conductsSubject && worksThisDay && !isTeacherBusy && !hasFatigue;
-                        };
-
-                        let teacherToUse = normalizedTeachers.find(t => {
-                            const gradeMatch = sectionGrade ? t.targetGrade.toLowerCase() === sectionGrade.toLowerCase() : true;
-                            return gradeMatch && filterTeacher(t);
+                            return isExactGradeMatch && conductsSubject && worksThisDay && !isTeacherBusy && !hasFatigue;
                         });
-
-                        if (!teacherToUse) {
-                            teacherToUse = normalizedTeachers.find(t => {
-                                const gradeMatch = sectionGrade ? t.targetGrade.toLowerCase() === sectionGrade.toLowerCase() : true;
-                                const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
-                                const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
-                                const teacherKey = `${t.fullName}-${day}-${currentTime}`;
-                                return gradeMatch && conductsSubject && worksThisDay && !teacherConflictMatrix[teacherKey];
-                            });
-                        }
-
-                        if (!teacherToUse) {
-                            teacherToUse = normalizedTeachers.find(t => {
-                                const isSaturatedCohort = preferredGradeCounts[t.targetGrade] >= 2;
-                                return isSaturatedCohort && filterTeacher(t);
-                            });
-                        }
 
                         if (!teacherToUse) continue;
 
@@ -249,8 +228,8 @@ async function processSystemTimetable() {
                             subject: subjectName
                         };
 
-                        const assignedGradeLabel = sectionGrade 
-                            ? (sectionGrade.includes("Grade") ? `Junior High School - ${sectionGrade}` : sectionGrade)
+                        const assignedGradeLabel = teacherToUse.targetGrade.includes("Junior High School") 
+                            ? teacherToUse.targetGrade 
                             : `Junior High School - ${teacherToUse.targetGrade}`;
 
                         teacherSchedulesMap[teacherFullName].slots.push({
@@ -333,20 +312,20 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         directoryPanel.appendChild(diagPanel);
     }
 
+    // --- DIRECTORY GROUPING BY TEACHER GRADE CHOICE (FILTERING INCOMPLETE / 0-CLASS TEACHERS) ---
     const gradeLevelTeacherMap = {};
 
     for (const teacherName in teacherSchedulesMap) {
         const item = teacherSchedulesMap[teacherName];
-        const teacherPref = item.details.targetGrade || item.details.target_grade || "Grade 8";
         
-        let primaryGradeKey = teacherPref.includes("Junior High School") 
+        // Hide teachers with 0 scheduled classes to avoid showing incomplete grade directories
+        const totalScheduledClasses = item.slots ? item.slots.length : 0;
+        if (totalScheduledClasses === 0) continue;
+
+        const teacherPref = item.details.targetGrade || item.details.target_grade || "Grade 8";
+        const primaryGradeKey = teacherPref.includes("Junior High School") 
             ? teacherPref 
             : `Junior High School - ${teacherPref}`;
-
-        if (item.slots && item.slots.length > 0) {
-            const slotGrade = item.slots[0].gradeLevel;
-            if (slotGrade) primaryGradeKey = slotGrade;
-        }
 
         if (!gradeLevelTeacherMap[primaryGradeKey]) {
             gradeLevelTeacherMap[primaryGradeKey] = {};
