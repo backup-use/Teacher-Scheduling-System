@@ -4,29 +4,19 @@
  * Retains comprehensive, scannable system diagnostics logs block above the workflow board.
  */
 
-// Helper to handle stringified JSON array fields safely
+// Helper for safely parsing JSON/arrays
 function safeParseArray(val) {
     if (!val) return [];
     if (Array.isArray(val)) return val;
-    try {
-        const parsed = JSON.parse(val);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-        return [];
+    if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val);
+            return Array.isArray(parsed) ? parsed : [parsed];
+        } catch (e) {
+            return val.split(',').map(s => s.trim()).filter(Boolean);
+        }
     }
-}
-
-/**
- * Helper function to return placeholder soft colors for subjects inside admin panel preview canvas
- */
-function getSubjectColor(subjectName) {
-    const name = (subjectName || "").toLowerCase();
-    if (name.includes("math")) return "#fed7aa";
-    if (name.includes("science")) return "#bbf7d0";
-    if (name.includes("english")) return "#bfdbfe";
-    if (name.includes("history") || name.includes("ap")) return "#fef08a";
-    if (name.includes("filipino")) return "#fbcfe8";
-    return "#e2e8f0";
+    return [];
 }
 
 async function processSystemTimetable() {
@@ -66,7 +56,6 @@ async function processSystemTimetable() {
         const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
         const baseOrigin = window.location.origin;
 
-        // Fetch data from endpoints
         const [teachersResponse, subjectsResponse, roomsResponse, sectionsResponse] = await Promise.all([
             fetch(`${baseOrigin}/api/admin/teachers`, { headers }),
             fetch(`${baseOrigin}/api/admin/subjects`, { headers }),
@@ -83,7 +72,6 @@ async function processSystemTimetable() {
         const savedRoomsData = await roomsResponse.json();
         const savedSectionsData = await sectionsResponse.json();
 
-        // 1. Safe Normalization Converters
         const rawTeachers = Array.isArray(rawTeachersData) ? rawTeachersData : (rawTeachersData.teachers || rawTeachersData.data || []);
         const savedRooms = Array.isArray(savedRoomsData) ? savedRoomsData : (savedRoomsData.rooms || savedRoomsData.data || []);
         const savedSections = Array.isArray(savedSectionsData) ? savedSectionsData : (savedSectionsData.sections || savedSectionsData.data || []);
@@ -143,7 +131,6 @@ async function processSystemTimetable() {
         const systemDiagnosticsLogs = [];
         const teacherSchedulesMap = {};
 
-        // Normalize raw teacher data with explicit preferred target grade
         const normalizedTeachers = rawTeachers.map(t => {
             const firstName = t.firstName || t.first_name || "Instructor";
             const lastName = t.lastName || t.last_name || "";
@@ -171,14 +158,12 @@ async function processSystemTimetable() {
 
         const validSubjectsToSchedule = normalizedSubjects;
 
-        // Count teachers per preferred target grade to check saturation
         const preferredGradeCounts = {};
         normalizedTeachers.forEach(t => {
             const g = t.targetGrade;
             preferredGradeCounts[g] = (preferredGradeCounts[g] || 0) + 1;
         });
 
-        // 3. Automated Priority-First & Fallback Reallocation Engine
         for (const section of savedSections) {
             const sectionGrade = section.grade_level || section.target_grade || section.gradeLevel;
 
@@ -200,7 +185,6 @@ async function processSystemTimetable() {
                             continue;
                         }
 
-                        // Helper filter for candidate validation
                         const filterTeacher = (t) => {
                             const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
                             const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
@@ -215,13 +199,11 @@ async function processSystemTimetable() {
                             return conductsSubject && worksThisDay && !isTeacherBusy && !hasFatigue;
                         };
 
-                        // PRIORITY 1: Teacher who MATCHES the section/target grade level
                         let teacherToUse = normalizedTeachers.find(t => {
                             const gradeMatch = sectionGrade ? t.targetGrade.toLowerCase() === sectionGrade.toLowerCase() : true;
                             return gradeMatch && filterTeacher(t);
                         });
 
-                        // FALLBACK 1: Relax fatigue check for exact grade match
                         if (!teacherToUse) {
                             teacherToUse = normalizedTeachers.find(t => {
                                 const gradeMatch = sectionGrade ? t.targetGrade.toLowerCase() === sectionGrade.toLowerCase() : true;
@@ -232,8 +214,6 @@ async function processSystemTimetable() {
                             });
                         }
 
-                        // FALLBACK 2: OVERFLOW REALLOCATION
-                        // If no exact match is found, pull an available teacher from a saturated grade cohort
                         if (!teacherToUse) {
                             teacherToUse = normalizedTeachers.find(t => {
                                 const isSaturatedCohort = preferredGradeCounts[t.targetGrade] >= 2;
@@ -269,7 +249,6 @@ async function processSystemTimetable() {
                             subject: subjectName
                         };
 
-                        // Determine assigned grade label
                         const assignedGradeLabel = sectionGrade 
                             ? (sectionGrade.includes("Grade") ? `Junior High School - ${sectionGrade}` : sectionGrade)
                             : `Junior High School - ${teacherToUse.targetGrade}`;
@@ -289,14 +268,13 @@ async function processSystemTimetable() {
                 }
 
                 if (dailyFilledCount < timeSlots.length) {
-                    systemDiagnosticsLogs.push(`⚠️ Quota Deficit: Ang [${section.name}] ay mayroon lamang ${dailyFilledCount}/${timeSlots.length} subjects tuwing [${day}].`);
+                    systemDiagnosticsLogs.push(`⚠️ Quota Deficit: Section [${section.name}] has only ${dailyFilledCount}/${timeSlots.length} subjects on [${day}].`);
                 }
             }
         }
 
         renderSearchableDirectoryDashboard(container, teacherSchedulesMap, daySlots, timeSlots, systemDiagnosticsLogs);
 
-        // Commit engine results
         try {
             console.log("💾 Automatically committing computed timetables over old server targets...");
             await fetch(`${baseOrigin}/api/admin/schedules/save-bulk`, {
@@ -321,9 +299,6 @@ async function processSystemTimetable() {
     }
 }
 
-/**
- * Renders Teacher Directory Grouped Strictly by Preferred / Assigned Grade Level
- */
 function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, daySlots, timeSlots, diagnosticsLogs) {
     container.innerHTML = "";
 
@@ -337,7 +312,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
     container.appendChild(directoryPanel);
     container.appendChild(scheduleViewerPanel);
 
-    // 1. Diagnostics Header
     if (diagnosticsLogs && diagnosticsLogs.length > 0) {
         const diagPanel = document.createElement("div");
         diagPanel.className = "system-diagnostics-card";
@@ -354,12 +328,11 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
             logsHTML += `<div style="background: rgba(0,0,0,0.2); padding: 6px 12px; border-radius: 6px; border-left: 3px solid #ef4444;">${log}</div>`;
         });
        
-        logsHTML += `</div><div style="font-size: 0.8rem; color: #94a3b8; margin-top: 10px; font-style: italic;">Tip: Ang mga guro ay maaari nang magturo sa kahit anong section o grade level na may hawak ng kanilang paksa nang walang restriksyon.</div>`;
+        logsHTML += `</div>`;
         diagPanel.innerHTML = logsHTML;
         directoryPanel.appendChild(diagPanel);
     }
 
-    // 2. Directory Grouping based on explicitly assigned grade or teacher preference
     const gradeLevelTeacherMap = {};
 
     for (const teacherName in teacherSchedulesMap) {
@@ -370,7 +343,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
             ? teacherPref 
             : `Junior High School - ${teacherPref}`;
 
-        // If teacher has assigned slots, check if they were assigned to an actual section grade
         if (item.slots && item.slots.length > 0) {
             const slotGrade = item.slots[0].gradeLevel;
             if (slotGrade) primaryGradeKey = slotGrade;
@@ -383,12 +355,11 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         gradeLevelTeacherMap[primaryGradeKey][teacherName] = item;
     }
 
-    // 3. Search and Header Box
     const filterHeaderBox = document.createElement("div");
     filterHeaderBox.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 12px; background: rgba(15,23,42,0.4); padding: 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);";
     filterHeaderBox.innerHTML = `
         <div>
-            <h4 style="color: #ffffff; margin: 0; font-size: 1.25rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+            <h4 style="color: #ffffff; margin: 0; font-size: 1.25rem; font-weight: bold;">
                 🏫 Grade-Level Instructor Directories
             </h4>
             <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.85rem;">Instructors are grouped below by their umbrella grade levels.</p>
@@ -412,24 +383,22 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         return;
     }
 
-    // 4. Render Directory Folder Cards
     sortedGrades.forEach(gradeName => {
         const teachersInGrade = gradeLevelTeacherMap[gradeName];
 
         const gradeBox = document.createElement("div");
         gradeBox.className = "grade-level-card-box";
-        gradeBox.style.cssText = "background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);";
+        gradeBox.style.cssText = "background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px;";
 
         let boxHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
-                <h3 style="color: #00d2ff; margin: 0; font-size: 1.15rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                <h3 style="color: #00d2ff; margin: 0; font-size: 1.15rem; font-weight: bold;">
                     📁 ${gradeName}
                 </h3>
                 <span style="background: rgba(0,210,255,0.1); color: #00d2ff; font-size: 0.8rem; font-weight: bold; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(0,210,255,0.2);">
                     ${Object.keys(teachersInGrade).length} Teachers Assigned
                 </span>
             </div>
-           
             <div style="display: flex; flex-direction: column; gap: 10px;">
         `;
 
@@ -438,28 +407,21 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
             const subjects = teacherObj.details.subjects || [];
 
             boxHTML += `
-                <div class="teacher-item-row" data-teacher-search="${teacherName.toLowerCase()} ${subjects.join(' ').toLowerCase()}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 12px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);">
-                   
-                    <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
-                        <span style="background: rgba(0,210,255,0.1); color: #00d2ff; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 1rem; flex-shrink: 0;">👤</span>
+                <div class="teacher-item-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 12px 18px; border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <span style="background: rgba(0,210,255,0.1); color: #00d2ff; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">👤</span>
                         <div>
-                            <div style="color: #ffffff; font-weight: bold; font-size: 0.95rem;">${teacherName}</div>
-                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                            <div style="color: #ffffff; font-weight: bold;">${teacherName}</div>
+                            <div style="display: flex; gap: 6px; margin-top: 4px;">
                                 ${subjects.map(s => `<span style="background: rgba(148, 163, 184, 0.12); color: #cbd5e1; font-size: 0.73rem; padding: 2px 7px; border-radius: 4px;">📚 ${s}</span>`).join('')}
                             </div>
                         </div>
                     </div>
-
                     <div style="display: flex; align-items: center; gap: 16px;">
-                        <span style="background: rgba(16, 185, 129, 0.1); color: #34d399; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.15);">
+                        <span style="background: rgba(16, 185, 129, 0.1); color: #34d399; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 12px;">
                             ${teacherObj.slots.length} Classes
                         </span>
-
-                        <button class="view-single-schedule-btn" data-teacher-key="${teacherName}" style="background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #fff; border: none; padding: 8px 14px; font-size: 0.82rem; font-weight: bold; border-radius: 6px; cursor: pointer;">
-                            📅 View Schedule ⚡
-                        </button>
                     </div>
-
                 </div>
             `;
         }
@@ -468,7 +430,8 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         gradeBox.innerHTML = boxHTML;
         gradeCardsContainer.appendChild(gradeBox);
     });
-}
+
+
 
     // 5. Search Bar Handler
     const searchBar = document.getElementById("directory-search-bar");
