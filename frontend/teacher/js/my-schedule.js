@@ -263,6 +263,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     font-style: italic !important;
                     font-weight: 600 !important;
                 }
+
+                .card-math { background-color: #fefae0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                .card-science { background-color: #e8f5e9 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                .card-default { background-color: #eff6ff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+                .schedule-card {
+                    border-radius: 0px !important;
+                    color: #000000 !important;
+                    box-shadow: none !important;
+                    padding: 6px 3px !important;
+                    font-weight: bold !important;
+                }
             }
         `;
         document.head.appendChild(printStyles);
