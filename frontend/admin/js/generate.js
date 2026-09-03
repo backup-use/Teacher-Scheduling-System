@@ -1,6 +1,6 @@
 /**
  * Advanced Automated Timetable Generator
- * Includes Collapsible Grade-Level Grouped Audit Panel to avoid screen clutter.
+ * Features Grade Name Normalization to eliminate duplicated audit groups.
  */
 
 function safeParseArray(val) {
@@ -23,8 +23,22 @@ function extractGradeNumber(str) {
     return match ? match[0] : str.toString().toLowerCase().trim();
 }
 
+// STANDARD-MAKER: Fixes duplicate names like "Grade 7" and "Junior High School - Grade 7"
+function normalizeGradeLevelName(str) {
+    if (!str) return "General";
+    const clean = str.toString().trim();
+    const match = clean.match(/\d+/);
+    if (match) {
+        const num = parseInt(match[0], 10);
+        if (num >= 7 && num <= 10) return `Junior High School - Grade ${num}`;
+        if (num >= 11 && num <= 12) return `Senior High School - Grade ${num}`;
+        return `Grade ${num}`;
+    }
+    return clean;
+}
+
 async function processSystemTimetable() {
-    console.log("⚡ Executing Compact Grade-Level Audit & Timetable Matrix Generation...");
+    console.log("⚡ Executing Standardized Grade Audit & Matrix Generation...");
    
     let container = document.getElementById("timetable-matrix-output-body") || 
                     document.querySelector('.dashboard-card-panel') || 
@@ -33,7 +47,7 @@ async function processSystemTimetable() {
    
     container.innerHTML = `
         <div id="engine-processing-status" style="text-align: center; color: #00d2ff; font-weight: bold; padding: 40px; font-size: 1.1rem; background: rgba(15,23,42,0.6); border-radius: 12px; margin-top: 20px;">
-            🔄 Auditing Grade-Level Resources & Calculating Master Schedule...
+            🔄 Normalizing Grade Categories & Calculating Master Schedule...
         </div>
     `;
 
@@ -117,50 +131,53 @@ async function processSystemTimetable() {
                 ...t,
                 fullName,
                 subjects,
-                targetGrade,
+                targetGrade: normalizeGradeLevelName(targetGrade),
                 workDays: workDays.length > 0 ? workDays : daySlots
             };
         });
 
-        // --- GROUPED GRADE-LEVEL AUDIT SYSTEM ---
+        // --- NORMALIZED GRADE AUDIT MAP ---
         const gradeAuditMap = {};
 
-        // Collect all grade levels from sections and subjects
+        // 1. Collect and standardize all sections
         savedSections.forEach(sec => {
-            const g = sec.grade_level || sec.target_grade || sec.gradeLevel || "General";
-            if (!gradeAuditMap[g]) gradeAuditMap[g] = { missingSubjects: [], teacherCount: 0 };
+            const rawG = sec.grade_level || sec.target_grade || sec.gradeLevel || "General";
+            const normG = normalizeGradeLevelName(rawG);
+            if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
         });
 
+        // 2. Collect and standardize all subjects
         normalizedSubjects.forEach(s => {
-            const g = s.gradeLevel || "General";
-            if (!gradeAuditMap[g]) gradeAuditMap[g] = { missingSubjects: [], teacherCount: 0 };
+            const rawG = s.gradeLevel || "General";
+            const normG = normalizeGradeLevelName(rawG);
+            if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
         });
 
-        // Count teachers per grade level
+        // 3. Count active teachers under normalized grade names
         normalizedTeachers.forEach(t => {
-            const tGrade = t.targetGrade || "General";
-            if (gradeAuditMap[tGrade]) {
-                gradeAuditMap[tGrade].teacherCount++;
+            const normG = t.targetGrade;
+            if (gradeAuditMap[normG]) {
+                gradeAuditMap[normG].teacherCount++;
             } else {
-                gradeAuditMap[tGrade] = { missingSubjects: [], teacherCount: 1 };
+                gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 1 };
             }
         });
 
-        // Find missing subject teachers per grade level
+        // 4. Match unassigned subjects to normalized grades
         normalizedSubjects.forEach(s => {
             const subjName = typeof s === 'string' ? s : s.name;
-            const subjGrade = s.gradeLevel || "General";
+            const normG = normalizeGradeLevelName(s.gradeLevel || "General");
 
             const hasTeacher = normalizedTeachers.some(t => 
                 t.subjects.some(sub => sub.toLowerCase().trim() === subjName.toLowerCase().trim())
             );
 
             if (!hasTeacher) {
-                if (!gradeAuditMap[subjGrade]) {
-                    gradeAuditMap[subjGrade] = { missingSubjects: [], teacherCount: 0 };
+                if (!gradeAuditMap[normG]) {
+                    gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
                 }
-                if (!gradeAuditMap[subjGrade].missingSubjects.includes(subjName)) {
-                    gradeAuditMap[subjGrade].missingSubjects.push(subjName);
+                if (!gradeAuditMap[normG].missingSubjects.includes(subjName)) {
+                    gradeAuditMap[normG].missingSubjects.push(subjName);
                 }
             }
         });
@@ -172,7 +189,7 @@ async function processSystemTimetable() {
             gradeAuditMap: gradeAuditMap
         };
 
-        // Scheduling Matrix Setup
+        // Matrix Containers
         const teacherConflictMatrix = {};
         const sectionConflictMatrix = {};
         const roomConflictMatrix = {};    
@@ -246,7 +263,7 @@ async function processSystemTimetable() {
                             day: day,
                             time: currentTime,
                             room: availableRoom,
-                            gradeLevel: sectionGrade
+                            gradeLevel: normalizeGradeLevelName(sectionGrade)
                         });
 
                         break;
@@ -275,13 +292,12 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
     directoryPanel.style.marginTop = "20px";
     container.appendChild(directoryPanel);
 
-    // Calculate total missing subjects across all grades
     let totalMissingSubjectsCount = 0;
     Object.values(auditSummary.gradeAuditMap).forEach(g => {
         totalMissingSubjectsCount += g.missingSubjects.length;
     });
 
-    // --- COMPACT & COLLAPSIBLE AUDIT CARD ---
+    // --- COMPACT AUDIT CARD ---
     const summaryCard = document.createElement("div");
     summaryCard.style.cssText = "background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(0, 210, 255, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 25px;";
 
@@ -327,7 +343,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
             <div style="display: flex; flex-direction: column; gap: 12px;">
     `;
 
-    Object.keys(auditSummary.gradeAuditMap).forEach(grade => {
+    Object.keys(auditSummary.gradeAuditMap).sort().forEach(grade => {
         const item = auditSummary.gradeAuditMap[grade];
         if (item.missingSubjects.length > 0 || item.teacherCount === 0) {
             auditHTML += `
@@ -341,11 +357,11 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
                         </a>
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
-                        ${item.missingSubjects.map(subj => `
+                        ${item.missingSubjects.length > 0 ? item.missingSubjects.map(subj => `
                             <span style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 0.78rem;">
                                 📚 ${subj}
                             </span>
-                        `).join('')}
+                        `).join('') : '<span style="color: #94a3b8; font-size: 0.8rem;">No subjects registered yet</span>'}
                     </div>
                 </div>
             `;
@@ -360,7 +376,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
     summaryCard.innerHTML = auditHTML;
     directoryPanel.appendChild(summaryCard);
 
-    // Global toggle helper function attached to window
     window.toggleAuditView = function() {
         const detailsDiv = document.getElementById("grade-level-audit-details");
         const btn = document.getElementById("toggle-audit-btn");
@@ -380,10 +395,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
         const item = teacherSchedulesMap[teacherName];
         if (!item.slots || item.slots.length === 0) continue;
 
-        const teacherPref = item.details.targetGrade || "Grade 8";
-        const primaryGradeKey = teacherPref.includes("Junior High School") 
-            ? teacherPref 
-            : `Junior High School - ${teacherPref}`;
+        const primaryGradeKey = normalizeGradeLevelName(item.details.targetGrade || "Grade 8");
 
         if (!gradeLevelTeacherMap[primaryGradeKey]) {
             gradeLevelTeacherMap[primaryGradeKey] = {};
