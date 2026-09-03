@@ -1,7 +1,7 @@
 /**
- * Advanced Automated Timetable Generator (Strict Conflict Detection Architecture)
- * Renders an isolated Master Directory List view of teachers with a targeted drill-down schedule viewer.
- * Retains comprehensive, scannable system diagnostics logs block above the workflow board.
+ * Advanced Automated Timetable Generator
+ * Restores System Diagnostics Logs to inform administrators about teacher availability,
+ * subject deficits, and unscheduled time slots.
  */
 
 // Helper for safely parsing JSON/arrays
@@ -19,7 +19,7 @@ function safeParseArray(val) {
     return [];
 }
 
-// Extract numeric grade (e.g. "Grade 8" -> "8", "Junior High School - Grade 8" -> "8")
+// Extract numeric grade
 function extractGradeNumber(str) {
     if (!str) return "";
     const match = str.toString().match(/\d+/);
@@ -27,7 +27,7 @@ function extractGradeNumber(str) {
 }
 
 async function processSystemTimetable() {
-    console.log("⚡ Generating Synchronized 8-Period Student Timetable Matrix with Directory & Diagnostics...");
+    console.log("⚡ Generating Synchronized Timetable Matrix with Diagnostics...");
    
     const tableBody = document.getElementById("timetable-matrix-output-body");
     const container = tableBody
@@ -41,7 +41,7 @@ async function processSystemTimetable() {
 
     container.innerHTML = `
         <div id="engine-processing-status" style="text-align: center; color: #00d2ff; font-weight: bold; padding: 40px; font-size: 1.1rem;">
-            🔄 Composing Strict Subject-Teacher Constraints & Building Distributed Calendar Grids...
+            🔄 Composing Strict Subject-Teacher Constraints & Running Diagnostics...
         </div>
     `;
 
@@ -53,7 +53,7 @@ async function processSystemTimetable() {
     if (!token) {
         container.innerHTML = `
             <div style="text-align: center; color: #ff5f5f; padding: 40px; border: 1px solid rgba(255,95,95,0.2); border-radius: 8px;">
-                ⚠️ Authentication Failure: Security token missing or expired. Please sign out and log back in.
+                ⚠️ Authentication Failure: Security token missing or expired.
             </div>
         `;
         return;
@@ -71,7 +71,7 @@ async function processSystemTimetable() {
         ]);
 
         if (!teachersResponse.ok || !subjectsResponse.ok || !roomsResponse.ok || !sectionsResponse.ok) {
-            throw new Error(`API Database Synchronization Failed with Status Code: ${teachersResponse.status}`);
+            throw new Error(`API Synchronization Failed with Status Code: ${teachersResponse.status}`);
         }
 
         const rawTeachersData = await teachersResponse.json();
@@ -101,22 +101,6 @@ async function processSystemTimetable() {
             });
         }
 
-        let missingTabs = [];
-        if (rawTeachers.length === 0) missingTabs.push("Teachers 👤");
-        if (normalizedSubjects.length === 0) missingTabs.push("Subjects 📚");
-        if (savedRooms.length === 0) missingTabs.push("Rooms 🏠");
-        if (savedSections.length === 0) missingTabs.push("Sections 📅");
-
-        if (missingTabs.length > 0) {
-            container.innerHTML = `
-                <div style="text-align: center; color: #ff5f5f; padding: 40px; border: 1px solid rgba(255,95,95,0.2); border-radius: 8px;">
-                    ⚠️ Generation Suspended: Missing database targets for: <strong style="color: #fff;">${missingTabs.join(', ')}</strong>.<br><br>
-                    <span style="color: #a0a0c0; font-size: 0.9rem;">Make sure you have added entries in all tabs before running the engine.</span>
-                </div>
-            `;
-            return;
-        }
-
         const daySlots = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         const timeSlots = [
             "07:30 AM - 08:30 AM",
@@ -135,6 +119,7 @@ async function processSystemTimetable() {
         const subjectPerDayTracker = {};  
         const lastAssignedTracker = {};
        
+        // RESTORED DIAGNOSTICS LOG ARRAY
         const systemDiagnosticsLogs = [];
         const teacherSchedulesMap = {};
 
@@ -142,7 +127,6 @@ async function processSystemTimetable() {
             const firstName = t.firstName || t.first_name || "Instructor";
             const lastName = t.lastName || t.last_name || "";
             const fullName = (t.name || t.fullName || `${firstName} ${lastName}`).trim();
-           
             const subjects = safeParseArray(t.subjects || t.subject_list || t.subject);
             const workDays = safeParseArray(t.workDays || t.work_days);
             const targetGrade = t.target_grade || t.targetGrade || t.gradeLevel || "Grade 8";
@@ -163,12 +147,21 @@ async function processSystemTimetable() {
             };
         });
 
-        // --- SCHEDULING LOOP WITH AUTOMATIC FALLBACK RESOLUTION ---
+        // Check if there are teachers assigned to work on each day
+        daySlots.forEach(day => {
+            const teachersOnDay = normalizedTeachers.filter(t => 
+                t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim())
+            );
+            if (teachersOnDay.length === 0) {
+                systemDiagnosticsLogs.push(`🚨 Teacher Shortage: No teachers are scheduled to work on [${day}].`);
+            }
+        });
+
+        // Core Scheduling Engine Loop
         for (const section of savedSections) {
             const sectionGrade = section.grade_level || section.target_grade || section.gradeLevel || "Grade 8";
             const sectionGradeNum = extractGradeNumber(sectionGrade);
 
-            // Determine Section Subjects (Fallback: extract subjects taught by teachers targeting this section's grade)
             let sectionSubjects = safeParseArray(section.subjects || section.subject_list);
             
             if (sectionSubjects.length === 0) {
@@ -176,11 +169,9 @@ async function processSystemTimetable() {
                     const tGradeNum = extractGradeNumber(t.targetGrade);
                     return !sectionGradeNum || !tGradeNum || tGradeNum === sectionGradeNum;
                 });
-
                 sectionSubjects = [...new Set(gradeTeachers.flatMap(t => t.subjects))];
             }
 
-            // Fallback to all normalized subjects if still empty
             if (sectionSubjects.length === 0) {
                 sectionSubjects = normalizedSubjects.map(s => typeof s === 'string' ? s : s.name);
             }
@@ -202,18 +193,16 @@ async function processSystemTimetable() {
                     for (const subjectName of sectionSubjects) {
                         const cleanSubjectName = typeof subjectName === 'string' ? subjectName.trim() : subjectName.name.trim();
 
-                        // Check if subject was already taught to this section today
                         const dailySubjectKey = `${section.name}-${day}-${cleanSubjectName.toLowerCase()}`;
                         if (subjectPerDayTracker[dailySubjectKey]) continue;
 
-                        // Check fatigue constraint
                         const fatigueSectionKey = `${section.name}-${day}`;
                         const lastSessionData = lastAssignedTracker[fatigueSectionKey];
                         if (lastSessionData && lastSessionData.subject.toLowerCase() === cleanSubjectName.toLowerCase()) {
                             continue;
                         }
 
-                        // Match qualified & available teacher
+                        // Qualified Teacher Matching
                         let teacherToUse = normalizedTeachers.find(t => {
                             const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === cleanSubjectName.toLowerCase());
                             const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
@@ -228,7 +217,7 @@ async function processSystemTimetable() {
                             return conductsSubject && worksThisDay && !isTeacherBusy && isGradeMatch && !hasFatigue;
                         });
 
-                        // Relaxation fallback: ignore fatigue if no teacher was found
+                        // Fallback: relax fatigue constraint
                         if (!teacherToUse) {
                             teacherToUse = normalizedTeachers.find(t => {
                                 const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === cleanSubjectName.toLowerCase());
@@ -238,7 +227,14 @@ async function processSystemTimetable() {
                             });
                         }
 
-                        if (!teacherToUse) continue;
+                        if (!teacherToUse) {
+                            // Log why this subject couldn't be assigned
+                            const availableForSubject = normalizedTeachers.filter(t => t.subjects.some(s => s.toLowerCase().trim() === cleanSubjectName.toLowerCase()));
+                            if (availableForSubject.length === 0) {
+                                systemDiagnosticsLogs.push(`📚 Missing Subject Teacher: No teachers are assigned to teach [${cleanSubjectName}] for [${section.name}].`);
+                            }
+                            continue;
+                        }
 
                         // Room Assignment
                         let availableRoom = null;
@@ -250,14 +246,16 @@ async function processSystemTimetable() {
                             }
                         }
 
-                        // Fallback room if explicit room list is exhausted
                         if (!availableRoom && savedRooms.length > 0) {
                             availableRoom = savedRooms[0].name;
                         }
 
-                        if (!availableRoom) continue;
+                        if (!availableRoom) {
+                            systemDiagnosticsLogs.push(`🏠 Room Shortage: No free rooms on [${day}] at [${currentTime}] for [${section.name}].`);
+                            continue;
+                        }
 
-                        // Book slots
+                        // Book schedule slot
                         const teacherFullName = teacherToUse.fullName;
                         const finalTeacherKey = `${teacherFullName}-${day}-${currentTime}`;
                         const finalRoomKey = `${availableRoom}-${day}-${currentTime}`;
@@ -287,37 +285,23 @@ async function processSystemTimetable() {
 
                         dailyFilledCount++;
                         slotAssigned = true;
-                        break; // Move to next time slot once booked
+                        break;
                     }
                 }
 
                 if (dailyFilledCount < timeSlots.length) {
-                    systemDiagnosticsLogs.push(`⚠️ Quota Deficit: Section [${section.name}] has only ${dailyFilledCount}/${timeSlots.length} subjects on [${day}].`);
+                    systemDiagnosticsLogs.push(`⚠️ Quota Deficit: Section [${section.name}] has only ${dailyFilledCount}/${timeSlots.length} periods scheduled on [${day}].`);
                 }
             }
         }
 
         renderSearchableDirectoryDashboard(container, teacherSchedulesMap, daySlots, timeSlots, systemDiagnosticsLogs);
 
-        try {
-            console.log("💾 Automatically committing computed timetables over old server targets...");
-            await fetch(`${baseOrigin}/api/admin/schedules/save-bulk`, {
-                method: "POST",
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ schedules: teacherSchedulesMap })
-            });
-        } catch (saveErr) {
-            console.error("Failed to background-commit timetable to server storage file:", saveErr);
-        }
-
     } catch (err) {
         console.error("Critical matrix application failure:", err);
         container.innerHTML = `
             <div style="text-align: center; color: #ff5f5f; padding: 40px;">
-                ⚠️ Connection Error: Failed to secure teacher metrics from your database server. (${err.message})
+                ⚠️ Connection Error: Failed to secure teacher metrics from server. (${err.message})
             </div>
         `;
     }
@@ -329,26 +313,23 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
     const directoryPanel = document.createElement("div");
     directoryPanel.id = "engine-directory-panel-view";
    
-    const scheduleViewerPanel = document.createElement("div");
-    scheduleViewerPanel.id = "engine-schedule-viewer-panel";
-    scheduleViewerPanel.style.display = "none";
-
     container.appendChild(directoryPanel);
-    container.appendChild(scheduleViewerPanel);
 
+    // --- RESTORED DIAGNOSTICS LOG PANEL ---
     if (diagnosticsLogs && diagnosticsLogs.length > 0) {
+        const uniqueLogs = [...new Set(diagnosticsLogs)]; // Remove duplicate messages
         const diagPanel = document.createElement("div");
         diagPanel.className = "system-diagnostics-card";
         diagPanel.style.cssText = "background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 10px; padding: 16px; margin-bottom: 25px;";
        
         let logsHTML = `
             <h4 style="color: #ef4444; margin: 0 0 10px 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                ⚠️ Timetable Engine Quota Diagnostics (${diagnosticsLogs.length})
+                ⚠️ Timetable Engine Quota Diagnostics (${uniqueLogs.length} Issues Found)
             </h4>
-            <div style="max-height: 140px; overflow-y: auto; font-size: 0.88rem; color: #fca5a5; line-height: 1.6; display: flex; flex-direction: column; gap: 6px; padding-right: 5px;">
+            <div style="max-height: 180px; overflow-y: auto; font-size: 0.88rem; color: #fca5a5; line-height: 1.6; display: flex; flex-direction: column; gap: 6px; padding-right: 5px;">
         `;
        
-        diagnosticsLogs.forEach(log => {
+        uniqueLogs.forEach(log => {
             logsHTML += `<div style="background: rgba(0,0,0,0.2); padding: 6px 12px; border-radius: 6px; border-left: 3px solid #ef4444;">${log}</div>`;
         });
        
@@ -357,16 +338,14 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         directoryPanel.appendChild(diagPanel);
     }
 
-    // --- DIRECTORY GROUPING BY TEACHER GRADE CHOICE ---
+    // --- RENDER TEACHER DIRECTORIES BELOW ---
     const gradeLevelTeacherMap = {};
 
     for (const teacherName in teacherSchedulesMap) {
         const item = teacherSchedulesMap[teacherName];
-        
-        const totalScheduledClasses = item.slots ? item.slots.length : 0;
-        if (totalScheduledClasses === 0) continue;
+        if (!item.slots || item.slots.length === 0) continue;
 
-        const teacherPref = item.details.targetGrade || item.details.target_grade || "Grade 8";
+        const teacherPref = item.details.targetGrade || "Grade 8";
         const primaryGradeKey = teacherPref.includes("Junior High School") 
             ? teacherPref 
             : `Junior High School - ${teacherPref}`;
@@ -387,7 +366,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
             </h4>
             <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 0.85rem;">Instructors are grouped below by their umbrella grade levels.</p>
         </div>
-        <input type="text" id="directory-search-bar" placeholder="🔍 Search teacher or subject..." style="background: rgba(30, 41, 59, 0.9); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; width: 300px; outline: none;">
     `;
     directoryPanel.appendChild(filterHeaderBox);
 
@@ -397,20 +375,10 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
 
     const sortedGrades = Object.keys(gradeLevelTeacherMap).sort();
 
-    if (sortedGrades.length === 0) {
-        gradeCardsContainer.innerHTML = `
-            <div style="text-align: center; color: #64748b; padding: 40px; font-style: italic; background: rgba(15,23,42,0.3); border-radius: 12px;">
-                ⚠️ No active schedules assigned to any grade level.
-            </div>
-        `;
-        return;
-    }
-
     sortedGrades.forEach(gradeName => {
         const teachersInGrade = gradeLevelTeacherMap[gradeName];
 
         const gradeBox = document.createElement("div");
-        gradeBox.className = "grade-level-card-box";
         gradeBox.style.cssText = "background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px;";
 
         let boxHTML = `
@@ -418,7 +386,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
                 <h3 style="color: #00d2ff; margin: 0; font-size: 1.15rem; font-weight: bold;">
                     📁 ${gradeName}
                 </h3>
-                <span style="background: rgba(0,210,255,0.1); color: #00d2ff; font-size: 0.8rem; font-weight: bold; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(0,210,255,0.2);">
+                <span style="background: rgba(0,210,255,0.1); color: #00d2ff; font-size: 0.8rem; font-weight: bold; padding: 4px 12px; border-radius: 20px;">
                     ${Object.keys(teachersInGrade).length} Teachers Assigned
                 </span>
             </div>
@@ -430,9 +398,9 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
             const subjects = teacherObj.details.subjects || [];
 
             boxHTML += `
-                <div class="teacher-item-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 12px 18px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 12px 18px; border-radius: 8px;">
                     <div style="display: flex; align-items: center; gap: 14px;">
-                        <span style="background: rgba(0,210,255,0.1); color: #00d2ff; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">👤</span>
+                        <span style="color: #00d2ff;">👤</span>
                         <div>
                             <div style="color: #ffffff; font-weight: bold;">${teacherName}</div>
                             <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
@@ -440,11 +408,9 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
                             </div>
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 16px;">
-                        <span style="background: rgba(16, 185, 129, 0.1); color: #34d399; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 12px;">
-                            ${teacherObj.slots.length} Classes
-                        </span>
-                    </div>
+                    <span style="background: rgba(16, 185, 129, 0.1); color: #34d399; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 12px;">
+                        ${teacherObj.slots.length} Classes
+                    </span>
                 </div>
             `;
         }
@@ -453,7 +419,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         gradeBox.innerHTML = boxHTML;
         gradeCardsContainer.appendChild(gradeBox);
     });
-
 
     // 5. Search Bar Handler
     const searchBar = document.getElementById("directory-search-bar");
