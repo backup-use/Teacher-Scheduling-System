@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-    // 🖨️ DESIGN OVERRIDES: OVERALL SCREEN PADDING, LARGE FONTS & + BUTTON INTERACTION
+    // Dynamic Print & View Styles for Official Teacher Attendance / Schedule
     if (!document.getElementById("print-isolated-matrix-rules")) {
         const printStyles = document.createElement("style");
         printStyles.id = "print-isolated-matrix-rules";
@@ -42,392 +42,226 @@ document.addEventListener('DOMContentLoaded', () => {
             /* --- SCREEN VIEW RULES --- */
             #timetable-container table {
                 width: 100% !important;
-                border-collapse: separate !important;
-                border-spacing: 6px !important; 
-                font-weight: bold !important; /* Ginawang BOLD ang lahat ng text sa table */
+                border-collapse: collapse !important;
+                font-family: 'Arial', 'Helvetica', sans-serif !important;
+                border: 2px solid #1e293b !important;
+                background: #ffffff !important;
             }
 
-            #timetable-container table tbody tr {
-                display: table-row !important; 
-                visibility: visible !important;
+            #timetable-container table th {
+                background-color: #1e293b !important;
+                color: #ffffff !important;
+                text-transform: uppercase;
+                font-size: 0.85rem !important;
+                padding: 12px 8px !important;
+                letter-spacing: 0.5px;
+                border: 1px solid #334155 !important;
             }
 
-            #timetable-container table tbody td {
-                padding: 4px !important; 
-                height: 90px !important; 
+            #timetable-container table td {
+                border: 1px solid #cbd5e1 !important;
+                padding: 6px !important; 
+                height: 75px !important; 
                 vertical-align: middle !important;
                 text-align: center !important;
                 box-sizing: border-box;
-                display: table-cell !important; 
-                visibility: visible !important;
             }
-            
-            #timetable-container table tbody td .cell-content-wrapper {
-                width: 100% !important;
-                height: 100% !important;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                box-sizing: border-box;
-                padding: 10px !important; 
-                font-size: 0.82rem;
-                line-height: 1.35;
-                font-weight: bold !important; /* Siguradong BOLD ang wrapper contents */
+
+            .time-cell {
+                font-weight: 700 !important;
+                color: #0f172a !important;
+                font-size: 0.8rem !important;
+                background-color: #f8fafc !important;
             }
 
             .schedule-card {
-                padding: 12px !important; 
-                border-radius: 8px !important;
-                font-weight: bold !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                background-color: #eff6ff !important;
+                border: 1px solid #bfdbfe !important;
+                border-radius: 4px !important;
+                padding: 6px !important;
+                height: 100% !important;
             }
 
-            /* Standard vacant cell wrapper view style */
+            .schedule-card strong {
+                color: #1e3a8a !important;
+                font-size: 0.85rem !important;
+                font-weight: 800 !important;
+            }
+
+            .schedule-card span {
+                color: #1e40af !important;
+                font-size: 0.72rem !important;
+                font-weight: 600 !important;
+            }
+
             .vacant-cell-fill {
-                background-color: #f8fafc !important; 
-                color: #64748b !important;            
-                font-style: italic;
-                padding: 14px !important;
-                border-radius: 8px !important;
-                border: 1px dashed #cbd5e1 !important; /* Broken border line default */
-                position: relative !important;
-                overflow: hidden;
+                background-color: #ffffff !important;
+                color: #94a3b8 !important;
+                font-size: 0.75rem !important;
+                position: relative;
             }
 
-            /* BAGO: Tatanggalin ang broken border at babaguhin ang background kapag may note na */
-            .vacant-cell-fill.has-note {
-                border: none !important; 
-                background-color: #ffffff !important; /* Ginawang malinis na solid white background */
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; /* Opsyonal na pampaganda ng card */
+            .vacant-text {
+                display: none !important; /* Hide casual '-- Vacant --' text for formal look */
             }
 
-            /* Ang Interactive "+" Plus sign button profile */
             .add-note-btn {
                 position: absolute !important;
                 bottom: 4px !important;
                 right: 4px !important;
-                width: 22px !important;
-                height: 22px !important;
-                border-radius: 50% !important;
-                background: #334155 !important; 
+                width: 18px !important;
+                height: 18px !important;
+                border-radius: 3px !important;
+                background: #64748b !important; 
                 border: none !important;
                 color: #ffffff !important;      
-                font-size: 0.8rem !important;
-                font-weight: bold !important;
+                font-size: 0.7rem !important;
                 cursor: pointer !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                transition: all 0.2s ease-in-out !important;
-                opacity: 0; 
-            }
-
-            /* Lilitaw ang button kapag itinapat ang mouse cursor sa cell block */
-            .vacant-cell-fill:hover .add-note-btn {
-                opacity: 1 !important;
-                background: #00bcd4 !important; 
-                color: #000000 !important;
-                transform: scale(1.1);
-            }
-
-            /* Ang anyo ng isinulat na personal note sa screen table view */
-            .saved-cell-note {
-                font-family: 'Inter', sans-serif !important;
-                font-size: 0.85rem !important;      
-                color: #000000 !important;          
-                font-weight: 700 !important;        /* Garantisadong makapal/bold */
-                margin-top: 4px !important;
-                font-style: normal !important;
-                max-width: 100% !important;
-                width: 100% !important;
-                white-space: normal !important;     
-                overflow: visible !important;
-                text-overflow: clip !important;
-                text-align: center !important;
-                display: block !important;
-            }
-            
-
-            /* --- POP-UP MODAL OVERLAY BACKGROUND --- */
-            .vacant-modal-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                background: rgba(15, 23, 42, 0.75);
-                backdrop-filter: blur(4px);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 99999;
                 opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.25s ease;
             }
 
-            .vacant-modal-overlay.modal-active {
-                opacity: 1;
-                pointer-events: auto;
+            .vacant-cell-fill:hover .add-note-btn { opacity: 1 !important; }
+
+            .saved-cell-note {
+                font-size: 0.75rem !important;
+                color: #334155 !important;
+                font-style: italic !important;
+                font-weight: 600 !important;
             }
 
-            .vacant-modal-content {
-                background: #1e293b; 
-                border: 1px solid #334155;
-                padding: 24px;
-                border-radius: 12px;
-                width: 90%;
-                max-width: 420px;
-                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-                font-family: 'Poppins', sans-serif;
-                color: #ffffff;
-                text-align: left;
-            }
-
-            .vacant-modal-content h3 {
-                margin: 0 0 6px 0;
-                font-size: 1.15rem;
-                color: #f8fafc;
-                font-weight: 600;
-            }
-
-            .modal-subtitle {
-                margin: 0 0 14px 0;
-                font-size: 0.8rem;
-                color: #94a3b8;
-            }
-
-            #modal-note-textarea {
-                width: 100%;
-                height: 100px;
-                background: #0f172a;
-                border: 1px solid #475569;
-                border-radius: 6px;
-                padding: 10px;
-                color: #ffffff;
-                font-size: 0.85rem;
-                resize: none;
-                box-sizing: border-box;
-                margin-bottom: 16px;
-                font-family: 'Inter', sans-serif;
-            }
-
-            #modal-note-textarea:focus {
-                outline: none;
-                border-color: #00bcd4;
-            }
-
-            .modal-actions-row {
-                display: flex;
-                justify-content: flex-end;
-                gap: 10px;
-            }
-
-            .modal-actions-row button {
-                padding: 8px 16px;
-                font-size: 0.82rem;
-                font-weight: 600;
-                border-radius: 6px;
-                cursor: pointer;
-                border: none;
-                transition: background 0.15s ease;
-                font-family: 'Poppins', sans-serif;
-            }
-
-            #modal-cancel-btn {
-                background: #334155;
-                color: #cbd5e1;
-            }
-
-            #modal-cancel-btn:hover {
-                background: #475569;
-            }
-
-            #modal-save-btn {
-                background: #00bcd4;
-                color: #000000;
-            }
-
-            #modal-save-btn:hover {
-                background: #00acc1;
-            }
-
-            /* --- PRINT VIEW CONFIGURATION --- */
+            /* --- FORMAL OFFICIAL PRINT & PDF EXPORT --- */
             @media print {
                 html, body {
                     background: #ffffff !important;
-                    background-color: #ffffff !important;
                     color: #000000 !important;
                     margin: 0 !important;
                     padding: 0 !important;
-                    overflow: hidden !important; 
-                    height: auto !important;
+                    font-family: 'Times New Roman', Times, serif, sans-serif !important;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
 
                 header, nav, .sidebar, .sidebar-wrapper, .nav-container, 
-                button, .btn, .print-actions, .isolated-action-routing-header, 
-                #btn-logout, .btn-group, .timetable-controls button,
-                .timetable-card p, .main-content p, .add-note-btn, .vacant-modal-overlay {
+                button, .btn, .print-actions, #btn-logout, .add-note-btn, 
+                .vacant-modal-overlay, .timetable-card p {
                     display: none !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    height: 0 !important;
-                    width: 0 !important;
-                }
-                
-                .main-content, .dashboard-card-panel, .timetable-card, .timetable-wrapper, #timetable-container {
-                    background: transparent !important; 
-                    background-color: transparent !important;
-                    color: #000000 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    border: none !important; 
-                    outline: none !important;
-                    box-shadow: none !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    transform: none !important;
-                    font-family: 'Poppins', 'Inter', sans-serif !important;
-                    overflow: visible !important; 
                 }
 
                 @page {
                     size: letter landscape;
-                    margin: 4mm 4mm 4mm 4mm; 
+                    margin: 12mm 10mm 10mm 10mm;
                 }
 
-                h1, h2, h3, .timetable-controls {
-                    display: block !important;
-                    visibility: visible !important;
+                /* Official School Document Header */
+                #instructor-title {
+                    text-transform: capitalize !important;
+                    font-size: 1.4rem !important;
+                    font-weight: bold !important;
+                    text-align: left !important;
                     color: #000000 !important;
                     margin: 0 0 4px 0 !important;
-                    padding: 0 0 0 4px !important; 
-                    text-align: left !important;
-                    font-family: 'Poppins', sans-serif !important;
+                    border-bottom: 2px solid #000000 !important;
+                    padding-bottom: 4px !important;
                 }
 
-                h1 {
-                    font-size: 1.85rem !important; 
-                    font-weight: 800 !important;
-                    text-transform: capitalize !important;
-                    line-height: 1.1 !important;
-                    letter-spacing: -0.02em !important;
-                }
-
-                h1::after {
-                    content: "\\A Date Exported: ${formattedDate}";
-                    display: block !important;
+                #instructor-title::before {
+                    content: "FACULTY OFFICIAL CLASS SCHEDULE & LOAD\\A";
                     white-space: pre !important;
-                    font-family: 'Inter', sans-serif !important;
-                    font-size: 1.0rem !important; 
-                    color: #1e293b !important; 
-                    font-weight: bold !important; 
-                    margin-top: 6px !important;
-                    margin-bottom: 14px !important;
+                    font-size: 0.9rem !important;
+                    letter-spacing: 1px !important;
+                    color: #333333 !important;
+                    display: block !important;
+                    margin-bottom: 2px !important;
                 }
 
-                table, th, td {
-                    border: 1.5px solid #000000 !important; 
-                    font-family: 'Poppins', 'Inter', sans-serif !important;
-                    font-weight: bold !important; /* Lahat Bold sa Print window */
+                #instructor-title::after {
+                    content: "Academic Year: 2026-2027   |   Date Generated: ${formattedDate}   |   Status: Verified";
+                    display: block !important;
+                    font-size: 0.8rem !important;
+                    font-weight: normal !important;
+                    color: #444444 !important;
+                    margin-top: 4px !important;
                 }
-                
-                table { 
-                    display: table !important; 
-                    width: 99% !important; 
-                    margin-left: auto !important;
-                    margin-right: auto !important;
-                    table-layout: fixed !important; 
-                    border-collapse: collapse !important; 
+
+                .main-content, .dashboard-card-panel, .timetable-card, #timetable-container {
                     background: #ffffff !important;
-                    margin-top: 2px !important; 
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    width: 100% !important;
                 }
 
-                table tbody tr {
-                    display: table-row !important; 
+                table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                    border: 2px solid #000000 !important;
+                    margin-top: 10px !important;
                 }
 
-                th { 
-                    background: #e2e8f0 !important; 
-                    color: #000000 !important; 
-                    padding: 8px 2px !important; 
-                    font-size: 0.88rem !important; 
+                th {
+                    background-color: #0f172a !important;
+                    color: #ffffff !important;
+                    padding: 8px 4px !important;
+                    font-size: 0.8rem !important;
                     font-weight: bold !important;
+                    text-transform: uppercase !important;
+                    border: 1px solid #000000 !important;
+                }
+
+                td {
+                    border: 1px solid #000000 !important;
+                    height: 55px !important;
+                    padding: 4px !important;
+                    text-align: center !important;
+                    vertical-align: middle !important;
                 }
 
                 .time-cell {
-                    background: #f1f5f9 !important;
-                    font-size: 0.82rem !important; 
+                    background-color: #f1f5f9 !important;
+                    font-size: 0.75rem !important;
                     font-weight: bold !important;
                     color: #000000 !important;
-                    padding: 6px 2px !important;
-                    display: table-cell !important;
                 }
 
-                #timetable-container table tbody td {
-                    height: auto !important; 
+                .schedule-card {
+                    background-color: transparent !important;
+                    border: none !important;
                     padding: 0 !important;
-                    display: table-cell !important; 
                 }
 
-                #timetable-container table tbody td .cell-content-wrapper {
-                    padding: 6px 3px !important; 
-                    font-size: 0.82rem !important; 
-                    line-height: 1.25 !important;
-                    color: #000000 !important;
-                    font-weight: bold !important;
-                }
-
-                #timetable-container table tbody td .cell-content-wrapper strong {
-                    font-size: 0.94rem !important; 
+                .schedule-card strong {
+                    font-size: 0.85rem !important;
                     font-weight: 900 !important;
                     color: #000000 !important;
-                    display: block;
-                    margin-bottom: 2px;
+                    display: block !important;
                 }
 
-                #timetable-container table tbody td .cell-content-wrapper span {
-                    color: #000000 !important;
+                .schedule-card span {
+                    font-size: 0.72rem !important;
                     font-weight: 700 !important;
+                    color: #1e293b !important;
+                    display: block !important;
                 }
 
                 .vacant-cell-fill {
-                    background: #fafafa !important;
-                    color: #f0f0ff !important;
-                    font-size: 0.80rem !important; 
-                    font-style: italic !important;
-                    font-weight: 500 !important;
-                    border-radius: 0px !important;
-                    padding: 6px 3px !important;
+                    background-color: #ffffff !important;
+                    border: none !important;
                 }
 
-                /* Alisin ang border sa print layout kung may note */
-                .vacant-cell-fill.has-note {
-                    border: none !important;
+                .vacant-text {
+                    display: none !important;
                 }
 
                 .saved-cell-note {
                     color: #000000 !important;
-                    font-size: 0.74rem !important;
+                    font-size: 0.72rem !important;
                     font-style: italic !important;
-                    white-space: normal !important;
-                    overflow: visible !important;
-                    text-overflow: clip !important;
-                    font-weight: bold !important;
-                }
-
-                .card-math { background-color: #fefae0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .card-science { background-color: #e8f5e9 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .card-default { background-color: #eff6ff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-
-                .schedule-card {
-                    border-radius: 0px !important;
-                    color: #000000 !important;
-                    box-shadow: none !important;
-                    padding: 6px 3px !important;
-                    font-weight: bold !important;
+                    font-weight: 600 !important;
                 }
             }
         `;
