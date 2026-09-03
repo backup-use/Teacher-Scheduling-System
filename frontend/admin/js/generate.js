@@ -19,6 +19,13 @@ function safeParseArray(val) {
     return [];
 }
 
+// Extract numeric grade (e.g. "Grade 8" -> "8", "Junior High School - Grade 8" -> "8")
+function extractGradeNumber(str) {
+    if (!str) return "";
+    const match = str.toString().match(/\d+/);
+    return match ? match[0] : str.toString().toLowerCase().trim();
+}
+
 async function processSystemTimetable() {
     console.log("⚡ Generating Synchronized 8-Period Student Timetable Matrix with Directory & Diagnostics...");
    
@@ -158,39 +165,48 @@ async function processSystemTimetable() {
 
         const validSubjectsToSchedule = normalizedSubjects;
 
-        // --- SCHEDULING LOOP WITH STRICT GRADE CONSTRAINTS ---
+        // --- SCHEDULING LOOP WITH STRICT GRADE & CONFLICT CHECKS ---
         for (const section of savedSections) {
             const sectionGrade = section.grade_level || section.target_grade || section.gradeLevel;
+            const sectionGradeNum = extractGradeNumber(sectionGrade);
 
             for (const day of daySlots) {
                 let dailyFilledCount = 0;
 
                 for (let timeIndex = 0; timeIndex < timeSlots.length; timeIndex++) {
                     const currentTime = timeSlots[timeIndex];
+                    const sectionSlotKey = `${section.name}-${day}-${currentTime}`;
+
+                    // Skip if section is already busy in this time slot
+                    if (sectionConflictMatrix[sectionSlotKey]) {
+                        dailyFilledCount++;
+                        continue;
+                    }
 
                     for (const subjectObj of validSubjectsToSchedule) {
                         const subjectName = typeof subjectObj === 'string' ? subjectObj : subjectObj.name;
 
+                        // Check if subject was already taught to this section today
                         const dailySubjectKey = `${section.name}-${day}-${subjectName.toLowerCase()}`;
                         if (subjectPerDayTracker[dailySubjectKey]) continue;
 
+                        // Check teacher fatigue (avoid back-to-back same subject)
                         const fatigueSectionKey = `${section.name}-${day}`;
                         const lastSessionData = lastAssignedTracker[fatigueSectionKey];
                         if (lastSessionData && lastSessionData.subject.toLowerCase() === subjectName.toLowerCase()) {
                             continue;
                         }
 
-                        // Strictly require teacher's designated target grade to match the section's grade
+                        // Strictly match teacher grade and subject qualifications
                         let teacherToUse = normalizedTeachers.find(t => {
-                            const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
-                            const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
+                            const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === subjectName.toLowerCase().trim());
+                            const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
                             const teacherKey = `${t.fullName}-${day}-${currentTime}`;
                             const isTeacherBusy = teacherConflictMatrix[teacherKey];
 
-                            // Strict Grade Matching
-                            const targetGradeClean = (t.targetGrade || "").toString().toLowerCase().replace(/grade\s*/g, '').trim();
-                            const sectionGradeClean = (sectionGrade || "").toString().toLowerCase().replace(/grade\s*/g, '').trim();
-                            const isExactGradeMatch = sectionGrade ? (targetGradeClean === sectionGradeClean) : true;
+                            // Dynamic grade matching (handles "Grade 8" vs "Junior High School - Grade 8")
+                            const teacherGradeNum = extractGradeNumber(t.targetGrade);
+                            const isExactGradeMatch = !sectionGradeNum || !teacherGradeNum || (teacherGradeNum === sectionGradeNum);
 
                             let hasFatigue = false;
                             if (lastSessionData && lastSessionData.teacher === t.fullName) {
@@ -202,6 +218,7 @@ async function processSystemTimetable() {
 
                         if (!teacherToUse) continue;
 
+                        // Check room availability
                         let availableRoom = null;
                         for (const room of savedRooms) {
                             const roomKey = `${room.name}-${day}-${currentTime}`;
@@ -213,13 +230,13 @@ async function processSystemTimetable() {
 
                         if (!availableRoom) continue;
 
+                        // Record booking across matrices
                         const teacherFullName = teacherToUse.fullName;
                         const finalTeacherKey = `${teacherFullName}-${day}-${currentTime}`;
-                        const finalSectionKey = `${section.name}-${day}-${currentTime}`;
                         const finalRoomKey = `${availableRoom}-${day}-${currentTime}`;
 
                         teacherConflictMatrix[finalTeacherKey] = true;
-                        sectionConflictMatrix[finalSectionKey] = true;
+                        sectionConflictMatrix[sectionSlotKey] = true;
                         roomConflictMatrix[finalRoomKey] = true;
                         subjectPerDayTracker[dailySubjectKey] = true;
 
@@ -242,7 +259,7 @@ async function processSystemTimetable() {
                         });
 
                         dailyFilledCount++;
-                        break;
+                        break; // Move to next time slot once successfully booked
                     }
                 }
 
@@ -312,13 +329,13 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         directoryPanel.appendChild(diagPanel);
     }
 
-    // --- DIRECTORY GROUPING BY TEACHER GRADE CHOICE (FILTERING INCOMPLETE / 0-CLASS TEACHERS) ---
+    // --- DIRECTORY GROUPING BY TEACHER GRADE CHOICE ---
     const gradeLevelTeacherMap = {};
 
     for (const teacherName in teacherSchedulesMap) {
         const item = teacherSchedulesMap[teacherName];
         
-        // Hide teachers with 0 scheduled classes to avoid showing incomplete grade directories
+        // Hide teachers with 0 scheduled classes
         const totalScheduledClasses = item.slots ? item.slots.length : 0;
         if (totalScheduledClasses === 0) continue;
 
@@ -409,6 +426,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         gradeBox.innerHTML = boxHTML;
         gradeCardsContainer.appendChild(gradeBox);
     });
+
 
 
 
