@@ -48,7 +48,6 @@ async function processSystemTimetable() {
         </div>
     `;
 
-    // FIX FOR 403 FORBIDDEN: Fallback check across common token keys in localStorage
     const token = localStorage.getItem('token') || 
                   localStorage.getItem('jwt') || 
                   localStorage.getItem('authToken') || 
@@ -89,7 +88,6 @@ async function processSystemTimetable() {
         const savedRooms = Array.isArray(savedRoomsData) ? savedRoomsData : (savedRoomsData.rooms || savedRoomsData.data || []);
         const savedSections = Array.isArray(savedSectionsData) ? savedSectionsData : (savedSectionsData.sections || savedSectionsData.data || []);
 
-        // Grouped Subject Normalizer
         let normalizedSubjects = [];
         if (Array.isArray(rawSubjectsData)) {
             normalizedSubjects = rawSubjectsData.map(s => typeof s === 'string' ? { name: s, gradeLevel: "General" } : s);
@@ -124,20 +122,18 @@ async function processSystemTimetable() {
             return;
         }
 
-        // Time slot & day configuration
         const daySlots = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
         const timeSlots = [
-            "07:30 AM - 08:30 AM", // Period 1
-            "08:30 AM - 09:30 AM", // Period 2
-            "09:30 AM - 10:30 AM", // Period 3
-            "10:30 AM - 11:30 AM", // Period 4
-            "01:00 PM - 02:00 PM", // Period 5
-            "02:00 PM - 03:00 PM", // Period 6
-            "03:00 PM - 04:00 PM", // Period 7
-            "04:00 PM - 05:00 PM"  // Period 8
+            "07:30 AM - 08:30 AM",
+            "08:30 AM - 09:30 AM",
+            "09:30 AM - 10:30 AM",
+            "10:30 AM - 11:30 AM",
+            "01:00 PM - 02:00 PM",
+            "02:00 PM - 03:00 PM",
+            "03:00 PM - 04:00 PM",
+            "04:00 PM - 05:00 PM"
         ];
 
-        // Conflict registries
         const teacherConflictMatrix = {};
         const sectionConflictMatrix = {};
         const roomConflictMatrix = {};    
@@ -147,7 +143,7 @@ async function processSystemTimetable() {
         const systemDiagnosticsLogs = [];
         const teacherSchedulesMap = {};
 
-        // Normalize raw teacher data structures
+        // Normalize raw teacher data with explicit preferred target grade
         const normalizedTeachers = rawTeachers.map(t => {
             const firstName = t.firstName || t.first_name || "Instructor";
             const lastName = t.lastName || t.last_name || "";
@@ -155,11 +151,13 @@ async function processSystemTimetable() {
            
             const subjects = safeParseArray(t.subjects || t.subject_list);
             const workDays = safeParseArray(t.workDays || t.work_days);
+            const targetGrade = t.target_grade || t.targetGrade || t.gradeLevel || "Grade 8";
 
             return {
                 ...t,
                 fullName,
                 subjects,
+                targetGrade,
                 workDays: workDays.length > 0 ? workDays : daySlots
             };
         });
@@ -171,69 +169,19 @@ async function processSystemTimetable() {
             };
         });
 
-        // Dynamic Sub-Grade Level Resolution Engine
-        const gradeLevelStatus = {};
+        const validSubjectsToSchedule = normalizedSubjects;
 
-        normalizedSubjects.forEach(s => {
-            let rawGrade = s.gradeLevel || "General";
-           
-            if (rawGrade === "Junior High School") {
-                const matchedGrade = s.name.match(/Grade\s*(7|8|9|10)/i);
-                if (matchedGrade) {
-                    s.specificGrade = `Junior High School - Grade ${matchedGrade[1]}`;
-                } else {
-                    s.specificGrade = "Junior High School (General)";
-                }
-            } else {
-                s.specificGrade = rawGrade;
-            }
+        // Count teachers per preferred target grade to check saturation
+        const preferredGradeCounts = {};
+        normalizedTeachers.forEach(t => {
+            const g = t.targetGrade;
+            preferredGradeCounts[g] = (preferredGradeCounts[g] || 0) + 1;
         });
 
-        const distinctGradeLevels = [...new Set(normalizedSubjects.map(s => s.specificGrade))];
-
-        distinctGradeLevels.forEach(grade => {
-            const subjectsInGrade = normalizedSubjects.filter(s => s.specificGrade === grade);
-            const missingTeacherSubjects = [];
-
-            subjectsInGrade.forEach(subj => {
-                const subjName = typeof subj === 'string' ? subj : subj.name;
-                const hasTeacher = normalizedTeachers.some(t => {
-                    return t.subjects.some(s => s.toLowerCase() === subjName.toLowerCase());
-                });
-
-                if (!hasTeacher) {
-                    missingTeacherSubjects.push(subjName);
-                }
-            });
-
-            if (missingTeacherSubjects.length > 0) {
-                gradeLevelStatus[grade] = { ready: false, missing: missingTeacherSubjects };
-                systemDiagnosticsLogs.push(
-                    `⛔ [${grade}] Skipped (Incomplete Teachers): Missing teacher for [${missingTeacherSubjects.join(', ')}]`
-                );
-            } else {
-                gradeLevelStatus[grade] = { ready: true, missing: [] };
-                systemDiagnosticsLogs.push(`✅ [${grade}] Teacher Coverage Complete: Ready for scheduling.`);
-            }
-        });
-
-        const validSubjectsToSchedule = normalizedSubjects.filter(s => {
-            const grade = s.gradeLevel || "General";
-            return gradeLevelStatus[grade] && gradeLevelStatus[grade].ready;
-        });
-
-        if (validSubjectsToSchedule.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; color: #ff5f5f; padding: 40px; border: 1px solid rgba(255,95,95,0.2); border-radius: 8px;">
-                    ⚠️ Generation Halted: No Grade Level has complete teacher coverage.<br><br>
-                    <span style="color: #a0a0c0; font-size: 0.9rem;">Please assign teachers to all subjects in at least one Grade Level.</span>
-                </div>
-            `;
-            return;
-        }
-
-        // 3. Automated Runtime Scheduling Parser Engine
+        // 3. Automated Priority-First & Fallback Reallocation Engine
         for (const section of savedSections) {
+            const sectionGrade = section.grade_level || section.target_grade || section.gradeLevel;
+
             for (const day of daySlots) {
                 let dailyFilledCount = 0;
 
@@ -252,28 +200,44 @@ async function processSystemTimetable() {
                             continue;
                         }
 
-                        const eligibleTeacher = normalizedTeachers.find(t => {
+                        // Helper filter for candidate validation
+                        const filterTeacher = (t) => {
                             const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
                             const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
-                           
                             const teacherKey = `${t.fullName}-${day}-${currentTime}`;
                             const isTeacherBusy = teacherConflictMatrix[teacherKey];
 
-                            let hasTeacherFatigue = false;
+                            let hasFatigue = false;
                             if (lastSessionData && lastSessionData.teacher === t.fullName) {
-                                hasTeacherFatigue = true;
+                                hasFatigue = true;
                             }
 
-                            return conductsSubject && worksThisDay && !isTeacherBusy && !hasTeacherFatigue;
+                            return conductsSubject && worksThisDay && !isTeacherBusy && !hasFatigue;
+                        };
+
+                        // PRIORITY 1: Teacher who MATCHES the section/target grade level
+                        let teacherToUse = normalizedTeachers.find(t => {
+                            const gradeMatch = sectionGrade ? t.targetGrade.toLowerCase() === sectionGrade.toLowerCase() : true;
+                            return gradeMatch && filterTeacher(t);
                         });
 
-                        let teacherToUse = eligibleTeacher;
+                        // FALLBACK 1: Relax fatigue check for exact grade match
                         if (!teacherToUse) {
                             teacherToUse = normalizedTeachers.find(t => {
+                                const gradeMatch = sectionGrade ? t.targetGrade.toLowerCase() === sectionGrade.toLowerCase() : true;
                                 const conductsSubject = t.subjects.some(s => s.toLowerCase() === subjectName.toLowerCase());
                                 const worksThisDay = t.workDays.some(d => d.toLowerCase() === day.toLowerCase());
                                 const teacherKey = `${t.fullName}-${day}-${currentTime}`;
-                                return conductsSubject && worksThisDay && !teacherConflictMatrix[teacherKey];
+                                return gradeMatch && conductsSubject && worksThisDay && !teacherConflictMatrix[teacherKey];
+                            });
+                        }
+
+                        // FALLBACK 2: OVERFLOW REALLOCATION
+                        // If no exact match is found, pull an available teacher from a saturated grade cohort
+                        if (!teacherToUse) {
+                            teacherToUse = normalizedTeachers.find(t => {
+                                const isSaturatedCohort = preferredGradeCounts[t.targetGrade] >= 2;
+                                return isSaturatedCohort && filterTeacher(t);
                             });
                         }
 
@@ -305,12 +269,18 @@ async function processSystemTimetable() {
                             subject: subjectName
                         };
 
+                        // Determine assigned grade label
+                        const assignedGradeLabel = sectionGrade 
+                            ? (sectionGrade.includes("Grade") ? `Junior High School - ${sectionGrade}` : sectionGrade)
+                            : `Junior High School - ${teacherToUse.targetGrade}`;
+
                         teacherSchedulesMap[teacherFullName].slots.push({
                             subject: subjectName,
                             section: section.name,
                             day: day,
                             time: currentTime,
-                            room: availableRoom
+                            room: availableRoom,
+                            gradeLevel: assignedGradeLabel
                         });
 
                         dailyFilledCount++;
@@ -329,7 +299,7 @@ async function processSystemTimetable() {
         // Commit engine results
         try {
             console.log("💾 Automatically committing computed timetables over old server targets...");
-            const saveResponse = await fetch(`${baseOrigin}/api/admin/schedules/save-bulk`, {
+            await fetch(`${baseOrigin}/api/admin/schedules/save-bulk`, {
                 method: "POST",
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -337,13 +307,6 @@ async function processSystemTimetable() {
                 },
                 body: JSON.stringify({ schedules: teacherSchedulesMap })
             });
-
-            const saveData = await saveResponse.json();
-            if (!saveResponse.ok) {
-                console.error("Save warning:", saveData.error);
-            } else {
-                console.log("🎉 Success! Real-time optimization matrix permanently written to server database file.");
-            }
         } catch (saveErr) {
             console.error("Failed to background-commit timetable to server storage file:", saveErr);
         }
@@ -359,7 +322,7 @@ async function processSystemTimetable() {
 }
 
 /**
- * Builds a Grade-Level Card Dashboard compressing all sections under their parent Grade Level.
+ * Renders Teacher Directory Grouped Strictly by Preferred / Assigned Grade Level
  */
 function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, daySlots, timeSlots, diagnosticsLogs) {
     container.innerHTML = "";
@@ -374,7 +337,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
     container.appendChild(directoryPanel);
     container.appendChild(scheduleViewerPanel);
 
-    // 1. Render Diagnostics Header
+    // 1. Diagnostics Header
     if (diagnosticsLogs && diagnosticsLogs.length > 0) {
         const diagPanel = document.createElement("div");
         diagPanel.className = "system-diagnostics-card";
@@ -396,40 +359,31 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         directoryPanel.appendChild(diagPanel);
     }
 
-    // 2. Map Teachers strictly to Official Grade Levels (matching subject catalog logic)
+    // 2. Directory Grouping based on explicitly assigned grade or teacher preference
     const gradeLevelTeacherMap = {};
 
     for (const teacherName in teacherSchedulesMap) {
         const item = teacherSchedulesMap[teacherName];
-        if (!item.slots || item.slots.length === 0) continue;
+        const teacherPref = item.details.targetGrade || item.details.target_grade || "Grade 8";
+        
+        let primaryGradeKey = teacherPref.includes("Junior High School") 
+            ? teacherPref 
+            : `Junior High School - ${teacherPref}`;
 
-        item.slots.forEach(slot => {
-            // Priority 1: Check if slot has an attached grade level
-            // Priority 2: Extract "Grade X" pattern
-            // Priority 3: Default to General Grade Category
-            let gradeKey = slot.gradeLevel || slot.grade_level;
+        // If teacher has assigned slots, check if they were assigned to an actual section grade
+        if (item.slots && item.slots.length > 0) {
+            const slotGrade = item.slots[0].gradeLevel;
+            if (slotGrade) primaryGradeKey = slotGrade;
+        }
 
-            if (!gradeKey) {
-                const match = slot.section ? slot.section.match(/Grade\s*\d+/i) : null;
-                gradeKey = match ? `Junior High School - ${match[0]}` : "Junior High School - Grade 7"; // Standard catalog fallback
-            }
+        if (!gradeLevelTeacherMap[primaryGradeKey]) {
+            gradeLevelTeacherMap[primaryGradeKey] = {};
+        }
 
-            if (!gradeLevelTeacherMap[gradeKey]) {
-                gradeLevelTeacherMap[gradeKey] = {};
-            }
-
-            if (!gradeLevelTeacherMap[gradeKey][teacherName]) {
-                gradeLevelTeacherMap[gradeKey][teacherName] = {
-                    details: item.details,
-                    slots: []
-                };
-            }
-
-            gradeLevelTeacherMap[gradeKey][teacherName].slots.push(slot);
-        });
+        gradeLevelTeacherMap[primaryGradeKey][teacherName] = item;
     }
 
-    // 3. Search and Header Bar
+    // 3. Search and Header Box
     const filterHeaderBox = document.createElement("div");
     filterHeaderBox.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 12px; background: rgba(15,23,42,0.4); padding: 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);";
     filterHeaderBox.innerHTML = `
@@ -458,7 +412,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         return;
     }
 
-    // 4. Render Compressed Grade Level Boxes (📁 Folder-style like Manage Subjects)
+    // 4. Render Directory Folder Cards
     sortedGrades.forEach(gradeName => {
         const teachersInGrade = gradeLevelTeacherMap[gradeName];
 
@@ -514,6 +468,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         gradeBox.innerHTML = boxHTML;
         gradeCardsContainer.appendChild(gradeBox);
     });
+}
 
     // 5. Search Bar Handler
     const searchBar = document.getElementById("directory-search-bar");
