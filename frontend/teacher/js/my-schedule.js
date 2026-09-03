@@ -11,19 +11,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Set page title header dynamically
-    const instructorTitle = document.getElementById('instructor-title');
-    if (instructorTitle) {
-        instructorTitle.textContent = `Instructor: ${userName}`;
-    }
+    document.getElementById('instructor-title').textContent = `Instructor: ${userName}`;
 
-    // Generate dynamic date string
+    // Generate dynamic date string (e.g., "May 22, 2026")
     const formattedDate = new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
     });
 
-    // Standard operational system hours grid matrix
+    // Define standard operational system hours grid matrix
     const standardTimeSlots = [
         "07:30 AM to 08:30 AM",
         "08:30 AM to 09:30 AM",
@@ -37,20 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-    // Helper function to prevent XSS injection from saved notes
-    function escapeHTML(str) {
-        return str.replace(/[&<>'"]/g, 
-            tag => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                "'": '&#39;',
-                '"': '&quot;'
-            }[tag] || tag)
-        );
-    }
-
-    // Dynamic Print & View Styles
+    // 🖨️ DESIGN OVERRIDES: OVERALL SCREEN PADDING, LARGE FONTS & + BUTTON INTERACTION
     if (!document.getElementById("print-isolated-matrix-rules")) {
         const printStyles = document.createElement("style");
         printStyles.id = "print-isolated-matrix-rules";
@@ -60,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 width: 100% !important;
                 border-collapse: separate !important;
                 border-spacing: 6px !important; 
-                font-weight: bold !important;
+                font-weight: bold !important; /* Ginawang BOLD ang lahat ng text sa table */
             }
 
             #timetable-container table tbody tr {
@@ -89,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 padding: 10px !important; 
                 font-size: 0.82rem;
                 line-height: 1.35;
-                font-weight: bold !important;
+                font-weight: bold !important; /* Siguradong BOLD ang wrapper contents */
             }
 
             .schedule-card {
@@ -98,23 +82,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 font-weight: bold !important;
             }
 
+            /* Standard vacant cell wrapper view style */
             .vacant-cell-fill {
                 background-color: #f8fafc !important; 
                 color: #64748b !important;            
                 font-style: italic;
                 padding: 14px !important;
                 border-radius: 8px !important;
-                border: 1px dashed #cbd5e1 !important;
+                border: 1px dashed #cbd5e1 !important; /* Broken border line default */
                 position: relative !important;
                 overflow: hidden;
             }
 
+            /* BAGO: Tatanggalin ang broken border at babaguhin ang background kapag may note na */
             .vacant-cell-fill.has-note {
                 border: none !important; 
-                background-color: #ffffff !important; 
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; 
+                background-color: #ffffff !important; /* Ginawang malinis na solid white background */
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; /* Opsyonal na pampaganda ng card */
             }
 
+            /* Ang Interactive "+" Plus sign button profile */
             .add-note-btn {
                 position: absolute !important;
                 bottom: 4px !important;
@@ -135,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 opacity: 0; 
             }
 
+            /* Lilitaw ang button kapag itinapat ang mouse cursor sa cell block */
             .vacant-cell-fill:hover .add-note-btn {
                 opacity: 1 !important;
                 background: #00bcd4 !important; 
@@ -142,11 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 transform: scale(1.1);
             }
 
+            /* Ang anyo ng isinulat na personal note sa screen table view */
             .saved-cell-note {
                 font-family: 'Inter', sans-serif !important;
                 font-size: 0.85rem !important;      
                 color: #000000 !important;          
-                font-weight: 700 !important;
+                font-weight: 700 !important;        /* Garantisadong makapal/bold */
                 margin-top: 4px !important;
                 font-style: normal !important;
                 max-width: 100% !important;
@@ -157,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 text-align: center !important;
                 display: block !important;
             }
+            
 
             /* --- POP-UP MODAL OVERLAY BACKGROUND --- */
             .vacant-modal-overlay {
@@ -341,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 table, th, td {
                     border: 1.5px solid #000000 !important; 
                     font-family: 'Poppins', 'Inter', sans-serif !important;
-                    font-weight: bold !important;
+                    font-weight: bold !important; /* Lahat Bold sa Print window */
                 }
                 
                 table { 
@@ -413,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     padding: 6px 3px !important;
                 }
 
+                /* Alisin ang border sa print layout kung may note */
                 .vacant-cell-fill.has-note {
                     border: none !important;
                 }
@@ -443,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.head.appendChild(printStyles);
     }
 
-    // Modal Injection
+    // Initialize English HTML Modal into DOM if it doesn't exist
     if (!document.getElementById("vacant-note-modal")) {
         const modalHTML = `
             <div id="vacant-note-modal" class="vacant-modal-overlay">
@@ -516,8 +507,6 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             const tbody = document.getElementById('timetable-rows');
-            if (!tbody) return;
-            
             tbody.innerHTML = ''; 
 
             standardTimeSlots.forEach(timeSlot => {
@@ -537,9 +526,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
 
                     if (matchingMatch) {
-                        const upperSubject = escapeHTML(matchingMatch.subject ? matchingMatch.subject.toUpperCase() : '');
-                        const upperSection = escapeHTML(matchingMatch.section ? matchingMatch.section.toUpperCase() : 'N/A');
-                        const upperRoom = escapeHTML(matchingMatch.room ? matchingMatch.room.toUpperCase() : 'N/A');
+                        const upperSubject = matchingMatch.subject ? matchingMatch.subject.toUpperCase() : '';
+                        const upperSection = matchingMatch.section ? matchingMatch.section.toUpperCase() : 'N/A';
+                        const upperRoom = matchingMatch.room ? matchingMatch.room.toUpperCase() : 'N/A';
 
                         td.innerHTML = `
                             <div class="cell-content-wrapper">
@@ -553,13 +542,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         const storageKey = `note_${userName}_${day}_${timeSlot}`;
                         const savedNote = localStorage.getItem(storageKey) || "";
-                        const sanitizedNote = escapeHTML(savedNote);
                         
-                        const cellMarkup = sanitizedNote 
-                            ? `<div class="saved-cell-note">${sanitizedNote}</div>`
+                        const cellMarkup = savedNote 
+                            ? `<div class="saved-cell-note">${savedNote}</div>`
                             : `<span class="vacant-text">-- Vacant --</span>`;
 
-                        const extraClass = sanitizedNote ? 'has-note' : '';
+                        // DITO BINAGO: Magdadagdag ng class na 'has-note' kapag may naisave na note ang user
+                        const extraClass = savedNote ? 'has-note' : '';
 
                         td.innerHTML = `
                             <div class="cell-content-wrapper vacant-cell-fill ${extraClass}">
@@ -576,11 +565,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Error drawing operational grid matrix:', error);
-            const tbody = document.getElementById('timetable-rows');
-            if (tbody) {
-                tbody.innerHTML = 
-                    `<tr><td colspan="7" style="color:#ff5252; padding:2rem;">⚠️ Failed to parse matching timetable database grids.</td></tr>`;
-            }
+            document.getElementById('timetable-rows').innerHTML = 
+                `<tr><td colspan="7" style="color:#ff5252; padding:2rem;">⚠️ Failed to parse matching timetable database grids.</td></tr>`;
         }
     }
 
