@@ -141,9 +141,9 @@ async function processSystemTimetable() {
         const normalizedTeachers = rawTeachers.map(t => {
             const firstName = t.firstName || t.first_name || "Instructor";
             const lastName = t.lastName || t.last_name || "";
-            const fullName = `${firstName} ${lastName}`.trim();
+            const fullName = (t.name || t.fullName || `${firstName} ${lastName}`).trim();
            
-            const subjects = safeParseArray(t.subjects || t.subject_list);
+            const subjects = safeParseArray(t.subjects || t.subject_list || t.subject);
             const workDays = safeParseArray(t.workDays || t.work_days);
             const targetGrade = t.target_grade || t.targetGrade || t.gradeLevel || "Grade 8";
 
@@ -163,12 +163,27 @@ async function processSystemTimetable() {
             };
         });
 
-        const validSubjectsToSchedule = normalizedSubjects;
-
-        // --- SCHEDULING LOOP WITH STRICT GRADE & CONFLICT CHECKS ---
+        // --- SCHEDULING LOOP WITH AUTOMATIC FALLBACK RESOLUTION ---
         for (const section of savedSections) {
-            const sectionGrade = section.grade_level || section.target_grade || section.gradeLevel;
+            const sectionGrade = section.grade_level || section.target_grade || section.gradeLevel || "Grade 8";
             const sectionGradeNum = extractGradeNumber(sectionGrade);
+
+            // Determine Section Subjects (Fallback: extract subjects taught by teachers targeting this section's grade)
+            let sectionSubjects = safeParseArray(section.subjects || section.subject_list);
+            
+            if (sectionSubjects.length === 0) {
+                const gradeTeachers = normalizedTeachers.filter(t => {
+                    const tGradeNum = extractGradeNumber(t.targetGrade);
+                    return !sectionGradeNum || !tGradeNum || tGradeNum === sectionGradeNum;
+                });
+
+                sectionSubjects = [...new Set(gradeTeachers.flatMap(t => t.subjects))];
+            }
+
+            // Fallback to all normalized subjects if still empty
+            if (sectionSubjects.length === 0) {
+                sectionSubjects = normalizedSubjects.map(s => typeof s === 'string' ? s : s.name);
+            }
 
             for (const day of daySlots) {
                 let dailyFilledCount = 0;
@@ -177,48 +192,55 @@ async function processSystemTimetable() {
                     const currentTime = timeSlots[timeIndex];
                     const sectionSlotKey = `${section.name}-${day}-${currentTime}`;
 
-                    // Skip if section is already busy in this time slot
                     if (sectionConflictMatrix[sectionSlotKey]) {
                         dailyFilledCount++;
                         continue;
                     }
 
-                    for (const subjectObj of validSubjectsToSchedule) {
-                        const subjectName = typeof subjectObj === 'string' ? subjectObj : subjectObj.name;
+                    let slotAssigned = false;
+
+                    for (const subjectName of sectionSubjects) {
+                        const cleanSubjectName = typeof subjectName === 'string' ? subjectName.trim() : subjectName.name.trim();
 
                         // Check if subject was already taught to this section today
-                        const dailySubjectKey = `${section.name}-${day}-${subjectName.toLowerCase()}`;
+                        const dailySubjectKey = `${section.name}-${day}-${cleanSubjectName.toLowerCase()}`;
                         if (subjectPerDayTracker[dailySubjectKey]) continue;
 
-                        // Check teacher fatigue (avoid back-to-back same subject)
+                        // Check fatigue constraint
                         const fatigueSectionKey = `${section.name}-${day}`;
                         const lastSessionData = lastAssignedTracker[fatigueSectionKey];
-                        if (lastSessionData && lastSessionData.subject.toLowerCase() === subjectName.toLowerCase()) {
+                        if (lastSessionData && lastSessionData.subject.toLowerCase() === cleanSubjectName.toLowerCase()) {
                             continue;
                         }
 
-                        // Strictly match teacher grade and subject qualifications
+                        // Match qualified & available teacher
                         let teacherToUse = normalizedTeachers.find(t => {
-                            const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === subjectName.toLowerCase().trim());
+                            const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === cleanSubjectName.toLowerCase());
                             const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
                             const teacherKey = `${t.fullName}-${day}-${currentTime}`;
                             const isTeacherBusy = teacherConflictMatrix[teacherKey];
 
-                            // Dynamic grade matching (handles "Grade 8" vs "Junior High School - Grade 8")
                             const teacherGradeNum = extractGradeNumber(t.targetGrade);
-                            const isExactGradeMatch = !sectionGradeNum || !teacherGradeNum || (teacherGradeNum === sectionGradeNum);
+                            const isGradeMatch = !sectionGradeNum || !teacherGradeNum || (teacherGradeNum === sectionGradeNum);
 
-                            let hasFatigue = false;
-                            if (lastSessionData && lastSessionData.teacher === t.fullName) {
-                                hasFatigue = true;
-                            }
+                            let hasFatigue = lastSessionData && lastSessionData.teacher === t.fullName;
 
-                            return isExactGradeMatch && conductsSubject && worksThisDay && !isTeacherBusy && !hasFatigue;
+                            return conductsSubject && worksThisDay && !isTeacherBusy && isGradeMatch && !hasFatigue;
                         });
+
+                        // Relaxation fallback: ignore fatigue if no teacher was found
+                        if (!teacherToUse) {
+                            teacherToUse = normalizedTeachers.find(t => {
+                                const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === cleanSubjectName.toLowerCase());
+                                const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
+                                const teacherKey = `${t.fullName}-${day}-${currentTime}`;
+                                return conductsSubject && worksThisDay && !teacherConflictMatrix[teacherKey];
+                            });
+                        }
 
                         if (!teacherToUse) continue;
 
-                        // Check room availability
+                        // Room Assignment
                         let availableRoom = null;
                         for (const room of savedRooms) {
                             const roomKey = `${room.name}-${day}-${currentTime}`;
@@ -228,9 +250,14 @@ async function processSystemTimetable() {
                             }
                         }
 
+                        // Fallback room if explicit room list is exhausted
+                        if (!availableRoom && savedRooms.length > 0) {
+                            availableRoom = savedRooms[0].name;
+                        }
+
                         if (!availableRoom) continue;
 
-                        // Record booking across matrices
+                        // Book slots
                         const teacherFullName = teacherToUse.fullName;
                         const finalTeacherKey = `${teacherFullName}-${day}-${currentTime}`;
                         const finalRoomKey = `${availableRoom}-${day}-${currentTime}`;
@@ -242,7 +269,7 @@ async function processSystemTimetable() {
 
                         lastAssignedTracker[fatigueSectionKey] = {
                             teacher: teacherFullName,
-                            subject: subjectName
+                            subject: cleanSubjectName
                         };
 
                         const assignedGradeLabel = teacherToUse.targetGrade.includes("Junior High School") 
@@ -250,7 +277,7 @@ async function processSystemTimetable() {
                             : `Junior High School - ${teacherToUse.targetGrade}`;
 
                         teacherSchedulesMap[teacherFullName].slots.push({
-                            subject: subjectName,
+                            subject: cleanSubjectName,
                             section: section.name,
                             day: day,
                             time: currentTime,
@@ -259,7 +286,8 @@ async function processSystemTimetable() {
                         });
 
                         dailyFilledCount++;
-                        break; // Move to next time slot once successfully booked
+                        slotAssigned = true;
+                        break; // Move to next time slot once booked
                     }
                 }
 
@@ -335,7 +363,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
     for (const teacherName in teacherSchedulesMap) {
         const item = teacherSchedulesMap[teacherName];
         
-        // Hide teachers with 0 scheduled classes
         const totalScheduledClasses = item.slots ? item.slots.length : 0;
         if (totalScheduledClasses === 0) continue;
 
@@ -408,7 +435,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
                         <span style="background: rgba(0,210,255,0.1); color: #00d2ff; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">👤</span>
                         <div>
                             <div style="color: #ffffff; font-weight: bold;">${teacherName}</div>
-                            <div style="display: flex; gap: 6px; margin-top: 4px;">
+                            <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
                                 ${subjects.map(s => `<span style="background: rgba(148, 163, 184, 0.12); color: #cbd5e1; font-size: 0.73rem; padding: 2px 7px; border-radius: 4px;">📚 ${s}</span>`).join('')}
                             </div>
                         </div>
@@ -426,8 +453,6 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, dayS
         gradeBox.innerHTML = boxHTML;
         gradeCardsContainer.appendChild(gradeBox);
     });
-
-
 
 
     // 5. Search Bar Handler
