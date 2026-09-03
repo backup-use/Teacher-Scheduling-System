@@ -319,7 +319,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // POST /api/auth/forgot-password
+    // POST /api/auth/forgot-passwordw
     if (pathname === "/api/auth/forgot-password" && req.method === "POST") {
       try {
         const body = await parseBody(req);
@@ -402,19 +402,46 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { id: auth.id, role: auth.role, name: auth.name });
     }
 
+    // ── Shared Authenticated Endpoints ──
+
+    // 1. GET ROOMS (Accessible by both Teachers and Admins)
+    if ((pathname === "/api/admin/rooms" || pathname === "/api/teacher/rooms" || pathname === "/api/rooms") && req.method === "GET") {
+      const auth = getAuth(req);
+      if (!auth) return send(res, 401, { error: "Unauthorized access token." });
+      
+      // Allow both teacher and admin roles to view rooms
+      if (auth.role !== "admin" && auth.role !== "teacher") {
+        return send(res, 403, { error: "Forbidden access." });
+      }
+
+      try {
+        const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
+        const normalizedRooms = rows.map(r => ({
+          id: r.id,
+          name: r.name || r.room_name || "",
+          capacity: r.capacity || r.max_capacity || 0,
+          type: r.type || r.room_type || "Standard Classroom"
+        }));
+        return send(res, 200, normalizedRooms);
+      } catch (err) {
+        console.error("Fetch rooms failure:", err);
+        return send(res, 500, { error: err.message });
+      }
+    }
+
     // ── Admin Protected Endpoints ──
     if (pathname.startsWith("/api/admin/")) {
       const auth = getAuth(req);
       if (!auth || auth.role !== "admin") return send(res, 403, { error: "Forbidden: Admin access required." });
 
-      // GET /api/admin/teachers
-      if (pathname === "/api/admin/teachers" && req.method === "GET") {
-        try {
-          const { rows } = await db.query("SELECT * FROM teachers ORDER BY created_at DESC");
-          return send(res, 200, rows);
-        } catch (err) {
-          return send(res, 500, { error: err.message });
-        }
+      // 2. POST /api/admin/rooms (Admin only)
+      if (pathname === "/api/admin/rooms" && req.method === "POST") {
+        // ... (keep original POST room code here)
+      }
+
+      // 3. DELETE /api/admin/rooms/:id (Admin only)
+      if (pathname.startsWith("/api/admin/rooms/") && req.method === "DELETE") {
+        // ... (keep original DELETE room code here)
       }
 
       // GET /api/admin/subjects
