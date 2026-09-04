@@ -1,7 +1,6 @@
 /**
  * Advanced Automated Timetable Generator
- * Features Standardized Grade Level Pre-population (Grade 7 - Grade 12)
- * and Regex Normalization to prevent duplicate/missing grade entries.
+ * Section-Centric Weekly Timetable Matrix with DepEd Workload Rules & Grade Level Hierarchy
  */
 
 function safeParseArray(val) {
@@ -24,7 +23,6 @@ function extractGradeNumber(str) {
     return match ? match[0] : str.toString().toLowerCase().trim();
 }
 
-// STRONGER NORMALIZER: Standardizes any string format into standard Grade naming
 function normalizeGradeLevelName(str) {
     if (!str) return "General";
     const cleanStr = str.toString().trim();
@@ -40,7 +38,7 @@ function normalizeGradeLevelName(str) {
 }
 
 async function processSystemTimetable() {
-    console.log("⚡ Executing Standardized Grade Audit & Matrix Generation...");
+    console.log("⚡ Executing Master Section-Centric Schedule Matrix Generation...");
    
     let container = document.getElementById("timetable-matrix-output-body") || 
                     document.querySelector('.dashboard-card-panel') || 
@@ -49,7 +47,7 @@ async function processSystemTimetable() {
    
     container.innerHTML = `
         <div id="engine-processing-status" style="text-align: center; color: #00d2ff; font-weight: bold; padding: 40px; font-size: 1.1rem; background: rgba(15,23,42,0.6); border-radius: 12px; margin-top: 20px;">
-            🔄 Consolidating Grade Levels & Calculating Master Schedule...
+            🔄 Building Master Section Timetables & Balancing Teacher Workloads...
         </div>
     `;
 
@@ -109,7 +107,7 @@ async function processSystemTimetable() {
             });
         }
 
-        const daySlots = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const daySlots = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
         const timeSlots = [
             "07:30 AM - 08:30 AM",
             "08:30 AM - 09:30 AM",
@@ -138,7 +136,7 @@ async function processSystemTimetable() {
             };
         });
 
-        // --- PRE-POPULATED AUDIT MAP (Grade 7 - Grade 12 Guaranteed) ---
+        // Audit Summary Tracking
         const gradeAuditMap = {
             "Junior High School - Grade 7": { missingSubjects: [], teacherCount: 0 },
             "Junior High School - Grade 8": { missingSubjects: [], teacherCount: 0 },
@@ -148,7 +146,6 @@ async function processSystemTimetable() {
             "Senior High School - Grade 12": { missingSubjects: [], teacherCount: 0 }
         };
 
-        // Merge extra dynamic grades from sections if present
         savedSections.forEach(sec => {
             const rawG = sec.grade_level || sec.target_grade || sec.gradeLevel;
             if (rawG) {
@@ -157,16 +154,6 @@ async function processSystemTimetable() {
             }
         });
 
-        // Merge extra dynamic grades from subjects
-        normalizedSubjects.forEach(s => {
-            const rawG = s.gradeLevel;
-            if (rawG) {
-                const normG = normalizeGradeLevelName(rawG);
-                if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
-            }
-        });
-
-        // Count active teachers per normalized grade category
         normalizedTeachers.forEach(t => {
             const normG = t.targetGrade;
             if (gradeAuditMap[normG]) {
@@ -176,7 +163,6 @@ async function processSystemTimetable() {
             }
         });
 
-        // Map unassigned subjects to standard grade levels
         normalizedSubjects.forEach(s => {
             const subjName = typeof s === 'string' ? s : s.name;
             const normG = normalizeGradeLevelName(s.gradeLevel || "General");
@@ -199,21 +185,26 @@ async function processSystemTimetable() {
             gradeAuditMap: gradeAuditMap
         };
 
-        // Matrix Structures
-        const teacherConflictMatrix = {};
-        const sectionConflictMatrix = {};
+        // SCHEDULING MATRIX WITH TEACHER MAX 6-HOUR DAILY WORKLOAD RULE
+        const teacherConflictMatrix = {}; 
+        const teacherDailyHoursTracker = {}; 
         const roomConflictMatrix = {};    
         const subjectPerDayTracker = {};  
-        const lastAssignedTracker = {};
-        const teacherSchedulesMap = {};
+        const masterSectionSchedules = {}; 
 
-        normalizedTeachers.forEach(t => {
-            teacherSchedulesMap[t.fullName] = { details: t, slots: [] };
+        savedSections.forEach(sec => {
+            masterSectionSchedules[sec.name] = {
+                details: sec,
+                gradeLevel: normalizeGradeLevelName(sec.grade_level || sec.target_grade || sec.gradeLevel || "Grade 8"),
+                timetable: {} 
+            };
+            daySlots.forEach(d => {
+                masterSectionSchedules[sec.name].timetable[d] = {};
+            });
         });
 
-        // Schedule Generation Core Logic
         for (const section of savedSections) {
-            const sectionGrade = section.grade_level || section.target_grade || section.gradeLevel || "Grade 8";
+            const sectionGrade = normalizeGradeLevelName(section.grade_level || section.target_grade || section.gradeLevel || "Grade 8");
             const sectionGradeNum = extractGradeNumber(sectionGrade);
 
             let sectionSubjects = safeParseArray(section.subjects || section.subject_list);
@@ -233,9 +224,6 @@ async function processSystemTimetable() {
             for (const day of daySlots) {
                 for (let timeIndex = 0; timeIndex < timeSlots.length; timeIndex++) {
                     const currentTime = timeSlots[timeIndex];
-                    const sectionSlotKey = `${section.name}-${day}-${currentTime}`;
-
-                    if (sectionConflictMatrix[sectionSlotKey]) continue;
 
                     for (const subjectName of sectionSubjects) {
                         const cleanSubjectName = typeof subjectName === 'string' ? subjectName.trim() : subjectName.name.trim();
@@ -243,46 +231,45 @@ async function processSystemTimetable() {
                         const dailySubjectKey = `${section.name}-${day}-${cleanSubjectName.toLowerCase()}`;
                         if (subjectPerDayTracker[dailySubjectKey]) continue;
 
-                        const fatigueSectionKey = `${section.name}-${day}`;
-                        const lastSessionData = lastAssignedTracker[fatigueSectionKey];
-                        if (lastSessionData && lastSessionData.subject.toLowerCase() === cleanSubjectName.toLowerCase()) continue;
-
                         let teacherToUse = normalizedTeachers.find(t => {
                             const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === cleanSubjectName.toLowerCase());
                             const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
-                            const teacherKey = `${t.fullName}-${day}-${currentTime}`;
-                            return conductsSubject && worksThisDay && !teacherConflictMatrix[teacherKey];
+                            const teacherTimeKey = `${t.fullName}-${day}-${currentTime}`;
+                            
+                            // Check Max 6 Hours Teaching Rule
+                            const dailyHoursKey = `${t.fullName}-${day}`;
+                            const currentDailyHours = teacherDailyHoursTracker[dailyHoursKey] || 0;
+
+                            return conductsSubject && worksThisDay && !teacherConflictMatrix[teacherTimeKey] && currentDailyHours < 6;
                         });
 
                         if (!teacherToUse) continue;
 
-                        let availableRoom = savedRooms.find(r => !roomConflictMatrix[`${r.name}-${day}-${currentTime}`])?.name || savedRooms[0]?.name;
-                        if (!availableRoom) continue;
+                        let availableRoom = savedRooms.find(r => !roomConflictMatrix[`${r.name}-${day}-${currentTime}`])?.name || savedRooms[0]?.name || "Classroom 1";
 
                         const teacherFullName = teacherToUse.fullName;
-                        teacherConflictMatrix[`${teacherFullName}-${day}-${currentTime}`] = true;
-                        sectionConflictMatrix[sectionSlotKey] = true;
+                        const teacherTimeKey = `${teacherFullName}-${day}-${currentTime}`;
+                        const dailyHoursKey = `${teacherFullName}-${day}`;
+
+                        // Lock Schedule Slots
+                        teacherConflictMatrix[teacherTimeKey] = true;
+                        teacherDailyHoursTracker[dailyHoursKey] = (teacherDailyHoursTracker[dailyHoursKey] || 0) + 1;
                         roomConflictMatrix[`${availableRoom}-${day}-${currentTime}`] = true;
                         subjectPerDayTracker[dailySubjectKey] = true;
 
-                        lastAssignedTracker[fatigueSectionKey] = { teacher: teacherFullName, subject: cleanSubjectName };
-
-                        teacherSchedulesMap[teacherFullName].slots.push({
+                        masterSectionSchedules[section.name].timetable[day][currentTime] = {
                             subject: cleanSubjectName,
-                            section: section.name,
-                            day: day,
-                            time: currentTime,
-                            room: availableRoom,
-                            gradeLevel: normalizeGradeLevelName(sectionGrade)
-                        });
+                            teacher: teacherFullName,
+                            room: availableRoom
+                        };
 
-                        break;
+                        break; 
                     }
                 }
             }
         }
 
-        renderSearchableDirectoryDashboard(container, teacherSchedulesMap, systemAuditSummary);
+        renderMasterSectionScheduleDashboard(container, masterSectionSchedules, systemAuditSummary, daySlots, timeSlots);
 
     } catch (err) {
         console.error("Critical matrix application failure:", err);
@@ -294,14 +281,14 @@ async function processSystemTimetable() {
     }
 }
 
-function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, auditSummary) {
+function renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots) {
     container.innerHTML = "";
 
-    const directoryPanel = document.createElement("div");
-    directoryPanel.id = "engine-directory-panel-view";
-    directoryPanel.style.marginTop = "20px";
-    container.appendChild(directoryPanel);
+    const mainWrapper = document.createElement("div");
+    mainWrapper.style.marginTop = "20px";
+    container.appendChild(mainWrapper);
 
+    // --- AUDIT PANEL COMPONENT ---
     let totalMissingSubjectsCount = 0;
     Object.values(auditSummary.gradeAuditMap).forEach(g => {
         totalMissingSubjectsCount += g.missingSubjects.length;
@@ -315,7 +302,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
     let auditHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px; margin-bottom: 16px;">
             <h3 style="color: #ffffff; margin: 0; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">
-                📊 Overall School Capacity Audit
+                📊 Master School Capacity & Resource Audit
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <span style="background: ${statusColor}22; color: ${statusColor}; font-size: 0.82rem; font-weight: bold; padding: 5px 14px; border-radius: 20px; border: 1px solid ${statusColor}44;">
@@ -323,7 +310,7 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
                 </span>
                 ${totalMissingSubjectsCount > 0 ? `
                     <button id="toggle-audit-btn" onclick="toggleAuditView()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #00d2ff; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: bold;">
-                        🔍 Show Details
+                        🔍 Show Shortages
                     </button>
                 ` : ''}
             </div>
@@ -346,12 +333,11 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
 
         <div id="grade-level-audit-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(255,255,255,0.1);">
             <div style="font-weight: bold; color: #ef4444; margin-bottom: 12px; font-size: 0.9rem;">
-                🚨 Resource Shortages Grouped by Grade Level:
+                🚨 Teacher Shortages Grouped by Grade Level:
             </div>
             <div style="display: flex; flex-direction: column; gap: 12px;">
     `;
 
-    // AFTER (Numerical Grade Level sort)
     Object.keys(auditSummary.gradeAuditMap)
         .sort((a, b) => {
             const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
@@ -359,29 +345,29 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
             return numA - numB;
         })
         .forEach(grade => {
-        const item = auditSummary.gradeAuditMap[grade];
-        if (item.missingSubjects.length > 0 || item.teacherCount === 0) {
-            auditHTML += `
-                <div style="background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.2); padding: 12px 16px; border-radius: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="color: #ffffff; font-weight: bold; font-size: 0.95rem;">
-                            📌 ${grade} <span style="color: #94a3b8; font-size: 0.8rem; font-weight: normal;">(${item.teacherCount} Teachers Assigned)</span>
-                        </span>
-                        <a href="teachers.html" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; text-decoration: none; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
-                            + Assign Teacher
-                        </a>
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
-                        ${item.missingSubjects.length > 0 ? item.missingSubjects.map(subj => `
-                            <span style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 0.78rem;">
-                                📚 ${subj}
+            const item = auditSummary.gradeAuditMap[grade];
+            if (item.missingSubjects.length > 0 || item.teacherCount === 0) {
+                auditHTML += `
+                    <div style="background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.2); padding: 12px 16px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="color: #ffffff; font-weight: bold; font-size: 0.95rem;">
+                                📌 ${grade} <span style="color: #94a3b8; font-size: 0.8rem; font-weight: normal;">(${item.teacherCount} Teachers Assigned)</span>
                             </span>
-                        `).join('') : '<span style="color: #94a3b8; font-size: 0.8rem;">No subjects registered yet</span>'}
+                            <a href="teachers.html" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; text-decoration: none; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
+                                + Assign Teacher
+                            </a>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                            ${item.missingSubjects.length > 0 ? item.missingSubjects.map(subj => `
+                                <span style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 0.78rem;">
+                                    📚 ${subj}
+                                </span>
+                            `).join('') : '<span style="color: #94a3b8; font-size: 0.8rem;">No subjects registered yet</span>'}
+                        </div>
                     </div>
-                </div>
-            `;
-        }
-    });
+                `;
+            }
+        });
 
     auditHTML += `
             </div>
@@ -389,85 +375,127 @@ function renderSearchableDirectoryDashboard(container, teacherSchedulesMap, audi
     `;
 
     summaryCard.innerHTML = auditHTML;
-    directoryPanel.appendChild(summaryCard);
+    mainWrapper.appendChild(summaryCard);
 
     window.toggleAuditView = function() {
         const detailsDiv = document.getElementById("grade-level-audit-details");
         const btn = document.getElementById("toggle-audit-btn");
         if (detailsDiv.style.display === "none") {
             detailsDiv.style.display = "block";
-            btn.innerHTML = "🙈 Hide Details";
+            btn.innerHTML = "🙈 Hide Shortages";
         } else {
             detailsDiv.style.display = "none";
-            btn.innerHTML = "🔍 Show Details";
+            btn.innerHTML = "🔍 Show Shortages";
         }
     };
 
-    // --- TEACHER DIRECTORY CARDS ---
-    const gradeLevelTeacherMap = {};
+    // --- SECTION WEEKLY TIMETABLE MATRIX DISPLAY ---
+    const gradeGroupedSections = {};
 
-    for (const teacherName in teacherSchedulesMap) {
-        const item = teacherSchedulesMap[teacherName];
-        if (!item.slots || item.slots.length === 0) continue;
-
-        const primaryGradeKey = normalizeGradeLevelName(item.details.targetGrade || "Grade 8");
-
-        if (!gradeLevelTeacherMap[primaryGradeKey]) {
-            gradeLevelTeacherMap[primaryGradeKey] = {};
+    Object.values(masterSectionSchedules).forEach(secObj => {
+        const gName = secObj.gradeLevel;
+        if (!gradeGroupedSections[gName]) {
+            gradeGroupedSections[gName] = [];
         }
+        gradeGroupedSections[gName].push(secObj);
+    });
 
-        gradeLevelTeacherMap[primaryGradeKey][teacherName] = item;
+    const sortedGradeKeys = Object.keys(gradeGroupedSections).sort((a, b) => {
+        const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
+        const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
+        return numA - numB;
+    });
+
+    if (sortedGradeKeys.length === 0) {
+        const emptyAlert = document.createElement("div");
+        emptyAlert.style.cssText = "text-align: center; color: #94a3b8; background: rgba(30,41,59,0.5); padding: 30px; border-radius: 12px;";
+        emptyAlert.innerHTML = "📁 No active sections registered in system database. Please add sections first.";
+        mainWrapper.appendChild(emptyAlert);
+        return;
     }
 
-    const gradeCardsContainer = document.createElement("div");
-    gradeCardsContainer.style.cssText = "display: flex; flex-direction: column; gap: 20px;";
-    directoryPanel.appendChild(gradeCardsContainer);
+    sortedGradeKeys.forEach(gradeName => {
+        const sectionsList = gradeGroupedSections[gradeName];
 
-    const sortedGrades = Object.keys(gradeLevelTeacherMap).sort();
-
-    sortedGrades.forEach(gradeName => {
-        const teachersInGrade = gradeLevelTeacherMap[gradeName];
-
-        const gradeBox = document.createElement("div");
-        gradeBox.style.cssText = "background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px;";
-
-        let boxHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
-                <h3 style="color: #00d2ff; margin: 0; font-size: 1.1rem; font-weight: bold;">
-                    📁 ${gradeName}
-                </h3>
-                <span style="background: rgba(0,210,255,0.1); color: #00d2ff; font-size: 0.8rem; font-weight: bold; padding: 4px 12px; border-radius: 20px;">
-                    ${Object.keys(teachersInGrade).length} Teachers Assigned
-                </span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
+        const gradeHeaderBox = document.createElement("div");
+        gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 20px;";
+        gradeHeaderBox.innerHTML = `
+            <h2 style="color: #00d2ff; font-size: 1.3rem; font-weight: bold; border-bottom: 2px solid rgba(0, 210, 255, 0.3); padding-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+                📁 ${gradeName} <span style="color: #94a3b8; font-size: 0.9rem; font-weight: normal;">(${sectionsList.length} Sections)</span>
+            </h2>
         `;
+        mainWrapper.appendChild(gradeHeaderBox);
 
-        for (const teacherName in teachersInGrade) {
-            const teacherObj = teachersInGrade[teacherName];
-            const subjects = teacherObj.details.subjects || [];
+        sectionsList.forEach(secObj => {
+            const secName = secObj.details.name;
+            const secCard = document.createElement("div");
+            secCard.style.cssText = "background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; margin-bottom: 25px; overflow-x: auto;";
 
-            boxHTML += `
-                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 12px 18px; border-radius: 8px;">
-                    <div style="display: flex; align-items: center; gap: 14px;">
-                        <span style="color: #00d2ff;">👤</span>
-                        <div>
-                            <div style="color: #ffffff; font-weight: bold;">${teacherName}</div>
-                            <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
-                                ${subjects.map(s => `<span style="background: rgba(148, 163, 184, 0.12); color: #cbd5e1; font-size: 0.73rem; padding: 2px 7px; border-radius: 4px;">📚 ${s}</span>`).join('')}
-                            </div>
-                        </div>
-                    </div>
-                    <span style="background: rgba(16, 185, 129, 0.1); color: #34d399; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 12px;">
-                        ${teacherObj.slots.length} Classes Scheduled
+            let tableHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="color: #ffffff; margin: 0; font-size: 1.1rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                        🏫 Section: <span style="color: #38bdf8;">${secName}</span>
+                    </h3>
+                    <span style="background: rgba(56, 189, 248, 0.1); color: #38bdf8; font-size: 0.78rem; font-weight: bold; padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(56, 189, 248, 0.2);">
+                        Weekly Schedule Matrix
                     </span>
                 </div>
-            `;
-        }
 
-        boxHTML += `</div>`;
-        gradeBox.innerHTML = boxHTML;
-        gradeCardsContainer.appendChild(gradeBox);
+                <table style="width: 100%; border-collapse: collapse; min-width: 800px; text-align: center; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="background: rgba(30, 41, 59, 0.9); color: #00d2ff; border-bottom: 2px solid rgba(0,210,255,0.3);">
+                            <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.08); width: 150px;">Time Slot</th>
+            `;
+
+            daySlots.forEach(day => {
+                tableHTML += `<th style="padding: 12px; border: 1px solid rgba(255,255,255,0.08);">${day}</th>`;
+            });
+
+            tableHTML += `</tr></thead><tbody>`;
+
+            timeSlots.forEach(time => {
+                tableHTML += `
+                    <tr>
+                        <td style="padding: 10px; background: rgba(30, 41, 59, 0.5); color: #cbd5e1; font-weight: bold; border: 1px solid rgba(255,255,255,0.08); font-size: 0.78rem;">
+                            ⏰ ${time}
+                        </td>
+                `;
+
+                daySlots.forEach(day => {
+                    const slotData = secObj.timetable[day][time];
+
+                    if (slotData) {
+                        tableHTML += `
+                            <td style="padding: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(15, 23, 42, 0.6); vertical-align: top;">
+                                <div style="background: rgba(0, 210, 255, 0.08); border: 1px solid rgba(0, 210, 255, 0.25); border-radius: 6px; padding: 8px; text-align: left;">
+                                    <div style="color: #ffffff; font-weight: bold; font-size: 0.83rem; margin-bottom: 4px; line-height: 1.2;">
+                                        📚 ${slotData.subject}
+                                    </div>
+                                    <div style="color: #38bdf8; font-size: 0.75rem; font-weight: 500; display: flex; align-items: center; gap: 4px;">
+                                        👤 ${slotData.teacher}
+                                    </div>
+                                    <div style="color: #94a3b8; font-size: 0.7rem; margin-top: 3px;">
+                                        🏫 ${slotData.room}
+                                    </div>
+                                </div>
+                            </td>
+                        `;
+                    } else {
+                        tableHTML += `
+                            <td style="padding: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(15, 23, 42, 0.3); vertical-align: middle;">
+                                <span style="color: #475569; font-size: 0.75rem; font-style: italic;">-- Vacant Slot --</span>
+                            </td>
+                        `;
+                    }
+                });
+
+                tableHTML += `</tr>`;
+            });
+
+            tableHTML += `</tbody></table>`;
+            secCard.innerHTML = tableHTML;
+            mainWrapper.appendChild(secCard);
+        });
     });
 
     // 5. Search Bar Handler
