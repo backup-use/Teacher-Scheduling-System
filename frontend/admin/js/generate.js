@@ -83,7 +83,7 @@ async function processSystemTimetable() {
     if (!token) {
         container.innerHTML = `
             <div style="text-align: center; color: #dc2626; padding: 30px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; margin-top: 20px; font-weight: bold;">
-                Authentication Failure: Security token missing or expired. Please re-login.
+                Authentication Failure: Security token missing or expired. Please log in again.
             </div>
         `;
         return;
@@ -160,55 +160,6 @@ async function processSystemTimetable() {
             };
         });
 
-        // Audit Summary Tracking
-        const gradeAuditMap = {
-            "Junior High School - Grade 7": { missingSubjects: [], teacherCount: 0 },
-            "Junior High School - Grade 8": { missingSubjects: [], teacherCount: 0 },
-            "Junior High School - Grade 9": { missingSubjects: [], teacherCount: 0 },
-            "Junior High School - Grade 10": { missingSubjects: [], teacherCount: 0 },
-            "Senior High School - Grade 11": { missingSubjects: [], teacherCount: 0 },
-            "Senior High School - Grade 12": { missingSubjects: [], teacherCount: 0 }
-        };
-
-        savedSections.forEach(sec => {
-            const rawG = sec.grade_level || sec.target_grade || sec.gradeLevel;
-            if (rawG) {
-                const normG = normalizeGradeLevelName(rawG);
-                if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
-            }
-        });
-
-        normalizedTeachers.forEach(t => {
-            const normG = t.targetGrade;
-            if (gradeAuditMap[normG]) {
-                gradeAuditMap[normG].teacherCount++;
-            } else {
-                gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 1 };
-            }
-        });
-
-        normalizedSubjects.forEach(s => {
-            const subjName = typeof s === 'string' ? s : s.name;
-            const normG = normalizeGradeLevelName(s.gradeLevel || "General");
-
-            const hasTeacher = normalizedTeachers.some(t => 
-                t.subjects.some(sub => sub.toLowerCase().trim() === subjName.toLowerCase().trim())
-            );
-
-            if (!hasTeacher && gradeAuditMap[normG]) {
-                if (!gradeAuditMap[normG].missingSubjects.includes(subjName)) {
-                    gradeAuditMap[normG].missingSubjects.push(subjName);
-                }
-            }
-        });
-
-        const systemAuditSummary = {
-            totalSections: savedSections.length,
-            totalTeachers: normalizedTeachers.length,
-            totalRooms: savedRooms.length,
-            gradeAuditMap: gradeAuditMap
-        };
-
         // SCHEDULING MATRIX LOGIC
         const teacherConflictMatrix = {}; 
         const teacherDailyHoursTracker = {}; 
@@ -242,7 +193,9 @@ async function processSystemTimetable() {
             }
 
             if (sectionSubjects.length === 0) {
-                sectionSubjects = normalizedSubjects.map(s => typeof s === 'string' ? s : s.name);
+                sectionSubjects = normalizedSubjects
+                    .filter(s => extractGradeNumber(s.gradeLevel) === sectionGradeNum)
+                    .map(s => typeof s === 'string' ? s : s.name);
             }
 
             for (const day of daySlots) {
@@ -292,7 +245,62 @@ async function processSystemTimetable() {
             }
         }
 
-        // SAVE GENERATED DATA TO LOCAL STORAGE FOR PERSISTENCE WHEN SWITCHING TABS
+        // DYNAMIC ACCURATE AUDIT MAP
+        const gradeAuditMap = {
+            "Junior High School - Grade 7": { missingSubjects: [], teacherCount: 0 },
+            "Junior High School - Grade 8": { missingSubjects: [], teacherCount: 0 },
+            "Junior High School - Grade 9": { missingSubjects: [], teacherCount: 0 },
+            "Junior High School - Grade 10": { missingSubjects: [], teacherCount: 0 },
+            "Senior High School - Grade 11": { missingSubjects: [], teacherCount: 0 },
+            "Senior High School - Grade 12": { missingSubjects: [], teacherCount: 0 }
+        };
+
+        // Populate sections dynamically
+        savedSections.forEach(sec => {
+            const normG = normalizeGradeLevelName(sec.grade_level || sec.target_grade || sec.gradeLevel);
+            if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
+        });
+
+        // Count assigned teachers using numerical grade comparison
+        normalizedTeachers.forEach(t => {
+            const tGradeNum = extractGradeNumber(t.targetGrade);
+            Object.keys(gradeAuditMap).forEach(gradeKey => {
+                if (extractGradeNumber(gradeKey) === tGradeNum) {
+                    gradeAuditMap[gradeKey].teacherCount++;
+                }
+            });
+        });
+
+        // Evaluate actual subject coverage in generated section schedules
+        Object.values(masterSectionSchedules).forEach(secObj => {
+            const gName = secObj.gradeLevel;
+            const requiredSubjs = safeParseArray(secObj.details.subjects || secObj.details.subject_list);
+
+            const scheduledSubjs = new Set();
+            Object.values(secObj.timetable).forEach(dayObj => {
+                Object.values(dayObj).forEach(slot => {
+                    if (slot && slot.subject) scheduledSubjs.add(slot.subject.toLowerCase().trim());
+                });
+            });
+
+            requiredSubjs.forEach(req => {
+                const cleanReq = typeof req === 'string' ? req.trim() : req.name.trim();
+                if (!scheduledSubjs.has(cleanReq.toLowerCase())) {
+                    if (gradeAuditMap[gName] && !gradeAuditMap[gName].missingSubjects.includes(cleanReq)) {
+                        gradeAuditMap[gName].missingSubjects.push(cleanReq);
+                    }
+                }
+            });
+        });
+
+        const systemAuditSummary = {
+            totalSections: savedSections.length,
+            totalTeachers: normalizedTeachers.length,
+            totalRooms: savedRooms.length,
+            gradeAuditMap: gradeAuditMap
+        };
+
+        // PERSISTENCE LOCAL STORAGE
         const scheduleCachePayload = {
             masterSectionSchedules,
             auditSummary: systemAuditSummary,
@@ -377,7 +385,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <span style="background: ${statusColor}15; color: ${statusColor}; font-size: 0.82rem; font-weight: bold; padding: 5px 14px; border-radius: 20px; border: 1px solid ${statusColor}44;">
-                    ${totalMissingSubjectsCount === 0 ? "All Subjects Covered" : `${totalMissingSubjectsCount} Missing Subject Assignments`}
+                    ${totalMissingSubjectsCount === 0 ? "All Grade Levels Fully Scheduled" : `${totalMissingSubjectsCount} Unassigned Subject Classes`}
                 </span>
                 ${totalMissingSubjectsCount > 0 ? `
                     <button id="toggle-audit-btn" onclick="toggleAuditView()" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #0f172a; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: bold;">
@@ -404,10 +412,12 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
 
         <div id="grade-level-audit-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
             <div style="font-weight: bold; color: #dc2626; margin-bottom: 12px; font-size: 0.9rem;">
-                Teacher Shortages Grouped by Grade Level:
+                Unassigned Subjects / Schedule Shortages Grouped by Grade Level:
             </div>
             <div style="display: flex; flex-direction: column; gap: 12px;">
     `;
+
+    let activeShortageCardCount = 0;
 
     Object.keys(auditSummary.gradeAuditMap)
         .sort((a, b) => {
@@ -417,28 +427,39 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         })
         .forEach(grade => {
             const item = auditSummary.gradeAuditMap[grade];
-            if (item.missingSubjects.length > 0 || item.teacherCount === 0) {
+
+            // Render ONLY if there are genuine unassigned subject shortages
+            if (item.missingSubjects.length > 0) {
+                activeShortageCardCount++;
                 auditHTML += `
                     <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 6px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <span style="color: #991b1b; font-weight: bold; font-size: 0.95rem;">
-                                ${grade} <span style="color: #64748b; font-size: 0.8rem; font-weight: normal;">(${item.teacherCount} Teachers Assigned)</span>
+                                ${grade} <span style="color: #64748b; font-size: 0.8rem; font-weight: normal;">(${item.teacherCount} Qualified Teachers)</span>
                             </span>
                             <a href="teachers.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
                                 + Assign Teacher
                             </a>
                         </div>
                         <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
-                            ${item.missingSubjects.length > 0 ? item.missingSubjects.map(subj => `
+                            ${item.missingSubjects.map(subj => `
                                 <span style="background: #ffffff; color: #dc2626; border: 1px solid #fca5a5; padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 600;">
                                     ${subj}
                                 </span>
-                            `).join('') : '<span style="color: #64748b; font-size: 0.8rem;">No subjects registered yet</span>'}
+                            `).join('')}
                         </div>
                     </div>
                 `;
             }
         });
+
+    if (activeShortageCardCount === 0) {
+        auditHTML += `
+            <div style="color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">
+                No schedule shortages detected. All section subjects have been successfully assigned to available teachers.
+            </div>
+        `;
+    }
 
     auditHTML += `
             </div>
@@ -484,7 +505,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         return;
     }
 
-    // Function to trigger Browser Print for a single Section
     window.printSectionSchedule = function(cardId) {
         const cardTarget = document.getElementById(cardId);
         if (!cardTarget) return;
@@ -494,7 +514,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         window.print();
     };
 
-    // Function to Download PDF for a single Section
     window.downloadSectionPDF = function(cardId, sectionName) {
         const cardTarget = document.getElementById(cardId);
         if (!cardTarget) return;
@@ -535,7 +554,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         gradeHeaderBox.className = "no-print";
         gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 15px;";
         
-        // VISIBILITY FIX: GRADE LEVEL HEADER COLOR
         gradeHeaderBox.innerHTML = `
             <h2 style="color: #ffffff; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #38bdf8; padding-bottom: 8px;">
                 ${gradeName} <span style="color: #38bdf8; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Sections)</span>
@@ -624,9 +642,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
 // PART 2: ISOLATED INSTRUCTOR TIMELINE SHEET
 // ==========================================
 
-/**
- * Renders an isolated timeline sheet for the instructor
- */
 function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherData, teacherName, daySlots, timeSlots) {
     displayTarget.innerHTML = "";
 
@@ -870,7 +885,6 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
     gridHTML += `</tbody></table></div>`;
     printCanvasBlock.innerHTML = gridHTML;
 
-    // PDF EXPORT CONTROLLER FOR SINGLE TEACHER
     document.getElementById("btn-isolated-download-pdf").addEventListener("click", () => {
         if (typeof html2pdf === "undefined") {
             alert("PDF export library is missing or still loading. Please check if html2pdf.bundle.min.js is included in your HTML file.");
@@ -902,9 +916,8 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
     });
 }
 
-// Global Event Listeners & Persistent Auto-Restore Logic
+// Global Event Listeners & Auto-Restore Logic
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Attach Trigger Button Listener
     const actionButtons = document.querySelectorAll("button");
     actionButtons.forEach(btn => {
         if (btn.textContent.includes("INITIALIZE SCHEDULING GENERATOR")) {
@@ -915,7 +928,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 2. AUTO-RESTORE PREVIOUSLY GENERATED SCHEDULE IF IT EXISTS IN LOCAL STORAGE
     const cachedSchedule = localStorage.getItem("cached_generated_schedule");
     if (cachedSchedule) {
         try {
