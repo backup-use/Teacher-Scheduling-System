@@ -166,7 +166,7 @@ body {
     font-family: 'Poppins', 'Inter', sans-serif;
 }
 
-/* Elegant Slate/Navy Header para sa mga Araw (Monday-Saturday) */
+/* Elegant Slate/Navy Header para sa mga Araw (Monday-Friday) */
 .timetable-table th {
     background: #334155; 
     color: #ffffff !important; /* Puti ang text para litaw sa madilim na header */

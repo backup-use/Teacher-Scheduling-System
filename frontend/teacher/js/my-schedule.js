@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "04:00 PM to 05:00 PM"
     ];
 
-    const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
     // Dynamic Print & View Styles for Official Teacher Attendance / Schedule
     if (!document.getElementById("print-isolated-matrix-rules")) {
