@@ -9,6 +9,42 @@ if (!teacherId) {
     window.location.href = "teacher-list.html";
 }
 
+/**
+ * Helper: Converts formatted 12h/24h time strings to standard 24-hour "HH:MM" format
+ * Required for HTML <input type="time"> elements.
+ */
+function normalizeTo24Hour(timeStr) {
+    if (!timeStr) return '';
+    
+    // Clean string and standardize lower case
+    const cleanStr = timeStr.trim().toLowerCase();
+    
+    // Handle standard "04:00 pm" or "8:00 am" strings
+    if (cleanStr.includes('am') || cleanStr.includes('pm')) {
+        const isPM = cleanStr.includes('pm');
+        const timeOnly = cleanStr.replace(/(am|pm)/g, '').trim();
+        let [hours, minutes] = timeOnly.split(':').map(Number);
+        
+        if (isNaN(hours)) return '';
+        if (isPM && hours < 12) hours += 12;
+        if (!isPM && hours === 12) hours = 0;
+        
+        const formattedH = hours.toString().padStart(2, '0');
+        const formattedM = (minutes || 0).toString().padStart(2, '0');
+        return `${formattedH}:${formattedM}`;
+    }
+
+    // Already 24h format e.g. "18:00" or "08:00:00"
+    const parts = cleanStr.split(':');
+    if (parts.length >= 2) {
+        const h = parts[0].padStart(2, '0');
+        const m = parts[1].padStart(2, '0');
+        return `${h}:${m}`;
+    }
+
+    return timeStr;
+}
+
 // 2️⃣ FETCH & PRE-FILL TEACHER PROFILE DATA
 async function loadTeacherProfile() {
     try {
@@ -17,16 +53,35 @@ async function loadTeacherProfile() {
         const token = localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${token}` };
 
-        const res = await fetch(`/api/admin/teachers`, { headers });
-        if (!res.ok) throw new Error(`HTTP network error status: ${res.status}`);
-        
-        const rawData = await res.json();
+        // Attempt multiple endpoints in case primary admin route differs
+        const endpointsToTry = [
+            '/api/admin/teachers',
+            '/api/teachers',
+            '/api/admin/teacher-list'
+        ];
+
+        let response = null;
+        for (const endpoint of endpointsToTry) {
+            try {
+                const res = await fetch(endpoint, { headers });
+                if (res.ok) {
+                    response = res;
+                    break;
+                }
+            } catch (err) {
+                console.warn(`Fetch route search failed for ${endpoint}:`, err);
+            }
+        }
+
+        if (!response) throw new Error("Could not fetch teachers list from server API.");
+
+        const rawData = await response.json();
         const teachersList = Array.isArray(rawData) ? rawData : (rawData.teachers || rawData.data || []);
         
         console.log("📦 Total Teacher Array List fetched from database:", teachersList);
         
         const teacher = teachersList.find(t => {
-            const dbId = t.id || t._id;
+            const dbId = t.id || t._id || t.teacher_id;
             return dbId == teacherId || String(dbId).trim() === String(teacherId).trim();
         });
 
@@ -74,8 +129,9 @@ async function loadTeacherProfile() {
             }
         }
 
-        document.getElementById('startTime').value = extractedStart || '08:00 am';
-        document.getElementById('endTime').value = extractedEnd || '04:00 pm';
+        // Apply 24h normalization for <input type="time"> inputs
+        document.getElementById('startTime').value = normalizeTo24Hour(extractedStart) || '08:00';
+        document.getElementById('endTime').value = normalizeTo24Hour(extractedEnd) || '18:00';
 
         // Pre-select work days with case-insensitive matching
         const rawDays = teacher.workDays || teacher.work_days;
@@ -114,8 +170,10 @@ document.getElementById('editTeacherForm').addEventListener('submit', async (e) 
     e.preventDefault();
 
     const saveBtn = e.target.querySelector('.btn-save');
-    saveBtn.disabled = true;
-    saveBtn.innerText = 'Saving...';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Saving...';
+    }
 
     const selectedDays = [];
     document.querySelectorAll('.day-checkbox:checked').forEach(cb => {
@@ -124,8 +182,10 @@ document.getElementById('editTeacherForm').addEventListener('submit', async (e) 
 
     if (selectedDays.length === 0) {
         alert("Please pick at least one available day configuration.");
-        saveBtn.disabled = false;
-        saveBtn.innerText = 'Save Changes';
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Changes';
+        }
         return;
     }
 
@@ -164,29 +224,57 @@ document.getElementById('editTeacherForm').addEventListener('submit', async (e) 
     };
 
     try {
-        const response = await fetch(`/api/admin/teachers/${teacherId}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updatedPayload)
-        });
+        const token = localStorage.getItem('token');
+        
+        // Try fallback update endpoints if primary endpoint returns 404
+        const updateEndpoints = [
+            `/api/admin/teachers/${teacherId}`,
+            `/api/teachers/${teacherId}`
+        ];
 
-        const result = await response.json().catch(() => ({}));
+        let response = null;
+        let result = {};
 
-        if (response.ok) {
+        for (const endpoint of updateEndpoints) {
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedPayload)
+                });
+
+                if (res.ok) {
+                    response = res;
+                    result = await res.json().catch(() => ({}));
+                    break;
+                } else if (res.status !== 404) {
+                    result = await res.json().catch(() => ({}));
+                    break;
+                }
+            } catch (err) {
+                console.warn(`Update attempt failed on ${endpoint}`, err);
+            }
+        }
+
+        if (response && response.ok) {
             alert("Teacher data rewritten successfully!");
             window.location.href = "teacher-list.html";
         } else {
             alert("Database Rejected: " + (result.error || result.message || "Validation error block."));
-            saveBtn.disabled = false;
-            saveBtn.innerText = 'Save Changes';
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'Save Changes';
+            }
         }
     } catch (err) {
         console.error("Network upload pipeline crashed:", err);
         alert("Transmission Failure: Server connection lost.");
-        saveBtn.disabled = false;
-        saveBtn.innerText = 'Save Changes';
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Changes';
+        }
     }
 });

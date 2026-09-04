@@ -130,9 +130,9 @@ async function loadTeacherData() {
             }
             const daysDisplay = workDays.length > 0 ? workDays.join(', ') : '--';
             
-            // ⏰ Shift Time parsing & MAXIMIZED fallback end-time to 18:00 (6:00 PM)
+            // Time parsing & fallback defaults
             let startTime = teacher.start_time || teacher.startTime || '08:00';
-            let endTime = teacher.end_time || teacher.endTime || '18:00'; // Extended to 6 PM
+            let endTime = teacher.end_time || teacher.endTime || '18:00';
             
             startTime = startTime.length > 5 ? startTime.substring(0, 5) : startTime;
             endTime = endTime.length > 5 ? endTime.substring(0, 5) : endTime;
@@ -168,7 +168,7 @@ async function loadTeacherData() {
                                 style="background: none; border: none; cursor: pointer; font-size: 1.1rem; margin-right: 8px; transition: transform 0.2s;"
                                 onmouseover="this.style.transform='scale(1.2)'"
                                 onmouseout="this.style.transform='scale(1)'"
-                                title="Edit Teacher Shift">
+                                title="Edit Teacher">
                             ✏️
                         </button>
                         <button onclick="removeTeacher('${teacherId}', this)" 
@@ -199,45 +199,13 @@ async function loadTeacherData() {
     }
 }
 
-// Inline Quick Edit Teacher Function (Updates shift directly via API)
+// RESTORED: Original redirect edit logic
 async function editTeacher(id) {
     if (!id || id === 'undefined') {
         alert('Invalid teacher ID');
         return;
     }
-
-    const newEndTime = prompt("Enter new End Time for shift (24-hr format, e.g., 18:00 for 06:00 PM):", "18:00");
-    if (!newEndTime) return;
-
-    try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            alert('Please login first');
-            window.location.href = '/shared/login.html';
-            return;
-        }
-
-        const response = await fetch(`/api/admin/teachers/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ end_time: newEndTime })
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            showToast('✅ Shift end-time updated successfully!', 'success');
-            loadTeacherData(); // Refresh UI to reflect 06:00 PM shift
-        } else {
-            alert('❌ Failed to update: ' + (result.error || result.message || 'Unknown error'));
-        }
-    } catch (err) {
-        console.error('Update Error:', err);
-        alert('❌ Error updating teacher shift: ' + err.message);
-    }
+    window.location.href = `edit-teacher.html?id=${id}`;
 }
 
 // Delete teacher function
