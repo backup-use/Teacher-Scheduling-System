@@ -1,5 +1,20 @@
 document.addEventListener('DOMContentLoaded', loadTeacherData);
 
+// Helper function to convert 24-hour time string (e.g. "16:00") to 12-hour format (e.g. "04:00 PM")
+function convertTo12Hour(timeStr) {
+    if (!timeStr) return '';
+    let [hours, minutes] = timeStr.split(':').map(Number);
+    if (isNaN(hours)) return timeStr;
+
+    const period = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12; // Convert 0 -> 12 (Midnight) and 12 -> 12 (Noon)
+
+    const formattedHours = hours.toString().padStart(2, '0');
+    const formattedMinutes = (minutes || 0).toString().padStart(2, '0');
+
+    return `${formattedHours}:${formattedMinutes} ${period}`;
+}
+
 async function loadTeacherData() {
     const tbody = document.getElementById('teacher-table-body');
     if (!tbody) {
@@ -113,14 +128,14 @@ async function loadTeacherData() {
             }
             const daysDisplay = workDays.length > 0 ? workDays.join(', ') : '--';
             
-            // Time parsing
+            // Time parsing & 12-hour AM/PM Conversion
             let startTime = teacher.start_time || teacher.startTime || '08:00';
             let endTime = teacher.end_time || teacher.endTime || '16:00';
             
             startTime = startTime.length > 5 ? startTime.substring(0, 5) : startTime;
             endTime = endTime.length > 5 ? endTime.substring(0, 5) : endTime;
             
-            const timeShiftDisplay = `${startTime} - ${endTime}`;
+            const timeShiftDisplay = `${convertTo12Hour(startTime)} - ${convertTo12Hour(endTime)}`;
 
             // Build subjects badges
             const subjectsHTML = subjectsList.length > 0 
@@ -141,7 +156,7 @@ async function loadTeacherData() {
                     <td style="padding: 14px 12px;">${gradeDisplay}</td>
                     <td style="padding: 14px 12px; font-size: 0.85rem; color: #a0a0c0;">${daysDisplay}</td>
                     <td style="padding: 14px 12px; text-align: center;">
-                        <span style="color: #00d2ff; font-family: monospace; font-size: 0.9rem; font-weight: 600; background: rgba(0,210,255,0.1); padding: 4px 12px; border-radius: 12px;">
+                        <span style="color: #00d2ff; font-family: monospace; font-size: 0.85rem; font-weight: 600; background: rgba(0,210,255,0.1); padding: 4px 10px; border-radius: 12px; white-space: nowrap;">
                             ${timeShiftDisplay}
                         </span>
                     </td>
