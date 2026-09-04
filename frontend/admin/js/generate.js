@@ -1,6 +1,7 @@
 /**
  * Advanced Automated Timetable Generator
  * Dual-View System: Master Section Grid & Isolated Teacher Matrix
+ * STRICT CONSTRAINT VERSION: Enforces Strict Target Grade Matching
  */
 
 // Helper: Safely parses array inputs from string/JSON formats
@@ -18,7 +19,7 @@ function safeParseArray(val) {
     return [];
 }
 
-// Helper: Extracts numerical grade level
+// Helper: Extracts numerical grade level (e.g. "Grade 7" -> "7")
 function extractGradeNumber(str) {
     if (!str) return "";
     const match = str.toString().match(/\d+/);
@@ -71,7 +72,7 @@ async function processSystemTimetable() {
    
     container.innerHTML = `
         <div id="engine-processing-status" style="text-align: center; color: #1e293b; font-weight: bold; padding: 40px; font-size: 1.1rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; margin-top: 20px;">
-            Building Master Section Timetables & Balancing Workloads...
+            Building Master Section Timetables & Enforcing Grade-Level Constraints...
         </div>
     `;
 
@@ -149,18 +150,19 @@ async function processSystemTimetable() {
             const fullName = (t.name || t.fullName || `${firstName} ${lastName}`).trim();
             const subjects = safeParseArray(t.subjects || t.subject_list || t.subject);
             const workDays = safeParseArray(t.workDays || t.work_days);
-            const targetGrade = t.target_grade || t.targetGrade || t.gradeLevel || "Grade 8";
+            const targetGrade = t.target_grade || t.targetGrade || t.gradeLevel || "";
 
             return {
                 ...t,
                 fullName,
                 subjects,
                 targetGrade: normalizeGradeLevelName(targetGrade),
+                targetGradeNum: extractGradeNumber(targetGrade),
                 workDays: workDays.length > 0 ? workDays : daySlots
             };
         });
 
-        // SCHEDULING MATRIX LOGIC
+        // SCHEDULING MATRIX LOGIC (STRICT GRADE LEVEL ENFORCEMENT)
         const teacherConflictMatrix = {}; 
         const teacherDailyHoursTracker = {}; 
         const roomConflictMatrix = {};    
@@ -184,14 +186,7 @@ async function processSystemTimetable() {
 
             let sectionSubjects = safeParseArray(section.subjects || section.subject_list);
             
-            if (sectionSubjects.length === 0) {
-                const gradeTeachers = normalizedTeachers.filter(t => {
-                    const tGradeNum = extractGradeNumber(t.targetGrade);
-                    return !sectionGradeNum || !tGradeNum || tGradeNum === sectionGradeNum;
-                });
-                sectionSubjects = [...new Set(gradeTeachers.flatMap(t => t.subjects))];
-            }
-
+            // Get subjects intended for this specific Grade Level
             if (sectionSubjects.length === 0) {
                 sectionSubjects = normalizedSubjects
                     .filter(s => extractGradeNumber(s.gradeLevel) === sectionGradeNum)
@@ -208,17 +203,20 @@ async function processSystemTimetable() {
                         const dailySubjectKey = `${section.name}-${day}-${cleanSubjectName.toLowerCase()}`;
                         if (subjectPerDayTracker[dailySubjectKey]) continue;
 
+                        // STRICT MATCHING: Teacher MUST teach this subject AND be assigned to this Grade Level!
                         let teacherToUse = normalizedTeachers.find(t => {
                             const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === cleanSubjectName.toLowerCase());
+                            const matchesGrade = t.targetGradeNum === sectionGradeNum; // STRICT GRADE CONSTRAINT!
                             const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
                             const teacherTimeKey = `${t.fullName}-${day}-${currentTime}`;
                             
                             const dailyHoursKey = `${t.fullName}-${day}`;
                             const currentDailyHours = teacherDailyHoursTracker[dailyHoursKey] || 0;
 
-                            return conductsSubject && worksThisDay && !teacherConflictMatrix[teacherTimeKey] && currentDailyHours < 6;
+                            return conductsSubject && matchesGrade && worksThisDay && !teacherConflictMatrix[teacherTimeKey] && currentDailyHours < 6;
                         });
 
+                        // If no teacher is assigned for THIS grade level, DO NOT SCHEDULE!
                         if (!teacherToUse) continue;
 
                         let availableRoom = savedRooms.find(r => !roomConflictMatrix[`${r.name}-${day}-${currentTime}`])?.name || savedRooms[0]?.name || "Classroom 1";
@@ -245,36 +243,34 @@ async function processSystemTimetable() {
             }
         }
 
-        // DYNAMIC ACCURATE AUDIT MAP
-        const gradeAuditMap = {
-            "Junior High School - Grade 7": { missingSubjects: [], teacherCount: 0 },
-            "Junior High School - Grade 8": { missingSubjects: [], teacherCount: 0 },
-            "Junior High School - Grade 9": { missingSubjects: [], teacherCount: 0 },
-            "Junior High School - Grade 10": { missingSubjects: [], teacherCount: 0 },
-            "Senior High School - Grade 11": { missingSubjects: [], teacherCount: 0 },
-            "Senior High School - Grade 12": { missingSubjects: [], teacherCount: 0 }
-        };
+        // ACCURATE SYSTEM AUDIT & WARNING LOGIC
+        const gradeAuditMap = {};
 
-        // Populate sections dynamically
+        // Track active sections and count teachers per grade level
         savedSections.forEach(sec => {
             const normG = normalizeGradeLevelName(sec.grade_level || sec.target_grade || sec.gradeLevel);
-            if (!gradeAuditMap[normG]) gradeAuditMap[normG] = { missingSubjects: [], teacherCount: 0 };
+            const gNum = extractGradeNumber(normG);
+            
+            if (!gradeAuditMap[normG]) {
+                const assignedTeachersCount = normalizedTeachers.filter(t => t.targetGradeNum === gNum).length;
+                gradeAuditMap[normG] = { 
+                    missingSubjects: [], 
+                    teacherCount: assignedTeachersCount 
+                };
+            }
         });
 
-        // Count assigned teachers using numerical grade comparison
-        normalizedTeachers.forEach(t => {
-            const tGradeNum = extractGradeNumber(t.targetGrade);
-            Object.keys(gradeAuditMap).forEach(gradeKey => {
-                if (extractGradeNumber(gradeKey) === tGradeNum) {
-                    gradeAuditMap[gradeKey].teacherCount++;
-                }
-            });
-        });
-
-        // Evaluate actual subject coverage in generated section schedules
+        // Audit missing subjects: Check which subjects were required for sections but were NOT scheduled
         Object.values(masterSectionSchedules).forEach(secObj => {
             const gName = secObj.gradeLevel;
-            const requiredSubjs = safeParseArray(secObj.details.subjects || secObj.details.subject_list);
+            const gNum = extractGradeNumber(gName);
+
+            let requiredSubjs = safeParseArray(secObj.details.subjects || secObj.details.subject_list);
+            if (requiredSubjs.length === 0) {
+                requiredSubjs = normalizedSubjects
+                    .filter(s => extractGradeNumber(s.gradeLevel) === gNum)
+                    .map(s => typeof s === 'string' ? s : s.name);
+            }
 
             const scheduledSubjs = new Set();
             Object.values(secObj.timetable).forEach(dayObj => {
@@ -300,7 +296,7 @@ async function processSystemTimetable() {
             gradeAuditMap: gradeAuditMap
         };
 
-        // PERSISTENCE LOCAL STORAGE
+        // SAVE CACHE FOR PERSISTENCE
         const scheduleCachePayload = {
             masterSectionSchedules,
             auditSummary: systemAuditSummary,
@@ -330,35 +326,14 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         styleEl.id = "printable-schedule-css";
         styleEl.innerHTML = `
             @media print {
-                body * {
-                    visibility: hidden;
-                }
-                .section-print-area, .section-print-area * {
-                    visibility: visible;
-                }
-                .section-print-area {
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    margin: 0;
-                    padding: 0;
-                }
-                .no-print {
-                    display: none !important;
-                }
-                table {
-                    page-break-inside: avoid;
-                }
+                body * { visibility: hidden; }
+                .section-print-area, .section-print-area * { visibility: visible; }
+                .section-print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+                .no-print { display: none !important; }
+                table { page-break-inside: avoid; }
             }
-            .section-pdf-export {
-                background: #ffffff !important;
-                padding: 10px !important;
-                border: none !important;
-            }
-            .section-pdf-export .no-print {
-                display: none !important;
-            }
+            .section-pdf-export { background: #ffffff !important; padding: 10px !important; border: none !important; }
+            .section-pdf-export .no-print { display: none !important; }
         `;
         document.head.appendChild(styleEl);
     }
@@ -376,7 +351,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
     summaryCard.className = "no-print";
     summaryCard.style.cssText = "background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);";
 
-    const statusColor = totalMissingSubjectsCount === 0 ? "#16a34a" : "#d97706";
+    const statusColor = totalMissingSubjectsCount === 0 ? "#16a34a" : "#dc2626";
 
     let auditHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 16px;">
@@ -385,11 +360,11 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <span style="background: ${statusColor}15; color: ${statusColor}; font-size: 0.82rem; font-weight: bold; padding: 5px 14px; border-radius: 20px; border: 1px solid ${statusColor}44;">
-                    ${totalMissingSubjectsCount === 0 ? "All Grade Levels Fully Scheduled" : `${totalMissingSubjectsCount} Unassigned Subject Classes`}
+                    ${totalMissingSubjectsCount === 0 ? "All Grade Levels Fully Scheduled" : `${totalMissingSubjectsCount} Unassigned Subject Class(es)`}
                 </span>
                 ${totalMissingSubjectsCount > 0 ? `
-                    <button id="toggle-audit-btn" onclick="toggleAuditView()" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #0f172a; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: bold;">
-                        Show Shortages
+                    <button id="toggle-audit-btn" onclick="toggleAuditView()" style="background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: bold;">
+                        View Scheduling Shortages
                     </button>
                 ` : ''}
             </div>
@@ -410,9 +385,9 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
             </div>
         </div>
 
-        <div id="grade-level-audit-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
+        <div id="grade-level-audit-details" style="display: ${totalMissingSubjectsCount > 0 ? 'block' : 'none'}; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
             <div style="font-weight: bold; color: #dc2626; margin-bottom: 12px; font-size: 0.9rem;">
-                Unassigned Subjects / Schedule Shortages Grouped by Grade Level:
+                Schedule Generation Issues & Unassigned Subjects:
             </div>
             <div style="display: flex; flex-direction: column; gap: 12px;">
     `;
@@ -428,20 +403,23 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         .forEach(grade => {
             const item = auditSummary.gradeAuditMap[grade];
 
-            // Render ONLY if there are genuine unassigned subject shortages
-            if (item.missingSubjects.length > 0) {
+            // Render warning card ONLY if there are missing subjects OR 0 teachers assigned
+            if (item.missingSubjects.length > 0 || item.teacherCount === 0) {
                 activeShortageCardCount++;
                 auditHTML += `
                     <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 6px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <span style="color: #991b1b; font-weight: bold; font-size: 0.95rem;">
-                                ${grade} <span style="color: #64748b; font-size: 0.8rem; font-weight: normal;">(${item.teacherCount} Qualified Teachers)</span>
+                                ${grade} <span style="color: #dc2626; font-size: 0.8rem; font-weight: 600;">(${item.teacherCount} Teachers Assigned for this Grade)</span>
                             </span>
-                            <a href="teachers.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
+                            <a href="teachers.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
                                 + Assign Teacher
                             </a>
                         </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                        <div style="font-size: 0.82rem; color: #7f1d1d; margin-bottom: 6px;">
+                            ${item.teacherCount === 0 ? "⚠️ Cannot generate complete timetable: No instructors assigned to teach this Grade Level." : "⚠️ The following required subjects could not be scheduled due to teacher shortage:"}
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
                             ${item.missingSubjects.map(subj => `
                                 <span style="background: #ffffff; color: #dc2626; border: 1px solid #fca5a5; padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 600;">
                                     ${subj}
@@ -456,7 +434,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
     if (activeShortageCardCount === 0) {
         auditHTML += `
             <div style="color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">
-                No schedule shortages detected. All section subjects have been successfully assigned to available teachers.
+                No schedule shortages detected. All sections have been fully scheduled.
             </div>
         `;
     }
@@ -477,7 +455,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
             btn.innerHTML = "Hide Shortages";
         } else {
             detailsDiv.style.display = "none";
-            btn.innerHTML = "Show Shortages";
+            btn.innerHTML = "View Scheduling Shortages";
         }
     };
 
