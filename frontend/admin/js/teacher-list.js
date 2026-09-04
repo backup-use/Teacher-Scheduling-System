@@ -1,13 +1,15 @@
 document.addEventListener('DOMContentLoaded', loadTeacherData);
 
-// Helper function to convert 24-hour time string (e.g. "16:00") to 12-hour format (e.g. "04:00 PM")
+/**
+ * Converts 24-hour time string (e.g. "16:00" or "18:00") to 12-hour AM/PM format (e.g. "04:00 PM" or "06:00 PM")
+ */
 function convertTo12Hour(timeStr) {
     if (!timeStr) return '';
     let [hours, minutes] = timeStr.split(':').map(Number);
     if (isNaN(hours)) return timeStr;
 
     const period = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12 || 12; // Convert 0 -> 12 (Midnight) and 12 -> 12 (Noon)
+    hours = hours % 12 || 12; // Converts 0 -> 12 (Midnight) and 12 -> 12 (Noon)
 
     const formattedHours = hours.toString().padStart(2, '0');
     const formattedMinutes = (minutes || 0).toString().padStart(2, '0');
@@ -32,7 +34,7 @@ async function loadTeacherData() {
             return;
         }
 
-        // 🛠️ FIX 1: Primary at Fallback Routes kung sakaling iba ang API pattern sa Express backend
+        // 🛠️ Primary and Fallback Routes for Express backend
         const endpointsToTry = [
             '/api/admin/teachers',
             '/api/teachers',
@@ -53,7 +55,7 @@ async function loadTeacherData() {
 
                 if (res.ok) {
                     response = res;
-                    break; // Nahanap ang tamang endpoint!
+                    break;
                 } else {
                     lastStatus = res.status;
                 }
@@ -128,13 +130,14 @@ async function loadTeacherData() {
             }
             const daysDisplay = workDays.length > 0 ? workDays.join(', ') : '--';
             
-            // Time parsing & 12-hour AM/PM Conversion
+            // ⏰ Shift Time parsing & MAXIMIZED fallback end-time to 18:00 (6:00 PM)
             let startTime = teacher.start_time || teacher.startTime || '08:00';
-            let endTime = teacher.end_time || teacher.endTime || '16:00';
+            let endTime = teacher.end_time || teacher.endTime || '18:00'; // Extended to 6 PM
             
             startTime = startTime.length > 5 ? startTime.substring(0, 5) : startTime;
             endTime = endTime.length > 5 ? endTime.substring(0, 5) : endTime;
             
+            // Format times to AM/PM display
             const timeShiftDisplay = `${convertTo12Hour(startTime)} - ${convertTo12Hour(endTime)}`;
 
             // Build subjects badges
