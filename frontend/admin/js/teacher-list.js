@@ -168,7 +168,7 @@ async function loadTeacherData() {
                                 style="background: none; border: none; cursor: pointer; font-size: 1.1rem; margin-right: 8px; transition: transform 0.2s;"
                                 onmouseover="this.style.transform='scale(1.2)'"
                                 onmouseout="this.style.transform='scale(1)'"
-                                title="Edit Teacher">
+                                title="Edit Teacher Shift">
                             ✏️
                         </button>
                         <button onclick="removeTeacher('${teacherId}', this)" 
@@ -199,18 +199,50 @@ async function loadTeacherData() {
     }
 }
 
-// Edit teacher function
+// Inline Quick Edit Teacher Function (Updates shift directly via API)
 async function editTeacher(id) {
-    if (!id) {
+    if (!id || id === 'undefined') {
         alert('Invalid teacher ID');
         return;
     }
-    window.location.href = `edit-teacher.html?id=${id}`;
+
+    const newEndTime = prompt("Enter new End Time for shift (24-hr format, e.g., 18:00 for 06:00 PM):", "18:00");
+    if (!newEndTime) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Please login first');
+            window.location.href = '/shared/login.html';
+            return;
+        }
+
+        const response = await fetch(`/api/admin/teachers/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ end_time: newEndTime })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            showToast('✅ Shift end-time updated successfully!', 'success');
+            loadTeacherData(); // Refresh UI to reflect 06:00 PM shift
+        } else {
+            alert('❌ Failed to update: ' + (result.error || result.message || 'Unknown error'));
+        }
+    } catch (err) {
+        console.error('Update Error:', err);
+        alert('❌ Error updating teacher shift: ' + err.message);
+    }
 }
 
 // Delete teacher function
 async function removeTeacher(id, button) {
-    if (!id) {
+    if (!id || id === 'undefined') {
         alert('Invalid teacher ID');
         return;
     }
