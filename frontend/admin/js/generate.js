@@ -1,6 +1,7 @@
 /**
  * Advanced Master Schedule Generator - Makiling Integrated School (MIS) Edition
- * - Supports AM/PM Shift Systems (06:00 AM - 06:00 PM)
+ * - Full Unfiltered Time Slots (06:00 AM - 06:00 PM)
+ * - Automatic RECESS & LUNCH BREAK Row Injections
  * - Strict Grade-Level Matching Constraint
  * - Suppresses Empty Tables for Sections without Active Schedules
  */
@@ -73,7 +74,7 @@ async function processSystemTimetable() {
    
     container.innerHTML = `
         <div id="engine-processing-status" style="text-align: center; color: #1e293b; font-weight: bold; padding: 40px; font-size: 1.1rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; margin-top: 20px;">
-            Generating MIS Master Schedules (AM/PM Shifts & Grade Constraints)...
+            Generating MIS Master Schedules (AM/PM Shifts, Recess & Lunch Blocks)...
         </div>
     `;
 
@@ -135,15 +136,15 @@ async function processSystemTimetable() {
 
         const daySlots = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
         
-        // MAKILING INTEGRATED SCHOOL (MIS) TIME SLOTS (06:00 AM to 06:00 PM)
+        // MAKILING INTEGRATED SCHOOL (MIS) COMPLETE TIME SLOTS (06:00 AM to 06:00 PM)
         const timeSlots = [
             "06:00-07:00",
             "07:00-08:00",
             "08:00-09:00",
-            "09:00-10:00",
+            "09:00-10:00", // Fixed Recess Slot
             "10:00-11:00",
             "11:00-12:00",
-            "12:00-01:00",
+            "12:00-01:00", // Fixed Lunch / Shift Transition Slot
             "01:00-02:00",
             "02:00-03:00",
             "03:00-04:00",
@@ -201,15 +202,18 @@ async function processSystemTimetable() {
             }
 
             for (const day of daySlots) {
-                // Determine active time slot window based on Shift / Grade Level
                 let activeSlots = timeSlots;
                 if (!isSHS) {
-                    // JHS AM/PM shift separation sample window (07:00 AM to 03:00 PM)
-                    activeSlots = timeSlots.slice(1, 9);
+                    activeSlots = timeSlots.slice(1, 10);
                 }
 
                 for (let timeIndex = 0; timeIndex < activeSlots.length; timeIndex++) {
                     const currentTime = activeSlots[timeIndex];
+
+                    // Skip fixed break periods from academic subject assignment
+                    if (currentTime === "09:00-10:00" || currentTime === "12:00-01:00") {
+                        continue;
+                    }
 
                     for (const subjectName of sectionSubjects) {
                         const cleanSubjectName = typeof subjectName === 'string' ? subjectName.trim() : subjectName.name.trim();
@@ -217,10 +221,9 @@ async function processSystemTimetable() {
                         const dailySubjectKey = `${section.name}-${day}-${cleanSubjectName.toLowerCase()}`;
                         if (subjectPerDayTracker[dailySubjectKey]) continue;
 
-                        // STRICT MATCHING: Subject + Grade Level Target + DepEd 6-Hour Max Rule
                         let teacherToUse = normalizedTeachers.find(t => {
                             const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === cleanSubjectName.toLowerCase());
-                            const matchesGrade = t.targetGradeNum === sectionGradeNum; // STRICT GRADE CONSTRAINT
+                            const matchesGrade = t.targetGradeNum === sectionGradeNum;
                             const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
                             const teacherTimeKey = `${t.fullName}-${day}-${currentTime}`;
                             
@@ -467,7 +470,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         }
     };
 
-    // FILTER OUT SECTIONS WITHOUT SCHEDULED SLOTS
     const gradeGroupedSections = {};
     let totalGeneratedTablesCount = 0;
 
@@ -589,18 +591,33 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
 
             tableHTML += `</tr></thead><tbody>`;
 
-            // Filter time rows: Render time slots that have active classes
+            // Render ALL time slots continuously from 06:00 AM to 06:00 PM
             timeSlots.forEach(time => {
-                let hasSlotInTime = daySlots.some(d => secObj.timetable[d][time]);
+                tableHTML += `
+                    <tr>
+                        <td style="padding: 8px; background: #ffffff; color: #000000; font-weight: 800; border: 2px solid #000000; font-size: 0.85rem;">
+                            ${time}
+                        </td>
+                `;
 
-                if (hasSlotInTime) {
+                // Fixed Recess Row
+                if (time === "09:00-10:00") {
                     tableHTML += `
-                        <tr>
-                            <td style="padding: 8px; background: #ffffff; color: #000000; font-weight: 800; border: 2px solid #000000; font-size: 0.85rem;">
-                                ${time}
-                            </td>
+                        <td colspan="${daySlots.length}" style="padding: 8px; background: #fef08a; color: #854d0e; font-weight: 800; border: 2px solid #000000; letter-spacing: 2px; font-size: 0.85rem;">
+                            RECESS / MORNING BREAK
+                        </td>
                     `;
-
+                }
+                // Fixed Lunch / Shift Transition Row
+                else if (time === "12:00-01:00") {
+                    tableHTML += `
+                        <td colspan="${daySlots.length}" style="padding: 8px; background: #fed7aa; color: #9a3412; font-weight: 800; border: 2px solid #000000; letter-spacing: 2px; font-size: 0.85rem;">
+                            LUNCH BREAK / SHIFT TRANSITION
+                        </td>
+                    `;
+                }
+                // Regular Academic Class Rows
+                else {
                     daySlots.forEach(day => {
                         const slotData = secObj.timetable[day][time];
 
@@ -624,9 +641,9 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                             `;
                         }
                     });
-
-                    tableHTML += `</tr>`;
                 }
+
+                tableHTML += `</tr>`;
             });
 
             tableHTML += `</tbody></table>`;
