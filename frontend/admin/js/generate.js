@@ -620,260 +620,208 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
 // PART 2: ISOLATED INSTRUCTOR TIMELINE SHEET
 // ==========================================
 
-function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherData, teacherName, daySlots, timeSlots) {
-    displayTarget.innerHTML = "";
+function renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers) {
+    container.innerHTML = "";
 
-    const formattedDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-
-    if (!document.getElementById("print-isolated-matrix-rules")) {
-        const printStyles = document.createElement("style");
-        printStyles.id = "print-isolated-matrix-rules";
-        printStyles.innerHTML = `
-            .custom-timetable-card {
-                background: #ffffff;
-                border: 2px solid #000000;
-                border-radius: 4px;
-                padding: 22px;
-                box-shadow: none;
-            }
-            .custom-timetable-table {
-                width: 100%;
-                border-collapse: collapse;
-                text-align: center;
-                min-width: 900px;
-                border: 2px solid #000000;
-            }
-            .custom-timetable-table th.time-header {
-                background: #ffffff; color: #000000; padding: 10px; font-size: 0.85rem; width: 13%; border: 2px solid #000000; font-weight: 800;
-            }
-            .custom-timetable-table th.day-header {
-                background: #ffffff; color: #000000; padding: 10px; font-size: 0.85rem; border: 2px solid #000000; font-weight: 800; text-transform: uppercase;
-            }
-
+    if (!document.getElementById("printable-schedule-css")) {
+        const styleEl = document.createElement("style");
+        styleEl.id = "printable-schedule-css";
+        styleEl.innerHTML = `
             @media print {
-                div.control-deck-panel, header, nav, .sidebar, .nav-container, .btn-print-trigger, button,
-                #btn-generate, #engine-processing-status, .dashboard-card-panel > h3, .system-diagnostics-card,
-                #engine-directory-panel-view, .isolated-action-routing-header,
-                .main-content > p, .main-content > h2, #timetable-isolated-print-canvas-block > p, #timetable-isolated-print-canvas-block > h2 {
-                    display: none !important;
-                }
-                
-                body, .main-content, .dashboard-card-panel, #timetable-isolated-print-canvas-block {
-                    background: #ffffff !important;
-                    color: #000000 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    box-shadow: none !important;
-                    border: none !important;
-                    font-family: Arial, sans-serif !important;
-                }
-
-                @page {
-                    size: letter landscape;
-                    margin: 5mm;
-                }
-
-                #timetable-isolated-print-canvas-block {
-                    display: block !important;
-                    background: #ffffff !important;
-                    padding: 0 !important;
-                }
-
-                .timetable-controls, .instructor-header-box, .custom-timetable-card {
-                    border: none !important;
-                    box-shadow: none !important;
-                    background: transparent !important;
-                    background-color: transparent !important;
-                    padding: 0 !important;
-                    margin: 0 0 10px 0 !important;
-                }
-                
-                .custom-timetable-table {
-                    border-collapse: collapse !important;
-                    width: 100% !important;
-                    border: 2px solid #000000 !important;
-                }
-
-                .custom-timetable-table th {
-                    background: #ffffff !important;
-                    color: #000000 !important;
-                    border: 2px solid #000000 !important;
-                    padding: 6px 4px !important;
-                    font-size: 0.8rem !important;
-                    font-weight: 800 !important;
-                }
-
-                .custom-timetable-table td {
-                    border: 2px solid #000000 !important;
-                    padding: 6px 4px !important;
-                }
+                body * { visibility: hidden; }
+                .section-print-area, .section-print-area * { visibility: visible; }
+                .section-print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+                .no-print { display: none !important; }
+                table { page-break-inside: avoid; }
             }
-
-            .pdf-export-mode {
-                background: #ffffff !important;
-                color: #000000 !important;
-                border: none !important;
-                box-shadow: none !important;
-                padding: 4px !important;
-                font-family: Arial, Helvetica, sans-serif !important;
-                width: 100% !important;
-                page-break-inside: avoid !important;
-            }
-
-            .pdf-export-mode .custom-timetable-card,
-            .pdf-export-mode .timetable-controls,
-            .pdf-export-mode .instructor-header-box {
-                border: none !important;
-                box-shadow: none !important;
-                background: transparent !important;
-                padding: 0 !important;
-            }
-
-            .pdf-export-mode .header-title-text {
-                color: #000000 !important;
-                font-size: 1.2rem !important;
-                font-weight: 800 !important;
-            }
-
-            .pdf-export-mode .header-date-text {
-                color: #475569 !important;
-                font-size: 0.75rem !important;
-            }
-
-            .pdf-export-mode .custom-timetable-table {
-                border-collapse: collapse !important;
-                width: 100% !important;
-                background: #ffffff !important;
-                border: 2px solid #000000 !important;
-                page-break-inside: avoid !important;
-            }
-
-            .pdf-export-mode .custom-timetable-table th {
-                background-color: #ffffff !important;
-                color: #000000 !important;
-                border: 2px solid #000000 !important;
-                padding: 6px 2px !important;
-                font-size: 0.8rem !important;
-                font-weight: 800 !important;
-            }
-
-            .pdf-export-mode .custom-timetable-table td {
-                border: 2px solid #000000 !important;
-                padding: 5px 4px !important;
-                vertical-align: middle !important;
-            }
+            .section-pdf-export { background: #ffffff !important; padding: 10px !important; border: none !important; }
+            .section-pdf-export .no-print { display: none !important; }
         `;
-        document.head.appendChild(printStyles);
+        document.head.appendChild(styleEl);
     }
 
-    const actionHeader = document.createElement("div");
-    actionHeader.className = "isolated-action-routing-header";
-    actionHeader.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid #cbd5e1; padding-bottom: 15px;";
-    actionHeader.innerHTML = `
-        <button id="btn-back-to-directory" style="background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; padding: 10px 20px; font-weight: 600; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-            Back to Instructor List
-        </button>
-        <div style="display: flex; gap: 10px;">
-            <button onclick="window.print()" style="background: #0f172a; color: #ffffff; border: none; padding: 10px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                Print Single Page Schedule
-            </button>
-            <button id="btn-isolated-download-pdf" style="background: #0284c7; color: #ffffff; border: none; padding: 10px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                Download PDF Document
-            </button>
-        </div>
-    `;
-    displayTarget.appendChild(actionHeader);
+    const mainWrapper = document.createElement("div");
+    mainWrapper.style.marginTop = "20px";
+    container.appendChild(mainWrapper);
 
-    document.getElementById("btn-back-to-directory").addEventListener("click", () => {
-        displayTarget.style.display = "none";
-        directoryPanel.style.display = "block";
+    let totalMissingSubjectsCount = 0;
+    Object.values(auditSummary.gradeAuditMap).forEach(g => {
+        totalMissingSubjectsCount += g.missingSubjects.length;
     });
 
-    const printCanvasBlock = document.createElement("div");
-    printCanvasBlock.id = "timetable-isolated-print-canvas-block";
-    printCanvasBlock.className = "custom-timetable-card";
-    displayTarget.appendChild(printCanvasBlock);
+    const summaryCard = document.createElement("div");
+    summaryCard.className = "no-print";
+    summaryCard.style.cssText = "background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);";
 
-    let gridHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #000000; padding-bottom: 8px;">
-            <div>
-                <h3 class="header-title-text" style="color: #000000; margin: 0; font-size: 1.4rem; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;">
-                    Instructor: ${teacherName}
-                </h3>
-                <div class="header-date-text" style="color: #475569; font-size: 0.85rem; margin-top: 4px; font-weight: 500;">
-                    Date Exported: ${formattedDate}
-                </div>
-            </div>
-            <div class="isolated-action-routing-header" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                ${(teacherData.details?.subjects || []).map(s => `
-                    <span style="background: #f1f5f9; color: #0f172a; padding: 4px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; border: 1px solid #cbd5e1;">
-                        ${s}
-                    </span>
-                `).join('')}
+    const statusColor = totalMissingSubjectsCount === 0 ? "#16a34a" : "#dc2626";
+
+    let auditHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 16px;">
+            <h3 style="color: #0f172a; margin: 0; font-size: 1.1rem; font-weight: 700;">
+                Master School Capacity & Resource Audit
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span style="background: ${statusColor}15; color: ${statusColor}; font-size: 0.82rem; font-weight: bold; padding: 5px 14px; border-radius: 20px; border: 1px solid ${statusColor}44;">
+                    ${totalMissingSubjectsCount === 0 ? "All Grade Levels Fully Scheduled" : `${totalMissingSubjectsCount} Unassigned Subject Class(es)`}
+                </span>
+                ${totalMissingSubjectsCount > 0 ? `
+                    <button id="toggle-audit-btn" onclick="toggleAuditView()" style="background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: bold;">
+                        View Scheduling Shortages
+                    </button>
+                ` : ''}
             </div>
         </div>
-       
-        <div style="overflow-x: auto;">
-            <table class="custom-timetable-table">
-                <thead>
-                    <tr>
-                        <th class="time-header">Time Slot</th>
-                        ${daySlots.map(day => `<th class="day-header">${day}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 10px;">
+            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #0284c7;">
+                <div style="color: #64748b; font-size: 0.75rem; font-weight: 600;">Total Sections</div>
+                <div style="color: #0f172a; font-size: 1.2rem; font-weight: 700;">${auditSummary.totalSections} Sections</div>
+            </div>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #0284c7;">
+                <div style="color: #64748b; font-size: 0.75rem; font-weight: 600;">Total Active Teachers</div>
+                <div style="color: #0f172a; font-size: 1.2rem; font-weight: 700;">${auditSummary.totalTeachers} Teachers</div>
+            </div>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #0284c7;">
+                <div style="color: #64748b; font-size: 0.75rem; font-weight: 600;">Available Rooms</div>
+                <div style="color: #0f172a; font-size: 1.2rem; font-weight: 700;">${auditSummary.totalRooms} Rooms</div>
+            </div>
+        </div>
+
+        <div id="grade-level-audit-details" style="display: ${totalMissingSubjectsCount > 0 ? 'block' : 'none'}; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
+            <div style="font-weight: bold; color: #dc2626; margin-bottom: 12px; font-size: 0.9rem;">
+                Schedule Generation Issues & Unassigned Subjects:
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
     `;
 
-    timeSlots.forEach(timeStr => {
-        gridHTML += `<tr>`;
-        gridHTML += `
-            <td style="background: #ffffff; color: #000000; font-weight: 800; font-size: 0.85rem; padding: 10px; border: 2px solid #000000; text-align: center;">
-                ${timeStr}
-            </td>
-        `;
+    let activeShortageCardCount = 0;
 
-        daySlots.forEach(dayStr => {
-            const matchedAssignment = (teacherData.slots || []).find(s => s.day === dayStr && s.time === timeStr);
+    Object.keys(auditSummary.gradeAuditMap)
+        .sort((a, b) => {
+            const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
+            const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
+            return numA - numB;
+        })
+        .forEach(grade => {
+            const item = auditSummary.gradeAuditMap[grade];
 
-            if (matchedAssignment) {
-                const bgColor = getSubjectColor(matchedAssignment.subject);
-                gridHTML += `
-                    <td style="background: ${bgColor}; border: 2px solid #000000; padding: 10px; vertical-align: middle; text-align: center; color: #000000;">
-                        <div style="font-weight: 800; color: #000000; font-size: 0.9rem; margin-bottom: 2px; line-height: 1.2;">${matchedAssignment.subject}</div>
-                        <div style="color: #000000; font-size: 0.78rem; font-weight: 700; margin-bottom: 2px;">Sec: ${matchedAssignment.section}</div>
-                        ${matchedAssignment.room ? `<div style="font-size: 0.72rem; font-weight: 600;">(${matchedAssignment.room})</div>` : ''}
-                    </td>
-                `;
-            } else {
-                gridHTML += `
-                    <td style="background: #ffffff; border: 2px solid #000000; padding: 12px; vertical-align: middle;">
-                    </td>
+            if (item.missingSubjects.length > 0 || item.teacherCount === 0) {
+                activeShortageCardCount++;
+                auditHTML += `
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="color: #991b1b; font-weight: bold; font-size: 0.95rem;">
+                                ${grade} <span style="color: #dc2626; font-size: 0.8rem; font-weight: 600;">(${item.teacherCount} Teachers Assigned for this Grade)</span>
+                            </span>
+                            <a href="teachers.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
+                                + Assign Teacher
+                            </a>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #7f1d1d; margin-bottom: 6px;">
+                            ${item.teacherCount === 0 ? "⚠️ Cannot generate timetable: No instructors assigned to teach this Grade Level." : "⚠️ The following required subjects could not be scheduled due to teacher shortage:"}
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+                            ${item.missingSubjects.map(subj => `
+                                <span style="background: #ffffff; color: #dc2626; border: 1px solid #fca5a5; padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 600;">
+                                    ${subj}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
                 `;
             }
         });
-        gridHTML += `</tr>`;
+
+    if (activeShortageCardCount === 0) {
+        auditHTML += `
+            <div style="color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">
+                No schedule shortages detected. All sections have been fully scheduled.
+            </div>
+        `;
+    }
+
+    auditHTML += `
+            </div>
+        </div>
+    `;
+
+    summaryCard.innerHTML = auditHTML;
+    mainWrapper.appendChild(summaryCard);
+
+    window.toggleAuditView = function() {
+        const detailsDiv = document.getElementById("grade-level-audit-details");
+        const btn = document.getElementById("toggle-audit-btn");
+        if (detailsDiv.style.display === "none") {
+            detailsDiv.style.display = "block";
+            btn.innerHTML = "Hide Shortages";
+        } else {
+            detailsDiv.style.display = "none";
+            btn.innerHTML = "View Scheduling Shortages";
+        }
+    };
+
+    // FILTER OUT SECTIONS THAT HAVE NO SCHEDULED SLOTS AT ALL
+    const gradeGroupedSections = {};
+    let totalGeneratedTablesCount = 0;
+
+    Object.values(masterSectionSchedules).forEach(secObj => {
+        // Check if this section has at least ONE scheduled subject slot
+        let hasAtLeastOneSlot = false;
+        Object.values(secObj.timetable).forEach(dayObj => {
+            if (Object.keys(dayObj).length > 0) {
+                hasAtLeastOneSlot = true;
+            }
+        });
+
+        // ONLY INCLUDE IF IT HAS SCHEDULED CLASSES
+        if (hasAtLeastOneSlot) {
+            const gName = secObj.gradeLevel;
+            if (!gradeGroupedSections[gName]) {
+                gradeGroupedSections[gName] = [];
+            }
+            gradeGroupedSections[gName].push(secObj);
+            totalGeneratedTablesCount++;
+        }
     });
 
-    gridHTML += `</tbody></table></div>`;
-    printCanvasBlock.innerHTML = gridHTML;
+    const sortedGradeKeys = Object.keys(gradeGroupedSections).sort((a, b) => {
+        const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
+        const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
+        return numA - numB;
+    });
 
-    document.getElementById("btn-isolated-download-pdf").addEventListener("click", () => {
+    // If zero tables could be generated across all sections, show a clean info box
+    if (totalGeneratedTablesCount === 0) {
+        const emptyAlert = document.createElement("div");
+        emptyAlert.style.cssText = "text-align: center; color: #dc2626; background: #fef2f2; padding: 30px; border-radius: 8px; border: 1px solid #fecaca; font-weight: bold;";
+        emptyAlert.innerHTML = "No timetables could be rendered. Please assign teachers to the respective Grade Levels to generate valid schedules.";
+        mainWrapper.appendChild(emptyAlert);
+        return;
+    }
+
+    window.printSectionSchedule = function(cardId) {
+        const cardTarget = document.getElementById(cardId);
+        if (!cardTarget) return;
+
+        document.querySelectorAll('.section-print-area').forEach(el => el.classList.remove('section-print-area'));
+        cardTarget.classList.add('section-print-area');
+        window.print();
+    };
+
+    window.downloadSectionPDF = function(cardId, sectionName) {
+        const cardTarget = document.getElementById(cardId);
+        if (!cardTarget) return;
+
         if (typeof html2pdf === "undefined") {
             alert("PDF export library is missing or still loading. Please check if html2pdf.bundle.min.js is included in your HTML file.");
             return;
         }
 
-        printCanvasBlock.classList.add("pdf-export-mode");
+        cardTarget.classList.add("section-pdf-export");
 
         const configOptions = {
             margin:       [5, 5, 5, 5],
-            filename:     `Schedule_Matrix_${teacherName.replace(/\s+/g, '_')}.pdf`,
+            filename:     `Schedule_Section_${sectionName.replace(/\s+/g, '_')}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  {
                 scale: 2.3,
@@ -884,40 +832,102 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
             jsPDF:         { unit: 'mm', format: 'letter', orientation: 'landscape' }
         };
 
-        html2pdf().set(configOptions).from(printCanvasBlock).save().then(() => {
-            printCanvasBlock.classList.remove("pdf-export-mode");
+        html2pdf().set(configOptions).from(cardTarget).save().then(() => {
+            cardTarget.classList.remove("section-pdf-export");
         }).catch((err) => {
-            console.error("PDF generation exception error:", err);
-            printCanvasBlock.classList.remove("pdf-export-mode");
-            alert("Failed to export PDF document. Please check console logs.");
+            console.error("PDF generation error:", err);
+            cardTarget.classList.remove("section-pdf-export");
+            alert("Failed to export PDF document.");
+        });
+    };
+
+    sortedGradeKeys.forEach(gradeName => {
+        const sectionsList = gradeGroupedSections[gradeName];
+
+        const gradeHeaderBox = document.createElement("div");
+        gradeHeaderBox.className = "no-print";
+        gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 15px;";
+        
+        gradeHeaderBox.innerHTML = `
+            <h2 style="color: #ffffff; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #38bdf8; padding-bottom: 8px;">
+                ${gradeName} <span style="color: #38bdf8; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
+            </h2>
+        `;
+        mainWrapper.appendChild(gradeHeaderBox);
+
+        sectionsList.forEach((secObj, secIdx) => {
+            const secName = secObj.details.name;
+            const uniqueCardId = `schedule-card-${gradeName.replace(/[^a-zA-Z0-9]/g, '')}-${secIdx}`;
+            
+            const secCard = document.createElement("div");
+            secCard.id = uniqueCardId;
+            secCard.style.cssText = "background: #ffffff; border: 2px solid #000000; border-radius: 4px; padding: 15px; margin-bottom: 30px; overflow-x: auto;";
+
+            let tableHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="color: #000000; margin: 0; font-size: 1.15rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+                        SECTION: <span style="color: #000000;">${secName}</span>
+                    </h3>
+                    <div class="no-print" style="display: flex; gap: 8px;">
+                        <button onclick="printSectionSchedule('${uniqueCardId}')" style="background: #000000; color: #ffffff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem;">
+                            Print
+                        </button>
+                        <button onclick="downloadSectionPDF('${uniqueCardId}', '${secName}')" style="background: #0284c7; color: #ffffff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem;">
+                            Download PDF
+                        </button>
+                    </div>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; min-width: 750px; text-align: center; font-size: 0.85rem; border: 2px solid #000000;">
+                    <thead>
+                        <tr style="background: #ffffff; color: #000000; border-bottom: 2px solid #000000;">
+                            <th style="padding: 10px; border: 2px solid #000000; width: 120px; font-weight: 800; font-size: 0.9rem;">TIME</th>
+            `;
+
+            daySlots.forEach(day => {
+                tableHTML += `<th style="padding: 10px; border: 2px solid #000000; font-weight: 800; font-size: 0.9rem; text-transform: uppercase;">${day}</th>`;
+            });
+
+            tableHTML += `</tr></thead><tbody>`;
+
+            timeSlots.forEach(time => {
+                tableHTML += `
+                    <tr>
+                        <td style="padding: 8px; background: #ffffff; color: #000000; font-weight: 800; border: 2px solid #000000; font-size: 0.85rem;">
+                            ${time}
+                        </td>
+                `;
+
+                daySlots.forEach(day => {
+                    const slotData = secObj.timetable[day][time];
+
+                    if (slotData) {
+                        const cellBgColor = getSubjectColor(slotData.subject);
+                        tableHTML += `
+                            <td style="padding: 6px; border: 2px solid #000000; background: ${cellBgColor}; color: #000000; vertical-align: middle; font-weight: 700;">
+                                <div style="font-size: 0.9rem; font-weight: 800; line-height: 1.2;">
+                                    ${slotData.subject}
+                                </div>
+                                <div style="font-size: 0.78rem; font-weight: 600; margin-top: 3px;">
+                                    ${slotData.teacher}
+                                </div>
+                                ${slotData.room ? `<div style="font-size: 0.72rem; font-weight: 500; opacity: 0.9;">(${slotData.room})</div>` : ''}
+                            </td>
+                        `;
+                    } else {
+                        tableHTML += `
+                            <td style="padding: 6px; border: 2px solid #000000; background: #ffffff; vertical-align: middle;">
+                            </td>
+                        `;
+                    }
+                });
+
+                tableHTML += `</tr>`;
+            });
+
+            tableHTML += `</tbody></table>`;
+            secCard.innerHTML = tableHTML;
+            mainWrapper.appendChild(secCard);
         });
     });
 }
-
-// Global Event Listeners & Auto-Restore Logic
-document.addEventListener("DOMContentLoaded", () => {
-    const actionButtons = document.querySelectorAll("button");
-    actionButtons.forEach(btn => {
-        if (btn.textContent.includes("INITIALIZE SCHEDULING GENERATOR")) {
-            btn.addEventListener("click", (e) => {
-                e.preventDefault();
-                processSystemTimetable();
-            });
-        }
-    });
-
-    const cachedSchedule = localStorage.getItem("cached_generated_schedule");
-    if (cachedSchedule) {
-        try {
-            const { masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers } = JSON.parse(cachedSchedule);
-            const container = document.getElementById("timetable-matrix-output-body") || 
-                              document.querySelector('.dashboard-card-panel') || 
-                              document.querySelector('.main-content') ||
-                              document.body;
-            
-            renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers);
-        } catch (e) {
-            console.error("Failed to restore cached schedule:", e);
-        }
-    }
-});
