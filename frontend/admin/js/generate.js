@@ -524,9 +524,11 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         const gradeHeaderBox = document.createElement("div");
         gradeHeaderBox.className = "no-print";
         gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 15px;";
+        
+        // PINALITAN ANG KULAY NG HEADER NG GRADE LEVEL PARA LITAW AT HINDI MAG-BLEND SA DARK BACKGROUND
         gradeHeaderBox.innerHTML = `
-            <h2 style="color: #0f172a; font-size: 1.25rem; font-weight: 800; border-bottom: 2px solid #0284c7; padding-bottom: 6px;">
-                ${gradeName} <span style="color: #64748b; font-size: 0.9rem; font-weight: normal;">(${sectionsList.length} Sections)</span>
+            <h2 style="color: #ffffff; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #38bdf8; padding-bottom: 8px;">
+                ${gradeName} <span style="color: #38bdf8; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Sections)</span>
             </h2>
         `;
         mainWrapper.appendChild(gradeHeaderBox);
