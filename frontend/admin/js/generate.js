@@ -292,7 +292,17 @@ async function processSystemTimetable() {
             }
         }
 
-        renderMasterSectionScheduleDashboard(container, masterSectionSchedules, systemAuditSummary, daySlots, timeSlots);
+        // SAVE GENERATED DATA TO LOCAL STORAGE FOR PERSISTENCE WHEN SWITCHING TABS
+        const scheduleCachePayload = {
+            masterSectionSchedules,
+            auditSummary: systemAuditSummary,
+            daySlots,
+            timeSlots,
+            normalizedTeachers
+        };
+        localStorage.setItem("cached_generated_schedule", JSON.stringify(scheduleCachePayload));
+
+        renderMasterSectionScheduleDashboard(container, masterSectionSchedules, systemAuditSummary, daySlots, timeSlots, normalizedTeachers);
 
     } catch (err) {
         console.error("Critical matrix application failure:", err);
@@ -304,7 +314,7 @@ async function processSystemTimetable() {
     }
 }
 
-function renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots) {
+function renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers) {
     container.innerHTML = "";
 
     if (!document.getElementById("printable-schedule-css")) {
@@ -525,7 +535,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         gradeHeaderBox.className = "no-print";
         gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 15px;";
         
-        // PINALITAN ANG KULAY NG HEADER NG GRADE LEVEL PARA LITAW AT HINDI MAG-BLEND SA DARK BACKGROUND
+        // VISIBILITY FIX: GRADE LEVEL HEADER COLOR
         gradeHeaderBox.innerHTML = `
             <h2 style="color: #ffffff; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #38bdf8; padding-bottom: 8px;">
                 ${gradeName} <span style="color: #38bdf8; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Sections)</span>
@@ -808,7 +818,7 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
                 </div>
             </div>
             <div class="isolated-action-routing-header" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                ${teacherData.details.subjects.map(s => `
+                ${(teacherData.details?.subjects || []).map(s => `
                     <span style="background: #f1f5f9; color: #0f172a; padding: 4px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; border: 1px solid #cbd5e1;">
                         ${s}
                     </span>
@@ -836,7 +846,7 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
         `;
 
         daySlots.forEach(dayStr => {
-            const matchedAssignment = teacherData.slots.find(s => s.day === dayStr && s.time === timeStr);
+            const matchedAssignment = (teacherData.slots || []).find(s => s.day === dayStr && s.time === timeStr);
 
             if (matchedAssignment) {
                 const bgColor = getSubjectColor(matchedAssignment.subject);
@@ -860,7 +870,7 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
     gridHTML += `</tbody></table></div>`;
     printCanvasBlock.innerHTML = gridHTML;
 
-    // PDF EXPORT CONTROLLER
+    // PDF EXPORT CONTROLLER FOR SINGLE TEACHER
     document.getElementById("btn-isolated-download-pdf").addEventListener("click", () => {
         if (typeof html2pdf === "undefined") {
             alert("PDF export library is missing or still loading. Please check if html2pdf.bundle.min.js is included in your HTML file.");
@@ -892,8 +902,9 @@ function renderTargetedInstructorMatrix(displayTarget, directoryPanel, teacherDa
     });
 }
 
-// Global Event Listeners & Trigger bindings
+// Global Event Listeners & Persistent Auto-Restore Logic
 document.addEventListener("DOMContentLoaded", () => {
+    // 1. Attach Trigger Button Listener
     const actionButtons = document.querySelectorAll("button");
     actionButtons.forEach(btn => {
         if (btn.textContent.includes("INITIALIZE SCHEDULING GENERATOR")) {
@@ -903,4 +914,20 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     });
+
+    // 2. AUTO-RESTORE PREVIOUSLY GENERATED SCHEDULE IF IT EXISTS IN LOCAL STORAGE
+    const cachedSchedule = localStorage.getItem("cached_generated_schedule");
+    if (cachedSchedule) {
+        try {
+            const { masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers } = JSON.parse(cachedSchedule);
+            const container = document.getElementById("timetable-matrix-output-body") || 
+                              document.querySelector('.dashboard-card-panel') || 
+                              document.querySelector('.main-content') ||
+                              document.body;
+            
+            renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers);
+        } catch (e) {
+            console.error("Failed to restore cached schedule:", e);
+        }
+    }
 });
