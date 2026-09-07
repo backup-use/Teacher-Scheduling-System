@@ -50,15 +50,21 @@
                 <label class="day-label"><input type="checkbox" value="Friday" class="day-checkbox"> Fri</label>
             </div>
 
-            <div class="form-row align-center">
-                <div class="form-group">
-                    <label for="startTime">Start Time</label>
-                    <input type="text" id="startTime" placeholder="e.g., 08:00 am" required>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div>
+                    <select id="startTime" class="time-select" style="padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; width: 140px; font-size: 0.9rem;">
+                        <!-- Options will be populated dynamically via JS -->
+                    </select>
                 </div>
-                <div class="time-separator">to</div>
-                <div class="form-group">
-                    <label for="endTime">End Time</label>
-                    <input type="text" id="endTime" placeholder="e.g., 04:00 pm" required>
+
+                <span style="color: #a0a0c0; margin-top: 20px;">to</span>
+                <label for="startTime" style="display: block; margin-bottom: 5px; color: #a0a0c0; font-size: 0.85rem;">Start Time</label>
+            
+                <div>
+                    <label for="endTime" style="display: block; margin-bottom: 5px; color: #a0a0c0; font-size: 0.85rem;">End Time</label>
+                    <select id="endTime" class="time-select" style="padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; width: 140px; font-size: 0.9rem;">
+                        <!-- Options will be populated dynamically via JS -->
+                    </select>
                 </div>
             </div>
         </div>

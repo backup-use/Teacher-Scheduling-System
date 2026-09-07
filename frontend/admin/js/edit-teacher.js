@@ -10,16 +10,47 @@ if (!teacherId) {
 }
 
 /**
- * Helper: Converts formatted 12h/24h time strings to standard 24-hour "HH:MM" format
- * Required for HTML <input type="time"> elements.
+ * ⏰ Populates <select> elements with user-friendly 12-hour AM/PM time options
+ * while assigning 24-hour values (e.g. "18:00") behind the scenes.
+ */
+function populateTimeDropdowns() {
+    const startSelect = document.getElementById('startTime');
+    const endSelect = document.getElementById('endTime');
+
+    if (!startSelect || !endSelect) return;
+
+    startSelect.innerHTML = '';
+    endSelect.innerHTML = '';
+
+    // Generate options from 06:00 (6 AM) to 21:00 (9 PM) with 30-min intervals
+    for (let hour = 6; hour <= 21; hour++) {
+        for (let min of [0, 30]) {
+            if (hour === 21 && min === 30) break; // Stop at 9:00 PM
+
+            const val24 = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+            
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            const displayMin = min.toString().padStart(2, '0');
+            const display12 = `${displayHour.toString().padStart(2, '0')}:${displayMin} ${period}`;
+
+            const option1 = new Option(display12, val24);
+            const option2 = new Option(display12, val24);
+
+            startSelect.add(option1);
+            endSelect.add(option2);
+        }
+    }
+}
+
+/**
+ * Helper: Standardizes input values into matching "HH:MM" 24-hr values
  */
 function normalizeTo24Hour(timeStr) {
     if (!timeStr) return '';
     
-    // Clean string and standardize lower case
     const cleanStr = timeStr.trim().toLowerCase();
     
-    // Handle standard "04:00 pm" or "8:00 am" strings
     if (cleanStr.includes('am') || cleanStr.includes('pm')) {
         const isPM = cleanStr.includes('pm');
         const timeOnly = cleanStr.replace(/(am|pm)/g, '').trim();
@@ -29,17 +60,12 @@ function normalizeTo24Hour(timeStr) {
         if (isPM && hours < 12) hours += 12;
         if (!isPM && hours === 12) hours = 0;
         
-        const formattedH = hours.toString().padStart(2, '0');
-        const formattedM = (minutes || 0).toString().padStart(2, '0');
-        return `${formattedH}:${formattedM}`;
+        return `${hours.toString().padStart(2, '0')}:${(minutes || 0).toString().padStart(2, '0')}`;
     }
 
-    // Already 24h format e.g. "18:00" or "08:00:00"
     const parts = cleanStr.split(':');
     if (parts.length >= 2) {
-        const h = parts[0].padStart(2, '0');
-        const m = parts[1].padStart(2, '0');
-        return `${h}:${m}`;
+        return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
     }
 
     return timeStr;
@@ -48,12 +74,14 @@ function normalizeTo24Hour(timeStr) {
 // 2️⃣ FETCH & PRE-FILL TEACHER PROFILE DATA
 async function loadTeacherProfile() {
     try {
+        // Populate the dropdown options first!
+        populateTimeDropdowns();
+
         console.log("🌐 Initiating fetch request to secure API server context...");
         
         const token = localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${token}` };
 
-        // Attempt multiple endpoints in case primary admin route differs
         const endpointsToTry = [
             '/api/admin/teachers',
             '/api/teachers',
@@ -78,23 +106,18 @@ async function loadTeacherProfile() {
         const rawData = await response.json();
         const teachersList = Array.isArray(rawData) ? rawData : (rawData.teachers || rawData.data || []);
         
-        console.log("📦 Total Teacher Array List fetched from database:", teachersList);
-        
         const teacher = teachersList.find(t => {
             const dbId = t.id || t._id || t.teacher_id;
             return dbId == teacherId || String(dbId).trim() === String(teacherId).trim();
         });
 
         if (!teacher) {
-            console.error(`❌ Data Match Failure: ID [${teacherId}] could not be found.`);
             alert("Teacher record match failed. Redirecting to table list.");
             window.location.href = "teacher-list.html";
             return;
         }
 
-        console.log("✅ Successfully matched teacher dataset record payload:", teacher);
-
-        // Smart name extraction (Handles split names vs full string name)
+        // Smart name extraction
         let first = teacher.firstName || teacher.first_name || '';
         let last = teacher.lastName || teacher.last_name || '';
 
@@ -129,11 +152,14 @@ async function loadTeacherProfile() {
             }
         }
 
-        // Apply 24h normalization for <input type="time"> inputs
-        document.getElementById('startTime').value = normalizeTo24Hour(extractedStart) || '08:00';
-        document.getElementById('endTime').value = normalizeTo24Hour(extractedEnd) || '18:00';
+        // Pre-select dropdown options using normalized 24-hr strings
+        const startVal = normalizeTo24Hour(extractedStart) || '08:00';
+        const endVal = normalizeTo24Hour(extractedEnd) || '18:00';
 
-        // Pre-select work days with case-insensitive matching
+        document.getElementById('startTime').value = startVal;
+        document.getElementById('endTime').value = endVal;
+
+        // Pre-select work days
         const rawDays = teacher.workDays || teacher.work_days;
         if (rawDays) {
             let activeDays = Array.isArray(rawDays) 
@@ -150,8 +176,6 @@ async function loadTeacherProfile() {
                 }
             });
         }
-
-        console.log("🎉 UI Form elements fully rendered and populated successfully.");
 
     } catch (err) {
         console.error("💥 Critical error triggered inside the script lifecycle:", err);
@@ -192,8 +216,11 @@ document.getElementById('editTeacherForm').addEventListener('submit', async (e) 
     const firstNameVal = document.getElementById('firstName').value.trim();
     const lastNameVal = document.getElementById('lastName').value.trim();
     const fullNameVal = `${firstNameVal} ${lastNameVal}`.trim();
-    const startVal = document.getElementById('startTime').value.trim();
-    const endVal = document.getElementById('endTime').value.trim();
+    
+    // Values selected from dropdown (e.g., "08:00" and "18:00")
+    const startVal = document.getElementById('startTime').value;
+    const endVal = document.getElementById('endTime').value;
+    
     const targetGradeVal = document.getElementById('targetGrade').value.trim();
     const subjectsArray = document.getElementById('subjects').value
         .split(',')
@@ -226,7 +253,6 @@ document.getElementById('editTeacherForm').addEventListener('submit', async (e) 
     try {
         const token = localStorage.getItem('token');
         
-        // Try fallback update endpoints if primary endpoint returns 404
         const updateEndpoints = [
             `/api/admin/teachers/${teacherId}`,
             `/api/teachers/${teacherId}`
