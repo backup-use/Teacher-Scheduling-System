@@ -340,8 +340,8 @@ if (formEl) {
         const subjectsArray = subjectsVal.split(',').map(s => s.trim()).filter(s => s !== "");
 
         const updatedPayload = {
-            id: teacherId,
-            teacher_id: teacherId,
+            id: Number(teacherId) || teacherId,
+            teacher_id: Number(teacherId) || teacherId,
             name: fullNameVal,
             fullName: fullNameVal,
             firstName: firstNameVal,
@@ -368,18 +368,26 @@ if (formEl) {
 
         try {
             const token = localStorage.getItem('token');
-            const updateEndpoints = [
-                `/api/admin/teachers/${teacherId}`,
-                `/api/teachers/${teacherId}`
+            
+            // Multi-route fallback strategy
+            const updateAttempts = [
+                { url: `/api/admin/teachers/${teacherId}`, method: 'PUT' },
+                { url: `/api/teachers/${teacherId}`, method: 'PUT' },
+                { url: `/api/admin/teachers/${teacherId}`, method: 'PATCH' },
+                { url: `/api/teachers/${teacherId}`, method: 'PATCH' },
+                { url: `/api/admin/teachers`, method: 'PUT' },
+                { url: `/api/teachers`, method: 'PUT' },
+                { url: `/api/admin/teachers`, method: 'POST' },
+                { url: `/api/teachers`, method: 'POST' }
             ];
 
             let response = null;
-            let result = {};
 
-            for (const endpoint of updateEndpoints) {
+            for (const target of updateAttempts) {
                 try {
-                    const res = await fetch(endpoint, {
-                        method: 'PUT',
+                    console.log(`📡 Attempting update via ${target.method} ${target.url}...`);
+                    const res = await fetch(target.url, {
+                        method: target.method,
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json'
@@ -389,11 +397,11 @@ if (formEl) {
 
                     if (res.ok) {
                         response = res;
-                        result = await res.json().catch(() => ({}));
+                        console.log(`✅ Save successful via ${target.method} ${target.url}`);
                         break;
                     }
                 } catch (err) {
-                    console.warn(`Update attempt failed on ${endpoint}`, err);
+                    console.warn(`Update attempt failed on ${target.url}`, err);
                 }
             }
 
