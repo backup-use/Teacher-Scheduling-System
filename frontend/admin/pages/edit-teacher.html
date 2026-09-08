@@ -3,67 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura | Edit Teacher Info</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
-    <link rel="stylesheet" href="../css/edit-teacher.css">
+    <title>Edit Teacher</title>
+    <!-- Linked to your external CSS file -->
+    <link rel="stylesheet" href="edit-teacher.css">
 </head>
 <body>
 
 <div class="form-card">
-    <h2>✏️ Edit Instructor Profile</h2>
+    <h2>✏️ Edit Teacher Profile</h2>
+
     <form id="editTeacherForm">
         <div class="form-row">
             <div class="form-group">
                 <label for="firstName">First Name</label>
-                <input type="text" id="firstName" required>
+                <input type="text" id="firstName" placeholder="First Name" required>
             </div>
             <div class="form-group">
                 <label for="lastName">Last Name</label>
-                <input type="text" id="lastName" required>
+                <input type="text" id="lastName" placeholder="Last Name" required>
             </div>
         </div>
 
         <div class="form-group style-group">
             <label for="email">Email Address</label>
-            <input type="email" id="email" required>
+            <input type="email" id="email" placeholder="email@domain.com" required>
         </div>
 
         <div class="form-group style-group">
-            <label for="subjects">Subjects</label>
-            <input type="text" id="subjects" required>
-            <span class="info-note">Separate multiple subjects with commas (e.g., Math, Science, ICT)</span>
+            <label for="subjects">Subjects (Comma Separated)</label>
+            <input type="text" id="subjects" placeholder="e.g. Mathematics, Physics, English">
+            <span class="info-note">Separate multiple subjects with commas</span>
         </div>
 
         <div class="form-group style-group-large">
-            <label for="targetGrade">Target Grade</label>
-            <input type="text" id="targetGrade" placeholder="e.g., Grade 8">
+            <label for="targetGrade">Target Grade / Level</label>
+            <input type="text" id="targetGrade" placeholder="e.g. Grade 10, High School">
         </div>
 
+        <!-- AVAILABILITY SECTION -->
         <div class="availability-section">
-            <label class="section-title">Availability Settings</label>
+            <span class="section-title">Availability & Work Schedule</span>
             
+            <label>Work Days</label>
             <div class="days-container">
                 <label class="day-label"><input type="checkbox" value="Monday" class="day-checkbox"> Mon</label>
                 <label class="day-label"><input type="checkbox" value="Tuesday" class="day-checkbox"> Tue</label>
                 <label class="day-label"><input type="checkbox" value="Wednesday" class="day-checkbox"> Wed</label>
                 <label class="day-label"><input type="checkbox" value="Thursday" class="day-checkbox"> Thu</label>
                 <label class="day-label"><input type="checkbox" value="Friday" class="day-checkbox"> Fri</label>
+                <label class="day-label"><input type="checkbox" value="Saturday" class="day-checkbox"> Sat</label>
+                <label class="day-label"><input type="checkbox" value="Sunday" class="day-checkbox"> Sun</label>
             </div>
 
-            <div style="display: flex; gap: 15px; align-items: center;">
-                <div>
-                    <select id="startTime" class="time-select" style="padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; width: 140px; font-size: 0.9rem;">
-                        <!-- Options will be populated dynamically via JS -->
+            <div class="form-row align-center">
+                <div class="form-group">
+                    <label for="startTime">Start Time</label>
+                    <select id="startTime" class="time-select">
+                        <!-- Populated by JS -->
                     </select>
                 </div>
 
-                <span style="color: #a0a0c0; margin-top: 20px;">to</span>
-                <label for="startTime" style="display: block; margin-bottom: 5px; color: #a0a0c0; font-size: 0.85rem;">Start Time</label>
-            
-                <div>
-                    <label for="endTime" style="display: block; margin-bottom: 5px; color: #a0a0c0; font-size: 0.85rem;">End Time</label>
-                    <select id="endTime" class="time-select" style="padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; width: 140px; font-size: 0.9rem;">
-                        <!-- Options will be populated dynamically via JS -->
+                <span class="time-separator">to</span>
+
+                <div class="form-group">
+                    <label for="endTime">End Time</label>
+                    <select id="endTime" class="time-select">
+                        <!-- Populated by JS -->
                     </select>
                 </div>
             </div>
@@ -76,6 +81,6 @@
     </form>
 </div>
 
-<script src="../js/edit-teacher.js"></script>
+<script src="edit-teacher.js"></script>
 </body>
 </html>

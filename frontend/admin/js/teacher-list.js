@@ -102,7 +102,7 @@ async function loadTeacherData() {
         const rawData = await response.json();
         console.log('Loaded raw teachers data:', rawData);
 
-        // FIX 1: Safely unwrap API payload formats
+        // Safely unwrap API payload formats
         const teachers = Array.isArray(rawData) 
             ? rawData 
             : (rawData.teachers || rawData.data || rawData.rows || []);
@@ -167,9 +167,8 @@ async function loadTeacherData() {
             }
             const daysDisplay = workDays.length > 0 ? workDays.join(', ') : '--';
             
-            // FIX 2: Comprehensive Time & Shift Parsing
+            // Time & Shift Parsing
             let timeShiftDisplay = '';
-            
             const rawShiftField = teacher.shift || teacher.time || teacher.availability;
             const parsedShift = parseTimeValue(rawShiftField);
 
