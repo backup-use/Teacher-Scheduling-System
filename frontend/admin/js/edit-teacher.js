@@ -10,6 +10,19 @@ if (!teacherId) {
 }
 
 /**
+ * Converts 24-hour time string (e.g., "18:00") to 12-hour AM/PM format ("06:00 PM")
+ */
+function format12Hour(time24) {
+    if (!time24) return '';
+    let [hours, minutes] = time24.split(':').map(Number);
+    if (isNaN(hours)) return time24;
+
+    const period = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${hours.toString().padStart(2, '0')}:${(minutes || 0).toString().padStart(2, '0')} ${period}`;
+}
+
+/**
  * ⏰ Populates <select> elements with user-friendly 12-hour AM/PM time options
  * while assigning 24-hour values (e.g. "18:00") behind the scenes.
  */
@@ -28,16 +41,11 @@ function populateTimeDropdowns() {
             if (hour === 21 && min === 30) break; // Stop at 9:00 PM
 
             const val24 = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-            
-            const period = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour % 12 || 12;
-            const displayMin = min.toString().padStart(2, '0');
-            const display12 = `${displayHour.toString().padStart(2, '0')}:${displayMin} ${period}`;
+            const display12 = format12Hour(val24);
 
             const option1 = new Option(display12, val24);
             const option2 = new Option(display12, val24);
 
-            // 🎨 Force dark background and white text on options to fix browser light popup defaults
             option1.style.backgroundColor = '#1e2330';
             option1.style.color = '#ffffff';
             option2.style.backgroundColor = '#1e2330';
@@ -80,7 +88,6 @@ function normalizeTo24Hour(timeStr) {
 // 2️⃣ FETCH & PRE-FILL TEACHER PROFILE DATA
 async function loadTeacherProfile() {
     try {
-        // Populate the dropdown options first!
         populateTimeDropdowns();
 
         console.log("🌐 Initiating fetch request to secure API server context...");
@@ -150,8 +157,9 @@ async function loadTeacherProfile() {
         let extractedStart = teacher.startTime || teacher.start_time || '';
         let extractedEnd = teacher.endTime || teacher.end_time || '';
 
-        if ((!extractedStart || !extractedEnd) && teacher.shift) {
-            const parsedShift = teacher.shift.split('-');
+        if ((!extractedStart || !extractedEnd) && (teacher.shift || teacher.time || teacher.availability)) {
+            const shiftText = String(teacher.shift || teacher.time || teacher.availability);
+            const parsedShift = shiftText.split('-');
             if (parsedShift.length === 2) {
                 extractedStart = parsedShift[0].trim();
                 extractedEnd = parsedShift[1].trim();
@@ -223,17 +231,25 @@ document.getElementById('editTeacherForm').addEventListener('submit', async (e) 
     const lastNameVal = document.getElementById('lastName').value.trim();
     const fullNameVal = `${firstNameVal} ${lastNameVal}`.trim();
     
-    // Values selected from dropdown (e.g., "08:00" and "18:00")
+    // Dropdown values selected (24-hr values e.g. "08:00", "18:00")
     const startVal = document.getElementById('startTime').value;
     const endVal = document.getElementById('endTime').value;
     
+    // Formatted 12-hr values (e.g. "08:00 AM", "06:00 PM")
+    const start12 = format12Hour(startVal);
+    const end12 = format12Hour(endVal);
+    
+    // Formatted shift strings for backend compatibility
+    const shiftString12 = `${start12} - ${end12}`;
+    const shiftString24 = `${startVal} - ${endVal}`;
+
     const targetGradeVal = document.getElementById('targetGrade').value.trim();
     const subjectsArray = document.getElementById('subjects').value
         .split(',')
         .map(s => s.trim())
         .filter(s => s !== "");
 
-    // Multi-schema compatibility payload
+    // Complete Payload mapping covering all potential schema formats
     const updatedPayload = {
         name: fullNameVal,
         fullName: fullNameVal,
@@ -249,11 +265,18 @@ document.getElementById('editTeacherForm').addEventListener('submit', async (e) 
         gradeLevel: targetGradeVal,
         workDays: selectedDays,
         work_days: selectedDays,
+        
+        // Raw 24-hr strings
         startTime: startVal,
         start_time: startVal,
         endTime: endVal,
         end_time: endVal,
-        shift: `${startVal} - ${endVal}`
+        
+        // Standard shift and availability mappings (Both 12-hr and 24-hr formats)
+        shift: shiftString12,
+        shift_24: shiftString24,
+        time: shiftString12,
+        availability: shiftString12
     };
 
     try {
