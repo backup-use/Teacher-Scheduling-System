@@ -93,10 +93,10 @@ function populateTimeDropdowns() {
     if (targetContainer) {
         targetContainer.innerHTML = `
             <label style="display: block; margin-bottom: 12px; font-weight: 500; color: #a0a0c0; font-size: 0.9rem;">Preferred Shift / Availability Window</label>
-            <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; width: 100%;">
+            
                 
                 <!-- Start Time Column -->
-                <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">  
                     <label for="startTime" style="font-size: 0.82rem; color: #a0a0c0; font-weight: 500; margin: 0;">Start Time</label>
                     <select id="startTime" class="custom-single-time-select">
                         ${optionsHtml}
@@ -116,7 +116,7 @@ function populateTimeDropdowns() {
                     </select>
                 </div>
 
-            </div>
+            
         `;
     }
 
