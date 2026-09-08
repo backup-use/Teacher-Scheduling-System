@@ -92,7 +92,9 @@ function populateTimeDropdowns() {
 
     if (targetContainer) {
         targetContainer.innerHTML = `
-            <label style="display: block; margin-bottom: 12px; font-weight: 500; color: #a0a0c0; font-size: 0.9rem;">Preferred Shift / Availability Window</label>
+            <label style="display: block; margin-bottom: 12px; font-weight: 500; color: #a0a0c0; font-size: 0.9rem;">
+                Preferred Shift / Availability Window
+            </label>
             
                 
                 <!-- Start Time Column -->
