@@ -69,20 +69,17 @@ function buildFullTimeOptions() {
 }
 
 /**
- * ⏰ Reconstructs shift container HTML with perfectly aligned Grid layout & clean labels
+ * ⏰ Overrides parent container styles to force vertical column layout (Title on top, times below)
  */
 function populateTimeDropdowns() {
     let startSelect = document.getElementById('startTime') || document.getElementById('start_time');
-    let endSelect = document.getElementById('endTime') || document.getElementById('end_time');
-
-    const optionsHtml = buildFullTimeOptions();
-
-    // Target the outermost container wrapping the time elements
+    
+    // Locate the parent row wrapper
     let targetContainer = null;
     if (startSelect) {
-        targetContainer = startSelect.closest('.time-group, .availability-container, .form-group, .input-group') || startSelect.parentElement;
-        if (targetContainer && targetContainer.parentElement && targetContainer.parentElement.querySelector('label')) {
-            targetContainer = targetContainer.parentElement; // grab top-level wrapper if labels exist outside
+        targetContainer = startSelect.closest('.form-group, .time-group, .availability-container, .input-group') || startSelect.parentElement;
+        if (targetContainer && targetContainer.parentElement && targetContainer.parentElement.style.display === 'flex') {
+            targetContainer = targetContainer.parentElement;
         }
     }
 
@@ -90,39 +87,46 @@ function populateTimeDropdowns() {
         targetContainer = document.querySelector('.time-group, .availability-container');
     }
 
+    const optionsHtml = buildFullTimeOptions();
+
     if (targetContainer) {
+        // Force parent wrapper to stack elements vertically
+        targetContainer.style.setProperty('display', 'flex', 'important');
+        targetContainer.style.setProperty('flex-direction', 'column', 'important');
+        targetContainer.style.setProperty('align-items', 'flex-start', 'important');
+        targetContainer.style.setProperty('width', '100%', 'important');
+        targetContainer.style.setProperty('margin-top', '16px', 'important');
+
         targetContainer.innerHTML = `
-            <label style="display: block; margin-bottom: 12px; font-weight: 500; color: #a0a0c0; font-size: 0.9rem;">
+            <!-- Title Header on Top -->
+            <label style="font-size: 0.85rem; color: #a0a0c0; font-weight: 500; margin-bottom: 10px; display: block; width: 100%;">
                 Preferred Shift / Availability Window
             </label>
-            
+
+            <!-- Start / End Row Below -->
+            <div style="display: flex !important; flex-direction: row !important; align-items: flex-end !important; gap: 12px !important; width: 100% !important;">
                 
-                <!-- Start Time Column -->
-                <div style="display: flex; flex-direction: column; gap: 6px;">  
-                    <label for="startTime" style="font-size: 0.82rem; color: #a0a0c0; font-weight: 500; margin: 0;">Start Time</label>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                    <span style="font-size: 0.8rem; color: #a0a0c0; font-weight: 500;">Start Time</span>
                     <select id="startTime" class="custom-single-time-select">
                         ${optionsHtml}
                     </select>
                 </div>
 
-                <!-- Separator -->
-                <div style="padding-bottom: 10px; color: #a0a0c0; font-weight: 500; font-size: 0.9rem;">
-                    to
-                </div>
+                <span style="color: #a0a0c0; font-weight: 500; font-size: 0.85rem; padding-bottom: 10px;">to</span>
 
-                <!-- End Time Column -->
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <label for="endTime" style="font-size: 0.82rem; color: #a0a0c0; font-weight: 500; margin: 0;">End Time</label>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                    <span style="font-size: 0.8rem; color: #a0a0c0; font-weight: 500;">End Time</span>
                     <select id="endTime" class="custom-single-time-select">
                         ${optionsHtml}
                     </select>
                 </div>
 
-            
+            </div>
         `;
     }
 
-    // Inject dedicated CSS for dark theme controls
+    // CSS rules to enforce select box sizing inside dark mode UI
     if (!document.getElementById('single-time-select-styles')) {
         const style = document.createElement('style');
         style.id = 'single-time-select-styles';
@@ -133,12 +137,12 @@ function populateTimeDropdowns() {
                 border: 1px solid #2e354f !important;
                 color: #ffffff !important;
                 border-radius: 6px !important;
-                padding: 10px 12px !important;
-                font-size: 0.95rem !important;
+                padding: 8px 12px !important;
+                font-size: 0.9rem !important;
                 outline: none !important;
                 cursor: pointer !important;
                 box-sizing: border-box !important;
-                height: 42px !important;
+                height: 40px !important;
             }
             select#startTime option, select#endTime option, .custom-single-time-select option {
                 background-color: #1a1e2d !important;
