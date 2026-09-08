@@ -1,11 +1,17 @@
 document.addEventListener('DOMContentLoaded', loadTeacherData);
 
 /**
- * Converts 24-hour time string (e.g. "16:00" or "18:00") to 12-hour AM/PM format (e.g. "04:00 PM" or "06:00 PM")
+ * Parses and formats time strings reliably (handles 24h format, 12h AM/PM strings, and shift ranges)
  */
 function convertTo12Hour(timeStr) {
     if (!timeStr) return '';
-    let [hours, minutes] = timeStr.split(':').map(Number);
+    
+    // If it already contains AM or PM, return it cleaned up
+    if (/AM|PM/i.test(timeStr)) {
+        return timeStr.trim();
+    }
+
+    let [hours, minutes] = timeStr.toString().split(':').map(Number);
     if (isNaN(hours)) return timeStr;
 
     const period = hours >= 12 ? 'PM' : 'AM';
@@ -34,7 +40,6 @@ async function loadTeacherData() {
             return;
         }
 
-        // 🛠️ Primary and Fallback Routes for Express backend
         const endpointsToTry = [
             '/api/admin/teachers',
             '/api/teachers',
@@ -90,7 +95,7 @@ async function loadTeacherData() {
             
             const firstName = teacher.first_name || teacher.firstName || '';
             const lastName = teacher.last_name || teacher.lastName || '';
-            const fullName = `${firstName} ${lastName}`.trim() || teacher.name || 'Unknown Teacher';
+            const fullName = `${firstName} ${lastName}`.trim() || teacher.name || teacher.fullName || 'Unknown Teacher';
             
             const email = teacher.email || 'No email';
             
@@ -109,7 +114,7 @@ async function loadTeacherData() {
             }
             
             // Grade parsing
-            const targetGrade = teacher.target_grade || teacher.grade || '';
+            const targetGrade = teacher.target_grade || teacher.targetGrade || teacher.grade || '';
             const gradeDisplay = targetGrade 
                 ? `<span style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">📌 ${targetGrade}</span>` 
                 : `<span style="color: rgba(255,255,255,0.3); font-style: italic; font-size: 0.85rem;">-- Unassigned --</span>`;
@@ -130,15 +135,20 @@ async function loadTeacherData() {
             }
             const daysDisplay = workDays.length > 0 ? workDays.join(', ') : '--';
             
-            // Time parsing & fallback defaults
-            let startTime = teacher.start_time || teacher.startTime || '08:00';
-            let endTime = teacher.end_time || teacher.endTime || '18:00';
-            
-            startTime = startTime.length > 5 ? startTime.substring(0, 5) : startTime;
-            endTime = endTime.length > 5 ? endTime.substring(0, 5) : endTime;
-            
-            // Format times to AM/PM display
-            const timeShiftDisplay = `${convertTo12Hour(startTime)} - ${convertTo12Hour(endTime)}`;
+            // Flexible Time parsing
+            let timeShiftDisplay = '';
+            if (teacher.shift || teacher.time || teacher.availability) {
+                timeShiftDisplay = teacher.shift || teacher.time || teacher.availability;
+            } else {
+                let rawStart = teacher.start_time || teacher.startTime || teacher.startTime24 || '';
+                let rawEnd = teacher.end_time || teacher.endTime || teacher.endTime24 || '';
+                
+                if (rawStart && rawEnd) {
+                    timeShiftDisplay = `${convertTo12Hour(rawStart)} - ${convertTo12Hour(rawEnd)}`;
+                } else {
+                    timeShiftDisplay = '08:00 AM - 04:00 PM'; // Fallback display
+                }
+            }
 
             // Build subjects badges
             const subjectsHTML = subjectsList.length > 0 
@@ -199,7 +209,6 @@ async function loadTeacherData() {
     }
 }
 
-// RESTORED: Original redirect edit logic
 async function editTeacher(id) {
     if (!id || id === 'undefined') {
         alert('Invalid teacher ID');
@@ -208,7 +217,6 @@ async function editTeacher(id) {
     window.location.href = `edit-teacher.html?id=${id}`;
 }
 
-// Delete teacher function
 async function removeTeacher(id, button) {
     if (!id || id === 'undefined') {
         alert('Invalid teacher ID');
@@ -269,7 +277,6 @@ async function removeTeacher(id, button) {
     }
 }
 
-// Toast notification function
 function showToast(message, type = 'success') {
     let toast = document.getElementById('toast-notification');
     if (!toast) {
@@ -301,14 +308,12 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// Logout function
 function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/shared/login.html';
 }
 
-// Keyboard shortcut for refresh
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
