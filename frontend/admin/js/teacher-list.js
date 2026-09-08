@@ -1,12 +1,12 @@
 document.addEventListener('DOMContentLoaded', loadTeacherData);
 
 /**
- * Parses and formats time strings reliably (handles 24h format, 12h AM/PM strings, and shift ranges)
+ * Converts 24-hour time string (e.g. "16:00" or "18:00") to 12-hour AM/PM format (e.g. "04:00 PM" or "06:00 PM")
  */
 function convertTo12Hour(timeStr) {
     if (!timeStr) return '';
     
-    // If it already contains AM or PM, return it cleaned up
+    // If string already contains AM or PM, clean up and return it directly
     if (/AM|PM/i.test(timeStr)) {
         return timeStr.trim();
     }
@@ -21,6 +21,27 @@ function convertTo12Hour(timeStr) {
     const formattedMinutes = (minutes || 0).toString().padStart(2, '0');
 
     return `${formattedHours}:${formattedMinutes} ${period}`;
+}
+
+/**
+ * Helper to safely extract a human-readable time string from objects, arrays, or text
+ */
+function parseTimeValue(val) {
+    if (!val) return '';
+    if (typeof val === 'string') return val;
+    if (Array.isArray(val)) {
+        return val.map(item => parseTimeValue(item)).filter(Boolean).join(', ');
+    }
+    if (typeof val === 'object') {
+        if (val.display) return val.display;
+        if (val.shift) return val.shift;
+        if (val.start || val.startTime || val.end || val.endTime) {
+            const start = convertTo12Hour(val.start || val.startTime || '');
+            const end = convertTo12Hour(val.end || val.endTime || '');
+            return `${start} - ${end}`.trim();
+        }
+    }
+    return String(val);
 }
 
 async function loadTeacherData() {
@@ -40,10 +61,12 @@ async function loadTeacherData() {
             return;
         }
 
+        // Cache-busting parameter to ensure freshly updated data loads
+        const cacheBuster = `?_t=${Date.now()}`;
         const endpointsToTry = [
-            '/api/admin/teachers',
-            '/api/teachers',
-            '/api/admin/teacher-list'
+            `/api/admin/teachers${cacheBuster}`,
+            `/api/teachers${cacheBuster}`,
+            `/api/admin/teacher-list${cacheBuster}`
         ];
 
         let response = null;
@@ -135,19 +158,19 @@ async function loadTeacherData() {
             }
             const daysDisplay = workDays.length > 0 ? workDays.join(', ') : '--';
             
-            // Flexible Time parsing
+            // Robust Time Parsing Logic
             let timeShiftDisplay = '';
-            if (teacher.shift || teacher.time || teacher.availability) {
-                timeShiftDisplay = teacher.shift || teacher.time || teacher.availability;
+            
+            const rawShiftField = teacher.shift || teacher.time || teacher.availability;
+            const parsedShift = parseTimeValue(rawShiftField);
+
+            if (parsedShift && !parsedShift.includes('[object Object]')) {
+                timeShiftDisplay = parsedShift;
             } else {
-                let rawStart = teacher.start_time || teacher.startTime || teacher.startTime24 || '';
-                let rawEnd = teacher.end_time || teacher.endTime || teacher.endTime24 || '';
+                let startTime = teacher.start_time || teacher.startTime || '08:00';
+                let endTime = teacher.end_time || teacher.endTime || '18:00';
                 
-                if (rawStart && rawEnd) {
-                    timeShiftDisplay = `${convertTo12Hour(rawStart)} - ${convertTo12Hour(rawEnd)}`;
-                } else {
-                    timeShiftDisplay = '08:00 AM - 04:00 PM'; // Fallback display
-                }
+                timeShiftDisplay = `${convertTo12Hour(startTime)} - ${convertTo12Hour(endTime)}`;
             }
 
             // Build subjects badges
