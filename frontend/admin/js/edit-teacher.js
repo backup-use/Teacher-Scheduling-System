@@ -10,6 +10,151 @@ if (!teacherId) {
 }
 
 /**
+ * ⏰ Injects clean, aligned Hour/Minute/AM-PM select UI into the existing HTML containers
+ */
+function populateTimeDropdowns() {
+    const startSelect = document.getElementById('startTime') || document.getElementById('start_time');
+    const endSelect = document.getElementById('endTime') || document.getElementById('end_time');
+
+    if (!startSelect || !endSelect) {
+        console.warn("⚠️ Start/End select elements not found in HTML DOM.");
+        return;
+    }
+
+    // Inject styles for dark theme dropdowns
+    if (!document.getElementById('edit-time-select-styles')) {
+        const style = document.createElement('style');
+        style.id = 'edit-time-select-styles';
+        style.textContent = `
+            .custom-edit-time-select {
+                background: transparent;
+                border: none;
+                color: #00d2ff;
+                font-weight: 600;
+                font-size: 0.95rem;
+                padding: 4px 2px;
+                cursor: pointer;
+                outline: none;
+            }
+            .custom-edit-time-select option {
+                background: #121420;
+                color: #fff;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Find the common container wrapping both start/end controls
+    const container = startSelect.closest('.input-group, .form-group') || startSelect.parentElement;
+
+    if (container) {
+        container.innerHTML = `
+            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #fff;">Preferred Shift / Availability Window</label>
+            <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;">
+                
+                <!-- Start Time Block -->
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 0.75rem; color: #a0a0c0; font-weight: 500;">Start Time</span>
+                    <div style="display: flex; gap: 4px; align-items: center; background: rgba(255, 255, 255, 0.05); padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                        <select id="edit-t-start-hour" class="custom-edit-time-select">
+                            ${generateHourOptions('08')}
+                        </select>
+                        <span style="color: #a0a0c0; font-weight: bold;">:</span>
+                        <select id="edit-t-start-min" class="custom-edit-time-select">
+                            ${generateMinOptions('00')}
+                        </select>
+                        <select id="edit-t-start-ampm" class="custom-edit-time-select">
+                            <option value="AM" selected>AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                </div>
+
+                <span style="color: #a0a0c0; font-weight: 500; margin-bottom: 8px;">to</span>
+
+                <!-- End Time Block -->
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 0.75rem; color: #a0a0c0; font-weight: 500;">End Time</span>
+                    <div style="display: flex; gap: 4px; align-items: center; background: rgba(255, 255, 255, 0.05); padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                        <select id="edit-t-end-hour" class="custom-edit-time-select">
+                            ${generateHourOptions('04')}
+                        </select>
+                        <span style="color: #a0a0c0; font-weight: bold;">:</span>
+                        <select id="edit-t-end-min" class="custom-edit-time-select">
+                            ${generateMinOptions('00')}
+                        </select>
+                        <select id="edit-t-end-ampm" class="custom-edit-time-select">
+                            <option value="AM">AM</option>
+                            <option value="PM" selected>PM</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+        `;
+    }
+}
+
+// Option HTML generators
+function generateHourOptions(selectedVal) {
+    const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+    return hours.map(h => `<option value="${h}" ${h === selectedVal ? 'selected' : ''}>${h}</option>`).join('');
+}
+
+function generateMinOptions(selectedVal) {
+    const minutes = ['00', '15', '30', '45'];
+    return minutes.map(m => `<option value="${m}" ${m === selectedVal ? 'selected' : ''}>${m}</option>`).join('');
+}
+
+/**
+ * Reads user selections from the split controls and converts them to "HH:MM" (24-hour)
+ */
+function getEdit24HourTime(type) {
+    const hElem = document.getElementById(`edit-t-${type}-hour`);
+    const mElem = document.getElementById(`edit-t-${type}-min`);
+    const pElem = document.getElementById(`edit-t-${type}-ampm`);
+
+    if (!hElem || !mElem || !pElem) return type === 'start' ? '08:00' : '16:00';
+
+    let hours = parseInt(hElem.value, 10) || 8;
+    const minutes = mElem.value || '00';
+    const period = pElem.value;
+
+    if (period === 'PM' && hours < 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
+}
+
+/**
+ * Sets values for Hour, Minute, and AM/PM select elements from a 24-hour format ("HH:MM")
+ */
+function setEditTimeValues(type, time24Str) {
+    if (!time24Str) return;
+    
+    const time24 = normalizeTo24Hour(time24Str);
+    const parts = time24.split(':');
+    if (parts.length < 2) return;
+
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1] || '00';
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+
+    if (hours === 0) hours = 12;
+    else if (hours > 12) hours -= 12;
+
+    const hourStr = hours.toString().padStart(2, '0');
+
+    const hElem = document.getElementById(`edit-t-${type}-hour`);
+    const mElem = document.getElementById(`edit-t-${type}-min`);
+    const pElem = document.getElementById(`edit-t-${type}-ampm`);
+
+    if (hElem) hElem.value = hourStr;
+    if (mElem) mElem.value = minutes;
+    if (pElem) pElem.value = ampm;
+}
+
+/**
  * Converts 24-hour time string (e.g., "18:00") to 12-hour AM/PM format ("06:00 PM")
  */
 function format12Hour(time24) {
@@ -20,43 +165,6 @@ function format12Hour(time24) {
     const period = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
     return `${hours.toString().padStart(2, '0')}:${(minutes || 0).toString().padStart(2, '0')} ${period}`;
-}
-
-/**
- * ⏰ Populates <select> elements with user-friendly 12-hour AM/PM time options
- */
-function populateTimeDropdowns() {
-    // Check both camelCase and snake_case element IDs
-    const startSelect = document.getElementById('startTime') || document.getElementById('start_time');
-    const endSelect = document.getElementById('endTime') || document.getElementById('end_time');
-
-    if (!startSelect || !endSelect) {
-        console.warn("⚠️ Start/End select elements not found in HTML DOM.");
-        return;
-    }
-
-    startSelect.innerHTML = '';
-    endSelect.innerHTML = '';
-
-    for (let hour = 6; hour <= 21; hour++) {
-        for (let min of [0, 30]) {
-            if (hour === 21 && min === 30) break;
-
-            const val24 = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-            const display12 = format12Hour(val24);
-
-            const option1 = new Option(display12, val24);
-            const option2 = new Option(display12, val24);
-
-            option1.style.backgroundColor = '#1e2330';
-            option1.style.color = '#ffffff';
-            option2.style.backgroundColor = '#1e2330';
-            option2.style.color = '#ffffff';
-
-            startSelect.add(option1);
-            endSelect.add(option2);
-        }
-    }
 }
 
 /**
@@ -100,7 +208,6 @@ async function loadTeacherProfile() {
             'Cache-Control': 'no-cache'
         };
 
-        // Standardized endpoints matching Render backend paths
         const endpointsToTry = [
             `/api/admin/teachers/${teacherId}`,
             `/api/teachers/${teacherId}`,
@@ -117,19 +224,16 @@ async function loadTeacherProfile() {
 
                 const rawData = await res.json();
                 
-                // Case A: Endpoint returned single teacher object directly
                 if (rawData && (rawData.id == teacherId || rawData._id == teacherId || rawData.teacher_id == teacherId)) {
                     teacher = rawData;
                     break;
                 }
                 
-                // Case B: Endpoint returned wrapped object { teacher: { ... } }
                 if (rawData && rawData.teacher) {
                     teacher = rawData.teacher;
                     break;
                 }
 
-                // Case C: Endpoint returned array of teachers
                 const teachersList = Array.isArray(rawData) 
                     ? rawData 
                     : (rawData.teachers || rawData.data || []);
@@ -157,7 +261,6 @@ async function loadTeacherProfile() {
 
         console.log("✅ Matched Teacher Data:", teacher);
 
-        // Smart name extraction
         let first = teacher.firstName || teacher.first_name || '';
         let last = teacher.lastName || teacher.last_name || '';
 
@@ -167,7 +270,6 @@ async function loadTeacherProfile() {
             last = parts.slice(1).join(' ') || '';
         }
 
-        // Fill Form Fields Safely
         const setVal = (id, val) => {
             const el = document.getElementById(id);
             if (el) el.value = val || '';
@@ -178,12 +280,10 @@ async function loadTeacherProfile() {
         setVal('email', teacher.email);
         setVal('targetGrade', teacher.targetGrade || teacher.target_grade || teacher.gradeLevel);
         
-        // Format subjects field
         const rawSubjects = teacher.subjects || teacher.subject_list || teacher.subject;
         const subjectsStr = Array.isArray(rawSubjects) ? rawSubjects.join(', ') : (rawSubjects || '');
         setVal('subjects', subjectsStr);
         
-        // Extract start and end shift times
         let extractedStart = teacher.startTime || teacher.start_time || '';
         let extractedEnd = teacher.endTime || teacher.end_time || '';
 
@@ -196,17 +296,13 @@ async function loadTeacherProfile() {
             }
         }
 
-        // Pre-select dropdown options
+        // Apply loaded shift values to custom dropdowns
         const startVal = normalizeTo24Hour(extractedStart) || '08:00';
-        const endVal = normalizeTo24Hour(extractedEnd) || '18:00';
+        const endVal = normalizeTo24Hour(extractedEnd) || '16:00';
 
-        const startEl = document.getElementById('startTime') || document.getElementById('start_time');
-        const endEl = document.getElementById('endTime') || document.getElementById('end_time');
-        
-        if (startEl) startEl.value = startVal;
-        if (endEl) endEl.value = endVal;
+        setEditTimeValues('start', startVal);
+        setEditTimeValues('end', endVal);
 
-        // Pre-select work days
         const rawDays = teacher.workDays || teacher.work_days;
         if (rawDays) {
             let activeDays = Array.isArray(rawDays) 
@@ -265,11 +361,9 @@ if (formEl) {
         const lastNameVal = (document.getElementById('lastName')?.value || '').trim();
         const fullNameVal = `${firstNameVal} ${lastNameVal}`.trim();
         
-        const startEl = document.getElementById('startTime') || document.getElementById('start_time');
-        const endEl = document.getElementById('endTime') || document.getElementById('end_time');
-        
-        const startVal = startEl ? startEl.value : '08:00';
-        const endVal = endEl ? endEl.value : '18:00';
+        // Read selected time values from split dropdowns
+        const startVal = getEdit24HourTime('start');
+        const endVal = getEdit24HourTime('end');
         
         const start12 = format12Hour(startVal);
         const end12 = format12Hour(endVal);
