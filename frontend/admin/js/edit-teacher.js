@@ -51,38 +51,62 @@ function normalizeTo24Hour(timeStr) {
 }
 
 /**
- * ⏰ Populates native single scroll-down dropdowns (<select>) with full time choices
+ * Generates options HTML for a single dropdown select (06:00 AM to 09:30 PM)
+ */
+function buildFullTimeOptions() {
+    let optionsHtml = '';
+    for (let hour = 6; hour <= 21; hour++) {
+        for (let min of [0, 30]) {
+            if (hour === 21 && min === 30) break;
+
+            const val24 = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+            const display12 = format12Hour(val24);
+
+            optionsHtml += `<option value="${val24}">${display12}</option>`;
+        }
+    }
+    return optionsHtml;
+}
+
+/**
+ * ⏰ Fills all Start/End time selects with full 12-hr display options
  */
 function populateTimeDropdowns() {
-    // Find the parent container holding the time elements
-    const startSelect = document.getElementById('startTime') || document.getElementById('start_time');
-    const endSelect = document.getElementById('endTime') || document.getElementById('end_time');
-    
-    const timeGroup = startSelect 
-        ? startSelect.closest('.input-group, .form-group') 
-        : document.querySelector('.time-group, .availability-container');
+    let startSelect = document.getElementById('startTime') || document.getElementById('start_time');
+    let endSelect = document.getElementById('endTime') || document.getElementById('end_time');
 
-    // Reconstruct clean, side-by-side dropdown HTML matching your design theme
+    // Generate options html
+    const optionsHtml = buildFullTimeOptions();
+
+    // Direct injection into existing select elements
+    if (startSelect && endSelect) {
+        startSelect.innerHTML = optionsHtml;
+        endSelect.innerHTML = optionsHtml;
+        return;
+    }
+
+    // Fallback injection if HTML containers exist but selects are missing/malformed
+    const timeGroup = document.querySelector('.time-group, .availability-container') || 
+                      (startSelect ? startSelect.parentElement : null);
+
     if (timeGroup) {
         timeGroup.innerHTML = `
             <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #fff;">Preferred Shift / Availability Window</label>
             <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; width: 100%;">
                 
-                <!-- Start Time Block -->
                 <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 6px;">
                     <span style="font-size: 0.85rem; color: #a0a0c0; font-weight: 500;">Start Time</span>
                     <select id="startTime" class="custom-single-time-select">
-                        ${generateTimeOptions('08:00')}
+                        ${optionsHtml}
                     </select>
                 </div>
 
                 <span style="color: #a0a0c0; font-weight: 500; align-self: flex-end; margin-bottom: 12px;">to</span>
 
-                <!-- End Time Block -->
                 <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 6px;">
                     <span style="font-size: 0.85rem; color: #a0a0c0; font-weight: 500;">End Time</span>
                     <select id="endTime" class="custom-single-time-select">
-                        ${generateTimeOptions('17:00')}
+                        ${optionsHtml}
                     </select>
                 </div>
 
@@ -90,54 +114,29 @@ function populateTimeDropdowns() {
         `;
     }
 
-    // Inject styles matching your dark theme inputs
+    // Add CSS fixes for scroll dropdowns
     if (!document.getElementById('single-time-select-styles')) {
         const style = document.createElement('style');
         style.id = 'single-time-select-styles';
         style.textContent = `
-            .custom-single-time-select {
+            select#startTime, select#endTime, .custom-single-time-select {
                 width: 100%;
-                background-color: #1a1e2d;
-                border: 1px solid #2e354f;
-                color: #ffffff;
+                background-color: #1a1e2d !important;
+                border: 1px solid #2e354f !important;
+                color: #ffffff !important;
                 border-radius: 6px;
                 padding: 10px 12px;
                 font-size: 0.95rem;
                 outline: none;
                 cursor: pointer;
-                transition: border-color 0.2s ease;
             }
-            .custom-single-time-select:focus {
-                border-color: #00d2ff;
-            }
-            .custom-single-time-select option {
-                background-color: #1a1e2d;
-                color: #ffffff;
-                padding: 8px;
+            select#startTime option, select#endTime option, .custom-single-time-select option {
+                background-color: #1a1e2d !important;
+                color: #ffffff !important;
             }
         `;
         document.head.appendChild(style);
     }
-}
-
-/**
- * Generates all full-time options (06:00 AM to 09:30 PM) for the single scroll-down dropdowns
- */
-function generateTimeOptions(defaultVal24) {
-    let optionsHtml = '';
-    
-    for (let hour = 6; hour <= 21; hour++) {
-        for (let min of [0, 30]) {
-            if (hour === 21 && min === 30) break;
-
-            const val24 = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-            const display12 = format12Hour(val24);
-            const isSelected = val24 === defaultVal24 ? 'selected' : '';
-
-            optionsHtml += `<option value="${val24}" ${isSelected}>${display12}</option>`;
-        }
-    }
-    return optionsHtml;
 }
 
 // 2️⃣ FETCH & PRE-FILL TEACHER PROFILE DATA
@@ -242,12 +241,12 @@ async function loadTeacherProfile() {
             }
         }
 
-        // Set value in dropdowns
+        // Set value in single scroll dropdowns
         const startVal = normalizeTo24Hour(extractedStart) || '08:00';
         const endVal = normalizeTo24Hour(extractedEnd) || '17:00';
 
-        const startEl = document.getElementById('startTime');
-        const endEl = document.getElementById('endTime');
+        const startEl = document.getElementById('startTime') || document.getElementById('start_time');
+        const endEl = document.getElementById('endTime') || document.getElementById('end_time');
         
         if (startEl) startEl.value = startVal;
         if (endEl) endEl.value = endVal;
@@ -311,8 +310,8 @@ if (formEl) {
         const lastNameVal = (document.getElementById('lastName')?.value || '').trim();
         const fullNameVal = `${firstNameVal} ${lastNameVal}`.trim();
         
-        const startEl = document.getElementById('startTime');
-        const endEl = document.getElementById('endTime');
+        const startEl = document.getElementById('startTime') || document.getElementById('start_time');
+        const endEl = document.getElementById('endTime') || document.getElementById('end_time');
         
         const startVal = startEl ? startEl.value : '08:00';
         const endVal = endEl ? endEl.value : '17:00';
