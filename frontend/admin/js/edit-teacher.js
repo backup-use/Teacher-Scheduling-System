@@ -9,18 +9,38 @@ if (!teacherId) {
     window.location.href = "teacher-list.html";
 }
 
-/**
- * Converts 24-hour time string (e.g., "18:00") to 12-hour AM/PM format ("06:00 PM")
- */
+// Utility function inside edit-teacher.js
 function format12Hour(time24) {
     if (!time24) return '';
     let [hours, minutes] = time24.split(':').map(Number);
     if (isNaN(hours)) return time24;
-
     const period = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
     return `${hours.toString().padStart(2, '0')}:${(minutes || 0).toString().padStart(2, '0')} ${period}`;
 }
+
+// Inside your submit listener in edit-teacher.js:
+const startVal = document.getElementById('startTime').value; // "08:00"
+const endVal = document.getElementById('endTime').value;     // "18:00"
+
+const start12 = format12Hour(startVal); // "08:00 AM"
+const end12 = format12Hour(endVal);     // "06:00 PM"
+const shift12 = `${start12} - ${end12}`; // "08:00 AM - 06:00 PM"
+
+const updatedPayload = {
+    // ... basic details ...
+    workDays: selectedDays,
+    work_days: selectedDays,
+    
+    // Save both raw values and composite strings
+    startTime: startVal,
+    start_time: startVal,
+    endTime: endVal,
+    end_time: endVal,
+    shift: shift12,
+    time: shift12,
+    availability: shift12
+};
 
 /**
  * ⏰ Populates <select> elements with user-friendly 12-hour AM/PM time options
