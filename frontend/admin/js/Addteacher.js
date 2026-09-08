@@ -4,6 +4,9 @@ let selectedSubjectsArray = [];
 let existingTeachers = []; // Store existing teachers to check for duplicates
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Replace native time input elements with custom dropdown choices dynamically
+    replaceTimeInputsWithChoices();
+
     // 1. Sidebar Navigation handlers
     document.querySelectorAll('.nav-links-wrapper .nav-item').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -31,6 +34,84 @@ document.addEventListener('DOMContentLoaded', () => {
     const genBtn = document.getElementById('btn-run-generator');
     if (genBtn) genBtn.addEventListener('click', triggerAutoSchedule);
 });
+
+/**
+ * Dynamically replaces native time inputs with clean HTML <select> dropdown choices
+ */
+function replaceTimeInputsWithChoices() {
+    const startInput = document.getElementById('t-start');
+    const endInput = document.getElementById('t-end');
+
+    if (startInput) createSelectGroup(startInput, 'start', '08', '00', 'AM');
+    if (endInput) createSelectGroup(endInput, 'end', '04', '00', 'PM');
+}
+
+function createSelectGroup(originalInput, type, defaultHour, defaultMin, defaultAmpm) {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);';
+
+    const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+    const minutes = ['00', '15', '30', '45'];
+    const ampms = ['AM', 'PM'];
+
+    const hoursOptions = hours.map(h => `<option value="${h}" ${h === defaultHour ? 'selected' : ''}>${h}</option>`).join('');
+    const minutesOptions = minutes.map(m => `<option value="${m}" ${m === defaultMin ? 'selected' : ''}>${m}</option>`).join('');
+    const ampmOptions = ampms.map(a => `<option value="${a}" ${a === defaultAmpm ? 'selected' : ''}>${a}</option>`).join('');
+
+    wrapper.innerHTML = `
+        <select id="t-${type}-hour" class="custom-time-select">${hoursOptions}</select>
+        <span style="color: #a0a0c0; font-weight: bold;">:</span>
+        <select id="t-${type}-min" class="custom-time-select">${minutesOptions}</select>
+        <select id="t-${type}-ampm" class="custom-time-select">${ampmOptions}</select>
+    `;
+
+    // Add inline style rule for dark mode dynamic selects
+    if (!document.getElementById('custom-time-select-style')) {
+        const style = document.createElement('style');
+        style.id = 'custom-time-select-style';
+        style.textContent = `
+            .custom-time-select {
+                background: transparent;
+                border: none;
+                color: #00d2ff;
+                font-weight: 600;
+                font-size: 0.95rem;
+                padding: 4px 2px;
+                cursor: pointer;
+                outline: none;
+            }
+            .custom-time-select option {
+                background: #121420;
+                color: #fff;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Replace time input in DOM
+    originalInput.parentNode.replaceChild(wrapper, originalInput);
+}
+
+/**
+ * Converts selected dropdown choices to 24-hour time format (HH:MM)
+ */
+function getSelected24HourTime(type) {
+    const hElem = document.getElementById(`t-${type}-hour`);
+    const mElem = document.getElementById(`t-${type}-min`);
+    const pElem = document.getElementById(`t-${type}-ampm`);
+
+    if (!hElem || !mElem || !pElem) return type === 'start' ? '08:00' : '16:00';
+
+    let hours = parseInt(hElem.value, 10) || 8;
+    const minutes = mElem.value || '00';
+    const period = pElem.value;
+
+    if (period === 'PM' && hours < 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+
+    const formattedHours = hours.toString().padStart(2, '0');
+    return `${formattedHours}:${minutes}`;
+}
 
 // --- Fetch Existing Teachers to Check Duplicates ---
 async function fetchExistingTeachers() {
@@ -220,7 +301,6 @@ async function handleFormSubmit(e) {
     const formattedFullName = `${firstName} ${lastName}`.toLowerCase().replace(/\s+/g, ' ');
 
     const isDuplicateName = existingTeachers.some(t => {
-        // Handle database snake_case (first_name, last_name) or camelCase or single name field
         const fname = t.first_name || t.firstName || '';
         const lname = t.last_name || t.lastName || '';
         let existingName = `${fname} ${lname}`.trim();
@@ -267,13 +347,14 @@ async function handleFormSubmit(e) {
         return;
     }
 
-    const startTime = document.getElementById('t-start').value;
-    const endTime = document.getElementById('t-end').value;
+    // Extract time from the dynamic select choices
+    const startTime = getSelected24HourTime('start');
+    const endTime = getSelected24HourTime('end');
 
     const availability = selectedDays.map(day => ({
         day: day,
-        from: (startTime && startTime.trim() !== "") ? startTime : "08:00",
-        to: (endTime && endTime.trim() !== "") ? endTime : "16:00"
+        from: startTime,
+        to: endTime
     }));
 
     // Create teacher data object
@@ -284,8 +365,8 @@ async function handleFormSubmit(e) {
         subjects: subjectsArray,
         targetGrade: document.getElementById('t-targetgrade').value,
         workDays: selectedDays,
-        startTime: startTime || "08:00",
-        endTime: endTime || "16:00",
+        startTime: startTime,
+        endTime: endTime,
         availability: availability 
     };
 
@@ -318,9 +399,8 @@ async function handleFormSubmit(e) {
             if (inputSubj) inputSubj.value = '';
 
             fetchCatalogSubjects();
-            fetchExistingTeachers(); // Refresh list after adding
+            fetchExistingTeachers();
             
-            // Display compact top credentials card and inline card
             if (result.credentials) {
                 showCredentialsModal(result.credentials);
                 renderCreatedCredentials(result.credentials);
@@ -369,7 +449,6 @@ function showCredentialsModal(credentials) {
         </div>
     `;
 
-    // Slide down and display
     setTimeout(() => {
         card.style.opacity = '1';
         card.style.transform = 'translateX(-50%) translateY(0)';
@@ -381,8 +460,6 @@ function showCredentialsModal(credentials) {
     };
 
     document.getElementById('close-cred-card').onclick = closeCard;
-
-    // Automatically dismiss after 8 seconds
     setTimeout(closeCard, 8000);
 }
 
