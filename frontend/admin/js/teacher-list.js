@@ -45,9 +45,10 @@ function parseTimeValue(val) {
 }
 
 async function loadTeacherData() {
-    const tbody = document.getElementById('teacher-table-body');
+    // Matches both possible DOM ID names
+    const tbody = document.getElementById('teacher-table-body') || document.getElementById('teacherTableBody');
     if (!tbody) {
-        console.error('Teacher table body not found');
+        console.error('Teacher table body not found in DOM');
         return;
     }
     
@@ -77,8 +78,10 @@ async function loadTeacherData() {
                 const res = await fetch(endpoint, {
                     headers: { 
                         'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache, no-store'
+                    },
+                    cache: 'no-store'
                 });
 
                 if (res.ok) {
@@ -96,8 +99,13 @@ async function loadTeacherData() {
             throw new Error(`HTTP error! status: ${lastStatus} (Route Not Found)`);
         }
 
-        const teachers = await response.json();
-        console.log('Loaded teachers:', teachers);
+        const rawData = await response.json();
+        console.log('Loaded raw teachers data:', rawData);
+
+        // FIX 1: Safely unwrap API payload formats
+        const teachers = Array.isArray(rawData) 
+            ? rawData 
+            : (rawData.teachers || rawData.data || rawData.rows || []);
 
         if (!teachers || teachers.length === 0) {
             tbody.innerHTML = `
@@ -124,41 +132,42 @@ async function loadTeacherData() {
             
             // Subjects array parsing
             let subjectsList = [];
-            if (teacher.subjects) {
-                if (Array.isArray(teacher.subjects)) {
-                    subjectsList = teacher.subjects;
-                } else if (typeof teacher.subjects === 'string') {
+            const rawSubjects = teacher.subjects || teacher.subject_list || teacher.subject;
+            if (rawSubjects) {
+                if (Array.isArray(rawSubjects)) {
+                    subjectsList = rawSubjects;
+                } else if (typeof rawSubjects === 'string') {
                     try {
-                        subjectsList = JSON.parse(teacher.subjects);
+                        subjectsList = JSON.parse(rawSubjects);
                     } catch {
-                        subjectsList = [teacher.subjects];
+                        subjectsList = rawSubjects.split(',').map(s => s.trim()).filter(Boolean);
                     }
                 }
             }
             
             // Grade parsing
-            const targetGrade = teacher.target_grade || teacher.targetGrade || teacher.grade || '';
+            const targetGrade = teacher.target_grade || teacher.targetGrade || teacher.gradeLevel || teacher.grade || '';
             const gradeDisplay = targetGrade 
                 ? `<span style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">📌 ${targetGrade}</span>` 
                 : `<span style="color: rgba(255,255,255,0.3); font-style: italic; font-size: 0.85rem;">-- Unassigned --</span>`;
             
             // Work days parsing
             let workDays = [];
-            if (teacher.work_days || teacher.workDays) {
-                const daysData = teacher.work_days || teacher.workDays;
+            const daysData = teacher.work_days || teacher.workDays;
+            if (daysData) {
                 if (Array.isArray(daysData)) {
                     workDays = daysData;
                 } else if (typeof daysData === 'string') {
                     try {
                         workDays = JSON.parse(daysData);
                     } catch {
-                        workDays = [daysData];
+                        workDays = daysData.split(',').map(d => d.trim()).filter(Boolean);
                     }
                 }
             }
             const daysDisplay = workDays.length > 0 ? workDays.join(', ') : '--';
             
-            // Robust Time Parsing Logic
+            // FIX 2: Comprehensive Time & Shift Parsing
             let timeShiftDisplay = '';
             
             const rawShiftField = teacher.shift || teacher.time || teacher.availability;
@@ -167,10 +176,16 @@ async function loadTeacherData() {
             if (parsedShift && !parsedShift.includes('[object Object]')) {
                 timeShiftDisplay = parsedShift;
             } else {
-                let startTime = teacher.start_time || teacher.startTime || '08:00';
-                let endTime = teacher.end_time || teacher.endTime || '18:00';
+                const startTime = teacher.start_time || teacher.startTime;
+                const endTime = teacher.end_time || teacher.endTime;
                 
-                timeShiftDisplay = `${convertTo12Hour(startTime)} - ${convertTo12Hour(endTime)}`;
+                if (startTime && endTime) {
+                    timeShiftDisplay = `${convertTo12Hour(startTime)} - ${convertTo12Hour(endTime)}`;
+                } else if (startTime) {
+                    timeShiftDisplay = convertTo12Hour(startTime);
+                } else {
+                    timeShiftDisplay = 'N/A';
+                }
             }
 
             // Build subjects badges
@@ -266,9 +281,9 @@ async function removeTeacher(id, button) {
             }
         });
 
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
 
-        if (response.ok && result.success) {
+        if (response.ok && (result.success || response.status === 200)) {
             const row = button.closest('tr');
             if (row) {
                 row.style.opacity = '0';
@@ -276,7 +291,7 @@ async function removeTeacher(id, button) {
                 row.style.transition = 'all 0.4s ease';
                 setTimeout(() => {
                     row.remove();
-                    const tbody = document.getElementById('teacher-table-body');
+                    const tbody = document.getElementById('teacher-table-body') || document.getElementById('teacherTableBody');
                     if (tbody && tbody.children.length === 0) {
                         tbody.innerHTML = `
                             <tr>
