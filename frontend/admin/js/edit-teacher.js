@@ -69,42 +69,48 @@ function buildFullTimeOptions() {
 }
 
 /**
- * ⏰ Fills all Start/End time selects with full 12-hr display options
+ * ⏰ Reconstructs shift container HTML with perfectly aligned Grid layout & clean labels
  */
 function populateTimeDropdowns() {
     let startSelect = document.getElementById('startTime') || document.getElementById('start_time');
     let endSelect = document.getElementById('endTime') || document.getElementById('end_time');
 
-    // Generate options html
     const optionsHtml = buildFullTimeOptions();
 
-    // Direct injection into existing select elements
-    if (startSelect && endSelect) {
-        startSelect.innerHTML = optionsHtml;
-        endSelect.innerHTML = optionsHtml;
-        return;
+    // Target the outermost container wrapping the time elements
+    let targetContainer = null;
+    if (startSelect) {
+        targetContainer = startSelect.closest('.time-group, .availability-container, .form-group, .input-group') || startSelect.parentElement;
+        if (targetContainer && targetContainer.parentElement && targetContainer.parentElement.querySelector('label')) {
+            targetContainer = targetContainer.parentElement; // grab top-level wrapper if labels exist outside
+        }
     }
 
-    // Fallback injection if HTML containers exist but selects are missing/malformed
-    const timeGroup = document.querySelector('.time-group, .availability-container') || 
-                      (startSelect ? startSelect.parentElement : null);
+    if (!targetContainer) {
+        targetContainer = document.querySelector('.time-group, .availability-container');
+    }
 
-    if (timeGroup) {
-        timeGroup.innerHTML = `
-            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #fff;">Preferred Shift / Availability Window</label>
-            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; width: 100%;">
+    if (targetContainer) {
+        targetContainer.innerHTML = `
+            <label style="display: block; margin-bottom: 12px; font-weight: 500; color: #a0a0c0; font-size: 0.9rem;">Preferred Shift / Availability Window</label>
+            <div style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 12px; width: 100%;">
                 
-                <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 6px;">
-                    <span style="font-size: 0.85rem; color: #a0a0c0; font-weight: 500;">Start Time</span>
+                <!-- Start Time Column -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label for="startTime" style="font-size: 0.82rem; color: #a0a0c0; font-weight: 500; margin: 0;">Start Time</label>
                     <select id="startTime" class="custom-single-time-select">
                         ${optionsHtml}
                     </select>
                 </div>
 
-                <span style="color: #a0a0c0; font-weight: 500; align-self: flex-end; margin-bottom: 12px;">to</span>
+                <!-- Separator -->
+                <div style="padding-bottom: 10px; color: #a0a0c0; font-weight: 500; font-size: 0.9rem;">
+                    to
+                </div>
 
-                <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 6px;">
-                    <span style="font-size: 0.85rem; color: #a0a0c0; font-weight: 500;">End Time</span>
+                <!-- End Time Column -->
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label for="endTime" style="font-size: 0.82rem; color: #a0a0c0; font-weight: 500; margin: 0;">End Time</label>
                     <select id="endTime" class="custom-single-time-select">
                         ${optionsHtml}
                     </select>
@@ -114,21 +120,23 @@ function populateTimeDropdowns() {
         `;
     }
 
-    // Add CSS fixes for scroll dropdowns
+    // Inject dedicated CSS for dark theme controls
     if (!document.getElementById('single-time-select-styles')) {
         const style = document.createElement('style');
         style.id = 'single-time-select-styles';
         style.textContent = `
             select#startTime, select#endTime, .custom-single-time-select {
-                width: 100%;
+                width: 100% !important;
                 background-color: #1a1e2d !important;
                 border: 1px solid #2e354f !important;
                 color: #ffffff !important;
-                border-radius: 6px;
-                padding: 10px 12px;
-                font-size: 0.95rem;
-                outline: none;
-                cursor: pointer;
+                border-radius: 6px !important;
+                padding: 10px 12px !important;
+                font-size: 0.95rem !important;
+                outline: none !important;
+                cursor: pointer !important;
+                box-sizing: border-box !important;
+                height: 42px !important;
             }
             select#startTime option, select#endTime option, .custom-single-time-select option {
                 background-color: #1a1e2d !important;
@@ -243,10 +251,10 @@ async function loadTeacherProfile() {
 
         // Set value in single scroll dropdowns
         const startVal = normalizeTo24Hour(extractedStart) || '08:00';
-        const endVal = normalizeTo24Hour(extractedEnd) || '17:00';
+        const endVal = normalizeTo24Hour(extractedEnd) || '16:00';
 
-        const startEl = document.getElementById('startTime') || document.getElementById('start_time');
-        const endEl = document.getElementById('endTime') || document.getElementById('end_time');
+        const startEl = document.getElementById('startTime');
+        const endEl = document.getElementById('endTime');
         
         if (startEl) startEl.value = startVal;
         if (endEl) endEl.value = endVal;
@@ -310,11 +318,11 @@ if (formEl) {
         const lastNameVal = (document.getElementById('lastName')?.value || '').trim();
         const fullNameVal = `${firstNameVal} ${lastNameVal}`.trim();
         
-        const startEl = document.getElementById('startTime') || document.getElementById('start_time');
-        const endEl = document.getElementById('endTime') || document.getElementById('end_time');
+        const startEl = document.getElementById('startTime');
+        const endEl = document.getElementById('endTime');
         
         const startVal = startEl ? startEl.value : '08:00';
-        const endVal = endEl ? endEl.value : '17:00';
+        const endVal = endEl ? endEl.value : '16:00';
         
         const start12 = format12Hour(startVal);
         const end12 = format12Hour(endVal);
