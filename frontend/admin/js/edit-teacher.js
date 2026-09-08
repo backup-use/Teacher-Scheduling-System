@@ -37,6 +37,12 @@ function populateTimeDropdowns() {
             const option1 = new Option(display12, val24);
             const option2 = new Option(display12, val24);
 
+            // 🎨 Force dark background and white text on options to fix browser light popup defaults
+            option1.style.backgroundColor = '#1e2330';
+            option1.style.color = '#ffffff';
+            option2.style.backgroundColor = '#1e2330';
+            option2.style.color = '#ffffff';
+
             startSelect.add(option1);
             endSelect.add(option2);
         }

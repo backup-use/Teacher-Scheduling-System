@@ -181,3 +181,32 @@ input:focus {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* Styling for Select Inputs */
+select, 
+select.time-select {
+    padding: 12px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 0.95rem;
+    transition: border-color 0.15s;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+select:focus,
+select.time-select:focus {
+    outline: none;
+    border-color: #00d2ff;
+}
+
+/* Fixes invisible white-on-white text in browser dropdown popups */
+select option,
+select.time-select option {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+    padding: 10px;
+}
