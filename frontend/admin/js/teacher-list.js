@@ -167,21 +167,25 @@ async function loadTeacherData() {
             }
             const daysDisplay = workDays.length > 0 ? workDays.join(', ') : '--';
             
-            // Time & Shift Parsing
+            // =========================================================================
+            // TIME & SHIFT PARSING (UPDATED LOGIC)
+            // =========================================================================
+            const startTime = teacher.start_time || teacher.startTime;
+            const endTime = teacher.end_time || teacher.endTime;
             let timeShiftDisplay = '';
-            const rawShiftField = teacher.shift || teacher.time || teacher.availability;
-            const parsedShift = parseTimeValue(rawShiftField);
 
-            if (parsedShift && !parsedShift.includes('[object Object]')) {
-                timeShiftDisplay = parsedShift;
+            // Check dynamic start and end times first
+            if (startTime && endTime) {
+                timeShiftDisplay = `${convertTo12Hour(startTime)} - ${convertTo12Hour(endTime)}`;
+            } else if (startTime) {
+                timeShiftDisplay = convertTo12Hour(startTime);
             } else {
-                const startTime = teacher.start_time || teacher.startTime;
-                const endTime = teacher.end_time || teacher.endTime;
-                
-                if (startTime && endTime) {
-                    timeShiftDisplay = `${convertTo12Hour(startTime)} - ${convertTo12Hour(endTime)}`;
-                } else if (startTime) {
-                    timeShiftDisplay = convertTo12Hour(startTime);
+                // Fall back to stored string properties if individual timestamps are missing
+                const rawShiftField = teacher.shift || teacher.time || teacher.availability;
+                const parsedShift = parseTimeValue(rawShiftField);
+
+                if (parsedShift && !parsedShift.includes('[object Object]')) {
+                    timeShiftDisplay = parsedShift;
                 } else {
                     timeShiftDisplay = 'N/A';
                 }
