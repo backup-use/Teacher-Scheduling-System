@@ -1,4 +1,13 @@
-document.addEventListener('DOMContentLoaded', loadTeacherData);
+document.addEventListener('DOMContentLoaded', () => {
+    loadTeacherData();
+});
+
+// Refresh table data when navigating back using browser history (e.g., from edit-teacher.html)
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted || performance.getEntriesByType("navigation")[0]?.type === "back_forward") {
+        loadTeacherData();
+    }
+});
 
 /**
  * Converts 24-hour time string (e.g. "16:00" or "18:00") to 12-hour AM/PM format (e.g. "04:00 PM" or "06:00 PM")
@@ -35,9 +44,9 @@ function parseTimeValue(val) {
     if (typeof val === 'object') {
         if (val.display) return val.display;
         if (val.shift) return val.shift;
-        if (val.start || val.startTime || val.end || val.endTime) {
-            const start = convertTo12Hour(val.start || val.startTime || '');
-            const end = convertTo12Hour(val.end || val.endTime || '');
+        if (val.start || val.startTime || val.from || val.end || val.endTime || val.to) {
+            const start = convertTo12Hour(val.start || val.startTime || val.from || '');
+            const end = convertTo12Hour(val.end || val.endTime || val.to || '');
             return `${start} - ${end}`.trim();
         }
     }
@@ -45,7 +54,6 @@ function parseTimeValue(val) {
 }
 
 async function loadTeacherData() {
-    // Matches both possible DOM ID names
     const tbody = document.getElementById('teacher-table-body') || document.getElementById('teacherTableBody');
     if (!tbody) {
         console.error('Teacher table body not found in DOM');
@@ -62,7 +70,7 @@ async function loadTeacherData() {
             return;
         }
 
-        // Cache-busting parameter to ensure freshly updated data loads
+        // Cache-busting parameter to force fetch fresh data
         const cacheBuster = `?_t=${Date.now()}`;
         const endpointsToTry = [
             `/api/admin/teachers${cacheBuster}`,
@@ -79,7 +87,8 @@ async function loadTeacherData() {
                     headers: { 
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache, no-store'
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
                     },
                     cache: 'no-store'
                 });
@@ -95,17 +104,26 @@ async function loadTeacherData() {
             }
         }
 
-        if (!response) {
-            throw new Error(`HTTP error! status: ${lastStatus} (Route Not Found)`);
+        let rawData = null;
+        if (response) {
+            rawData = await response.json();
+            console.log('Loaded raw teachers data from server:', rawData);
         }
 
-        const rawData = await response.json();
-        console.log('Loaded raw teachers data:', rawData);
-
         // Safely unwrap API payload formats
-        const teachers = Array.isArray(rawData) 
-            ? rawData 
-            : (rawData.teachers || rawData.data || rawData.rows || []);
+        let teachers = rawData 
+            ? (Array.isArray(rawData) ? rawData : (rawData.teachers || rawData.data || rawData.rows || []))
+            : [];
+
+        // FALLBACK: Load from localStorage if server return is empty
+        if (!teachers || teachers.length === 0) {
+            try {
+                const local = localStorage.getItem('teachers');
+                if (local) teachers = JSON.parse(local);
+            } catch (e) {
+                console.warn("Could not load local storage teachers fallback:", e);
+            }
+        }
 
         if (!teachers || teachers.length === 0) {
             tbody.innerHTML = `
@@ -167,20 +185,16 @@ async function loadTeacherData() {
             }
             const daysDisplay = workDays.length > 0 ? workDays.join(', ') : '--';
             
-            // =========================================================================
-            // TIME & SHIFT PARSING (UPDATED LOGIC)
-            // =========================================================================
+            // Time & Shift Parsing
             const startTime = teacher.start_time || teacher.startTime;
             const endTime = teacher.end_time || teacher.endTime;
             let timeShiftDisplay = '';
 
-            // Check dynamic start and end times first
             if (startTime && endTime) {
                 timeShiftDisplay = `${convertTo12Hour(startTime)} - ${convertTo12Hour(endTime)}`;
             } else if (startTime) {
                 timeShiftDisplay = convertTo12Hour(startTime);
             } else {
-                // Fall back to stored string properties if individual timestamps are missing
                 const rawShiftField = teacher.shift || teacher.time || teacher.availability;
                 const parsedShift = parseTimeValue(rawShiftField);
 
@@ -287,6 +301,15 @@ async function removeTeacher(id, button) {
         const result = await response.json().catch(() => ({}));
 
         if (response.ok && (result.success || response.status === 200)) {
+            // Remove item from localStorage cache if present
+            try {
+                let localTeachers = JSON.parse(localStorage.getItem('teachers') || '[]');
+                localTeachers = localTeachers.filter(t => (t.id || t.teacher_id || t._id) != id);
+                localStorage.setItem('teachers', JSON.stringify(localTeachers));
+            } catch (e) {
+                console.warn("Local storage cache removal failed:", e);
+            }
+
             const row = button.closest('tr');
             if (row) {
                 row.style.opacity = '0';
