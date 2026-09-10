@@ -4,8 +4,11 @@ let selectedSubjectsArray = [];
 let existingTeachers = []; // Store existing teachers to check for duplicates
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Replace native time input elements with custom dropdown choices dynamically
+    // Replace time inputs with standard single 12-hour dropdowns
     replaceTimeInputsWithChoices();
+
+    // Remove Saturday and Sunday checkboxes from DOM
+    removeWeekendCheckboxes();
 
     // 1. Sidebar Navigation handlers
     document.querySelectorAll('.nav-links-wrapper .nav-item').forEach(btn => {
@@ -36,47 +39,77 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Dynamically replaces native time inputs with clean HTML <select> dropdown choices
+ * Dynamically removes Saturday and Sunday checkboxes
+ */
+function removeWeekendCheckboxes() {
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        const val = (cb.value || cb.id || '').toLowerCase();
+        if (val === 'saturday' || val === 'sunday' || val === 'sat' || val === 'sun') {
+            const parentLabel = cb.closest('label') || cb.parentElement;
+            if (parentLabel) {
+                parentLabel.remove();
+            } else {
+                cb.remove();
+            }
+        }
+    });
+}
+
+/**
+ * Format 24-hour HH:MM string to standard 12-hour string (e.g. "08:00 AM")
+ */
+function format12Hour(timeStr) {
+    if (!timeStr) return '';
+    let [hours, minutes] = timeStr.toString().split(':').map(Number);
+    if (isNaN(hours)) return timeStr;
+    const period = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const formattedHours = hours.toString().padStart(2, '0');
+    const formattedMinutes = (minutes || 0).toString().padStart(2, '0');
+    return `${formattedHours}:${formattedMinutes} ${period}`;
+}
+
+/**
+ * Dynamically replaces native time inputs with clean standard 12-hour <select> dropdowns
  */
 function replaceTimeInputsWithChoices() {
     const startInput = document.getElementById('t-start');
     const endInput = document.getElementById('t-end');
 
-    if (startInput) createSelectGroup(startInput, 'start', '08', '00', 'AM');
-    if (endInput) createSelectGroup(endInput, 'end', '04', '00', 'PM');
+    if (startInput) createSingleTimeSelect(startInput, 'start', '08:00');
+    if (endInput) createSingleTimeSelect(endInput, 'end', '16:00');
 }
 
-function createSelectGroup(originalInput, type, defaultHour, defaultMin, defaultAmpm) {
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);';
+function createSingleTimeSelect(originalInput, type, defaultValue) {
+    const select = document.createElement('select');
+    select.id = `t-${type}-select`;
+    select.className = 'custom-time-select';
 
-    const hours = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-    const minutes = ['00', '15', '30', '45'];
-    const ampms = ['AM', 'PM'];
+    for (let hour = 6; hour <= 22; hour++) {
+        for (let min of [0, 30]) {
+            if (hour === 22 && min === 30) break;
 
-    const hoursOptions = hours.map(h => `<option value="${h}" ${h === defaultHour ? 'selected' : ''}>${h}</option>`).join('');
-    const minutesOptions = minutes.map(m => `<option value="${m}" ${m === defaultMin ? 'selected' : ''}>${m}</option>`).join('');
-    const ampmOptions = ampms.map(a => `<option value="${a}" ${a === defaultAmpm ? 'selected' : ''}>${a}</option>`).join('');
+            const time24 = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+            const time12 = format12Hour(time24);
 
-    wrapper.innerHTML = `
-        <select id="t-${type}-hour" class="custom-time-select">${hoursOptions}</select>
-        <span style="color: #a0a0c0; font-weight: bold;">:</span>
-        <select id="t-${type}-min" class="custom-time-select">${minutesOptions}</select>
-        <select id="t-${type}-ampm" class="custom-time-select">${ampmOptions}</select>
-    `;
+            const opt = new Option(time12, time24);
+            if (time24 === defaultValue) opt.selected = true;
+            select.add(opt);
+        }
+    }
 
-    // Add inline style rule for dark mode dynamic selects
     if (!document.getElementById('custom-time-select-style')) {
         const style = document.createElement('style');
         style.id = 'custom-time-select-style';
         style.textContent = `
             .custom-time-select {
-                background: transparent;
-                border: none;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
                 color: #00d2ff;
                 font-weight: 600;
                 font-size: 0.95rem;
-                padding: 4px 2px;
+                padding: 6px 12px;
                 cursor: pointer;
                 outline: none;
             }
@@ -88,29 +121,18 @@ function createSelectGroup(originalInput, type, defaultHour, defaultMin, default
         document.head.appendChild(style);
     }
 
-    // Replace time input in DOM
-    originalInput.parentNode.replaceChild(wrapper, originalInput);
+    originalInput.parentNode.replaceChild(select, originalInput);
 }
 
 /**
- * Converts selected dropdown choices to 24-hour time format (HH:MM)
+ * Converts selected dropdown choice to 24-hour time format (HH:MM)
  */
 function getSelected24HourTime(type) {
-    const hElem = document.getElementById(`t-${type}-hour`);
-    const mElem = document.getElementById(`t-${type}-min`);
-    const pElem = document.getElementById(`t-${type}-ampm`);
-
-    if (!hElem || !mElem || !pElem) return type === 'start' ? '08:00' : '16:00';
-
-    let hours = parseInt(hElem.value, 10) || 8;
-    const minutes = mElem.value || '00';
-    const period = pElem.value;
-
-    if (period === 'PM' && hours < 12) hours += 12;
-    if (period === 'AM' && hours === 12) hours = 0;
-
-    const formattedHours = hours.toString().padStart(2, '0');
-    return `${formattedHours}:${minutes}`;
+    const select = document.getElementById(`t-${type}-select`);
+    if (select && select.value) {
+        return select.value;
+    }
+    return type === 'start' ? '08:00' : '16:00';
 }
 
 // --- Fetch Existing Teachers to Check Duplicates ---
