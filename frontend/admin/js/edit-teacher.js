@@ -30,13 +30,29 @@ function populateTimeDropdowns() {
             const time24 = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
             const time12 = format12Hour(time24);
 
-            const opt1 = new Option(`${time24} (${time12})`, time24);
-            const opt2 = new Option(`${time24} (${time12})`, time24);
+            // FIX: Removed 24-hour prefix so only clean 12-hour time shows in the dropdowns
+            const opt1 = new Option(time12, time24);
+            const opt2 = new Option(time12, time24);
 
             startSelect.add(opt1);
             endSelect.add(opt2);
         }
     }
+}
+
+// Helper to remove Saturday and Sunday checkboxes dynamically from the DOM
+function removeWeekendCheckboxes() {
+    document.querySelectorAll('.day-checkbox').forEach(cb => {
+        const val = cb.value ? cb.value.toLowerCase() : '';
+        if (val === 'saturday' || val === 'sunday' || val === 'sat' || val === 'sun') {
+            const parentLabel = cb.closest('label') || cb.parentElement;
+            if (parentLabel) {
+                parentLabel.remove();
+            } else {
+                cb.remove();
+            }
+        }
+    });
 }
 
 // Fetch existing teacher details to populate the edit form
@@ -48,6 +64,9 @@ async function loadTeacherToEdit() {
     }
 
     populateTimeDropdowns();
+    
+    // FIX: Remove Saturday & Sunday checkboxes directly via JS
+    removeWeekendCheckboxes();
 
     const token = localStorage.getItem('token');
     if (!token) {
