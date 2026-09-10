@@ -30,7 +30,6 @@ function populateTimeDropdowns() {
             const time24 = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
             const time12 = format12Hour(time24);
 
-            // FIX: Removed 24-hour prefix so only clean 12-hour time shows in the dropdowns
             const opt1 = new Option(time12, time24);
             const opt2 = new Option(time12, time24);
 
@@ -64,8 +63,6 @@ async function loadTeacherToEdit() {
     }
 
     populateTimeDropdowns();
-    
-    // FIX: Remove Saturday & Sunday checkboxes directly via JS
     removeWeekendCheckboxes();
 
     const token = localStorage.getItem('token');
@@ -88,7 +85,8 @@ async function loadTeacherToEdit() {
             const res = await fetch(url, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Cache-Control': 'no-cache'
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
                 }
             });
 
@@ -115,6 +113,12 @@ async function loadTeacherToEdit() {
         }
     }
 
+    // Fallback: Check local storage array if backend endpoint returns nothing
+    if (!teacher) {
+        const localTeachers = JSON.parse(localStorage.getItem('teachers') || '[]');
+        teacher = localTeachers.find(t => (t.id || t.teacher_id || t._id) == teacherId);
+    }
+
     if (!teacher) {
         alert("Failed to load teacher details from server.");
         return;
@@ -124,19 +128,23 @@ async function loadTeacherToEdit() {
     const firstName = teacher.first_name || teacher.firstName || (teacher.name ? teacher.name.split(' ')[0] : '');
     const lastName = teacher.last_name || teacher.lastName || (teacher.name ? teacher.name.split(' ').slice(1).join(' ') : '');
     
-    document.getElementById('firstName').value = firstName;
-    document.getElementById('lastName').value = lastName;
-    document.getElementById('email').value = teacher.email || '';
+    if (document.getElementById('firstName')) document.getElementById('firstName').value = firstName;
+    if (document.getElementById('lastName')) document.getElementById('lastName').value = lastName;
+    if (document.getElementById('email')) document.getElementById('email').value = teacher.email || '';
 
     // Subjects field
     let subjects = teacher.subjects || teacher.subject_list || teacher.subject || [];
     if (typeof subjects === 'string') {
         try { subjects = JSON.parse(subjects); } catch { subjects = subjects.split(',').map(s => s.trim()); }
     }
-    document.getElementById('subjects').value = Array.isArray(subjects) ? subjects.join(', ') : subjects;
+    if (document.getElementById('subjects')) {
+        document.getElementById('subjects').value = Array.isArray(subjects) ? subjects.join(', ') : subjects;
+    }
 
     // Target Grade field
-    document.getElementById('targetGrade').value = teacher.target_grade || teacher.targetGrade || teacher.gradeLevel || teacher.grade || '';
+    if (document.getElementById('targetGrade')) {
+        document.getElementById('targetGrade').value = teacher.target_grade || teacher.targetGrade || teacher.gradeLevel || teacher.grade || '';
+    }
 
     // Check work day checkboxes
     let workDays = teacher.work_days || teacher.workDays || [];
@@ -153,6 +161,20 @@ async function loadTeacherToEdit() {
 
     if (document.getElementById('startTime')) document.getElementById('startTime').value = startTimeVal;
     if (document.getElementById('endTime')) document.getElementById('endTime').value = endTimeVal;
+}
+
+// Update Local Storage Array helper
+function syncLocalStorage(updatedTeacher) {
+    try {
+        let localTeachers = JSON.parse(localStorage.getItem('teachers') || '[]');
+        const idx = localTeachers.findIndex(t => (t.id || t.teacher_id || t._id) == teacherId);
+        if (idx !== -1) {
+            localTeachers[idx] = { ...localTeachers[idx], ...updatedTeacher };
+            localStorage.setItem('teachers', JSON.stringify(localTeachers));
+        }
+    } catch (e) {
+        console.warn("Could not sync local storage:", e);
+    }
 }
 
 // Save form changes to backend
@@ -184,17 +206,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const firstNameVal = document.getElementById('firstName').value.trim();
-            const lastNameVal = document.getElementById('lastName').value.trim();
+            const firstNameVal = document.getElementById('firstName')?.value.trim() || '';
+            const lastNameVal = document.getElementById('lastName')?.value.trim() || '';
             const fullNameVal = `${firstNameVal} ${lastNameVal}`.trim();
-            const startVal = document.getElementById('startTime').value;
-            const endVal = document.getElementById('endTime').value;
-            const subjectsVal = document.getElementById('subjects').value;
+            const startVal = document.getElementById('startTime')?.value || '08:00';
+            const endVal = document.getElementById('endTime')?.value || '16:00';
+            const subjectsVal = document.getElementById('subjects')?.value || '';
             const subjectsArray = subjectsVal.split(',').map(s => s.trim()).filter(Boolean);
-            const targetGradeVal = document.getElementById('targetGrade').value.trim();
+            const targetGradeVal = document.getElementById('targetGrade')?.value.trim() || '';
 
             const shift12 = `${format12Hour(startVal)} - ${format12Hour(endVal)}`;
 
+            // Build payload matching all typical backend column structures
             const updatedPayload = {
                 id: teacherId,
                 teacher_id: teacherId,
@@ -204,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 last_name: lastNameVal,
                 name: fullNameVal,
                 fullName: fullNameVal,
-                email: document.getElementById('email').value.trim(),
+                email: document.getElementById('email')?.value.trim() || '',
                 subjects: subjectsArray,
                 subject_list: subjectsArray,
                 targetGrade: targetGradeVal,
@@ -216,12 +239,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 endTime: endVal,
                 end_time: endVal,
                 shift: shift12,
-                availability: shift12
+                availability: selectedDays.map(day => ({
+                    day: day,
+                    from: startVal,
+                    to: endVal
+                }))
             };
 
             const token = localStorage.getItem('token');
 
-            // Sequential HTTP methods and paths to guarantee backend hit
             const saveEndpoints = [
                 { url: `/api/admin/teachers/${teacherId}`, method: 'PUT' },
                 { url: `/api/admin/teachers/${teacherId}`, method: 'PATCH' },
@@ -255,8 +281,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (savedSuccessfully) {
+                // Sync browser storage to prevent stale local data
+                syncLocalStorage(updatedPayload);
+
                 alert("Teacher profile saved successfully!");
-                window.location.href = "teacher-list.html";
+                
+                // Navigate back with cache-busting timestamp
+                window.location.href = `teacher-list.html?refreshed=${Date.now()}`;
             } else {
                 alert("Failed to save teacher. Server endpoint returned an error.");
                 if (saveBtn) {
