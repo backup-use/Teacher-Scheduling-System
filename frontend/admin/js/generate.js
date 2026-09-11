@@ -366,14 +366,76 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         styleEl.id = "printable-schedule-css";
         styleEl.innerHTML = `
             @media print {
-                body * { visibility: hidden; }
-                .section-print-area, .section-print-area * { visibility: visible; }
-                .section-print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
-                .no-print { display: none !important; }
-                table { page-break-inside: avoid; }
+                /* Force exact background colors to show up in print/PDF */
+                * {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                
+                @page {
+                    size: landscape;
+                    margin: 5mm; /* Minimal margins so entire schedule fits 1 page */
+                }
+
+                html, body {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #ffffff !important;
+                    height: auto !important;
+                    overflow: visible !important;
+                }
+
+                /* Hide all non-printable dashboard elements */
+                body * {
+                    visibility: hidden;
+                }
+
+                /* Display ONLY the active print container */
+                .section-print-area, .section-print-area * {
+                    visibility: visible;
+                }
+
+                .section-print-area {
+                    position: absolute !important;
+                    left: 0 !important;
+                    top: 0 !important;
+                    width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+
+                .no-print {
+                    display: none !important;
+                }
+
+                /* Scale table contents down slightly to guarantee 1-page fit */
+                .section-print-area table {
+                    width: 100% !important;
+                    font-size: 0.72rem !important;
+                    border-collapse: collapse !important;
+                    page-break-inside: avoid !important;
+                }
+
+                .section-print-area th, 
+                .section-print-area td {
+                    padding: 3px 2px !important;
+                    border: 1.5px solid #000000 !important;
+                }
+
+                .section-print-area h3 {
+                    font-size: 1rem !important;
+                    margin-bottom: 6px !important;
+                }
             }
-            .section-pdf-export { background: #ffffff !important; padding: 10px !important; border: none !important; }
-            .section-pdf-export .no-print { display: none !important; }
+
+            .section-pdf-export { 
+                background: #ffffff !important; 
+                padding: 10px !important; 
+                border: none !important; 
+            }
+            .section-pdf-export .no-print { 
+                display: none !important; 
+            }
         `;
         document.head.appendChild(styleEl);
     }
