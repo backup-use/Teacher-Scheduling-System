@@ -162,37 +162,101 @@ async function getPartitionedSubjects() {
 
   return partitions;
 }
+// ─── Time Helper Utilities ──────────────────────────────────────────────────
+
+// Converts strings like "07:00", "07:00 AM", "12:00 PM", or "7:00 PM" into total minutes from midnight
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  let cleanStr = String(timeStr).trim();
+  const isPM = /PM/i.test(cleanStr);
+  const isAM = /AM/i.test(cleanStr);
+  
+  // Strip non-numeric/colon chars
+  cleanStr = cleanStr.replace(/[^0-9:]/g, "");
+  let [hours, minutes] = cleanStr.split(":").map(Number);
+  
+  hours = hours || 0;
+  minutes = minutes || 0;
+
+  if (isPM && hours < 12) hours += 12;
+  if (isAM && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
+}
+
+// Formats minutes from midnight back into standard "HH:MM" 24-hour format
+function minutesToHHMM(mins) {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function isTimeInRange(time, from, to) {
+  const tMins = parseTimeToMinutes(time);
+  const fMins = parseTimeToMinutes(from);
+  const t2Mins = parseTimeToMinutes(to);
+  return tMins >= fMins && tMins < t2Mins;
+}
+
+function generateTimeSlots(start, end, durationMin = 60) {
+  const slots = [];
+  let currentMins = parseTimeToMinutes(start);
+  const endMins = parseTimeToMinutes(end);
+
+  // Fallback default range if start/end values are invalid or zero
+  if (currentMins >= endMins) {
+    currentMins = 8 * 60;  // 08:00 AM
+    endMins = 16 * 60;     // 04:00 PM
+  }
+
+  while (currentMins + durationMin <= endMins) {
+    const s = minutesToHHMM(currentMins);
+    const e = minutesToHHMM(currentMins + durationMin);
+    slots.push({ start: s, end: e });
+    currentMins += durationMin;
+  }
+  return slots;
+}
 
 // ─── Schedule Generator ──────────────────────────────────────────────────────
 async function generateSchedule(teacher) {
   const slots = [];
-  const days = teacher.workDays || teacher.work_days || [];
   
+  // Safely extract workDays (handles stringified JSON array or standard array)
+  let days = teacher.workDays || teacher.work_days || [];
+  if (typeof days === "string") {
+    days = safeJsonParse(days, ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
+  }
+  if (!Array.isArray(days) || days.length === 0) {
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  }
+
   const startTime = teacher.startTime || teacher.start_time || "08:00";
   const endTime = teacher.endTime || teacher.end_time || "16:00";
   const timeSlots = generateTimeSlots(startTime, endTime, 60);
 
   let availableSchoolSubjects = ["Math", "Science", "English", "History", "ICT"];
   try {
-    const res = await db.query('SELECT name FROM subjects ORDER BY LOWER(name) ASC');
+    const res = await db.query("SELECT name FROM subjects ORDER BY LOWER(name) ASC");
     if (res.rows.length > 0) {
-      availableSchoolSubjects = res.rows.map(r => r.name);
+      availableSchoolSubjects = res.rows.map((r) => r.name);
     }
   } catch (err) {
     console.error("Error fetching subjects for schedule generator:", err);
   }
 
   const teacherSubjects = safeJsonParse(teacher.subjects, []);
-  const validSubjects = teacherSubjects.filter(sub => availableSchoolSubjects.includes(sub));
+  const validSubjects = teacherSubjects.filter((sub) => availableSchoolSubjects.includes(sub));
   const primarySubject = validSubjects.length > 0 ? validSubjects[0] : (teacherSubjects[0] || "General Class");
 
   const availabilityList = safeJsonParse(teacher.availability, []);
 
   days.forEach((day) => {
     timeSlots.forEach((slot) => {
-      const isAvailable = availabilityList.length === 0 || availabilityList.some(
-        (a) => a.day === day && isTimeInRange(slot.start, a.from || "08:00", a.to || "16:00")
-      );
+      const isAvailable =
+        availabilityList.length === 0 ||
+        availabilityList.some((a) => a.day === day && isTimeInRange(slot.start, a.from || "08:00", a.to || "16:00"));
+
       if (isAvailable) {
         slots.push({
           id: crypto.randomBytes(4).toString("hex"),
@@ -200,52 +264,15 @@ async function generateSchedule(teacher) {
           startTime: slot.start,
           endTime: slot.end,
           subject: primarySubject,
-          room: `Room ${Math.floor(Math.random() * 10) + 101}`,
+          room: `room 10`,
           status: "scheduled",
         });
       }
     });
   });
 
-  const byDay = {};
-  slots.forEach((s) => {
-    if (!byDay[s.day]) byDay[s.day] = [];
-    if (byDay[s.day].length < 4) byDay[s.day].push(s);
-  });
-
-  return Object.values(byDay).flat();
-}
-
-function generateTimeSlots(start, end, durationMin) {
-  const slots = [];
-  if (!start || !end || !start.includes(":") || !end.includes(":")) {
-    start = "08:00";
-    end = "16:00";
-  }
-  let [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  const endMins = eh * 60 + em;
-
-  while (sh * 60 + sm + durationMin <= endMins) {
-    const s = `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`;
-    const em2 = sm + durationMin;
-    const eh2 = sh + Math.floor(em2 / 60);
-    const em3 = em2 % 60;
-    const e = `${String(eh2).padStart(2, "0")}:${String(em3).padStart(2, "0")}`;
-    slots.push({ start: s, end: e });
-    sm += durationMin;
-    if (sm >= 60) {
-      sh += Math.floor(sm / 60);
-      sm = sm % 60;
-    }
-  }
   return slots;
 }
-
-function isTimeInRange(time, from, to) {
-  return time >= from && time < to;
-}
-
 // ─── Router Helpers ──────────────────────────────────────────────────────────
 function parseBody(req) {
   return new Promise((resolve) => {
