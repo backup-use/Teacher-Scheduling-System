@@ -451,9 +451,9 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                             <span style="color: #991b1b; font-weight: bold; font-size: 0.95rem;">
                                 ${grade} <span style="color: #dc2626; font-size: 0.8rem; font-weight: 600;">(${item.teacherCount} Teachers Assigned for this Grade)</span>
                             </span>
-                            <a href="Addteachers.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
+                            <a href="../pages/Addteachers.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
                                 + Assign Teacher
-                            </a>
+                            </a>    
                         </div>
                         <div style="font-size: 0.82rem; color: #7f1d1d; margin-bottom: 6px;">
                             ${item.teacherCount === 0 ? "⚠️ Cannot generate timetable: No instructors assigned to teach this Grade Level." : "⚠️ The following required subjects could not be scheduled due to teacher shortage:"}
