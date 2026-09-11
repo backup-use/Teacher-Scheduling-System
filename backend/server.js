@@ -18,7 +18,6 @@ const PORT = process.env.PORT || 3000;
 
 // ─── Email Notification Helper ───────────────────────────────────────────────
 async function sendCredentialsEmail(teacherEmail, teacherName, username, password, extraDetails = {}) {
-  // Check if Resend is configured before running email logic
   if (!resend) {
     console.log(`⚠️ Skipping email to ${teacherEmail}: RESEND_API_KEY is missing.`);
     return;
@@ -39,7 +38,19 @@ async function sendCredentialsEmail(teacherEmail, teacherName, username, passwor
       from: 'Lectura Scheduling <onboarding@resend.dev>',
       to: [teacherEmail],
       subject: '🔑 Welcome to Lectura - Your Account Credentials & Schedule Details',
-      html: `...` // keep your existing html template here
+      html: `
+        <div style="font-family: Arial, sans-serif; background: #0f111a; color: #fff; padding: 20px; border-radius: 8px;">
+          <h2 style="color: #00d2ff;">Welcome to Lectura, ${teacherName}!</h2>
+          <p>Your account has been successfully created. Below are your login credentials and schedule configuration:</p>
+          <ul>
+            <li><strong>Username:</strong> ${username}</li>
+            <li><strong>Password:</strong> ${password}</li>
+            <li><strong>Assigned Subjects:</strong> ${formattedSubjects}</li>
+            <li><strong>Work Days:</strong> ${formattedDays}</li>
+            <li><strong>Work Hours:</strong> ${startTime} - ${endTime}</li>
+          </ul>
+        </div>
+      `
     });
 
     if (error) {
@@ -319,7 +330,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // POST /api/auth/forgot-passwordw
+    // POST /api/auth/forgot-password
     if (pathname === "/api/auth/forgot-password" && req.method === "POST") {
       try {
         const body = await parseBody(req);
@@ -404,12 +415,11 @@ const server = http.createServer(async (req, res) => {
 
     // ── Shared Authenticated Endpoints ──
 
-    // 1. GET ROOMS (Accessible by both Teachers and Admins)
+    // GET ROOMS
     if ((pathname === "/api/admin/rooms" || pathname === "/api/teacher/rooms" || pathname === "/api/rooms") && req.method === "GET") {
       const auth = getAuth(req);
       if (!auth) return send(res, 401, { error: "Unauthorized access token." });
       
-      // Allow both teacher and admin roles to view rooms
       if (auth.role !== "admin" && auth.role !== "teacher") {
         return send(res, 403, { error: "Forbidden access." });
       }
@@ -434,16 +444,6 @@ const server = http.createServer(async (req, res) => {
       const auth = getAuth(req);
       if (!auth || auth.role !== "admin") return send(res, 403, { error: "Forbidden: Admin access required." });
 
-      // 2. POST /api/admin/rooms (Admin only)
-      if (pathname === "/api/admin/rooms" && req.method === "POST") {
-        // ... (keep original POST room code here)
-      }
-
-      // 3. DELETE /api/admin/rooms/:id (Admin only)
-      if (pathname.startsWith("/api/admin/rooms/") && req.method === "DELETE") {
-        // ... (keep original DELETE room code here)
-      }
-
       // GET /api/admin/subjects
       if (pathname === "/api/admin/subjects" && req.method === "GET") {
         try {
@@ -454,7 +454,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-// POST /api/admin/subjects (WITH BATCH & ERROR HANDLING)
+      // POST /api/admin/subjects
       if (pathname === "/api/admin/subjects" && req.method === "POST") {
         try {
           const body = await parseBody(req);
@@ -465,16 +465,13 @@ const server = http.createServer(async (req, res) => {
             return send(res, 400, { error: "Subject title required." });
           }
 
-          // Siguraduhing umiiral ang kinakailangang column
           await db.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS grade_level VARCHAR(255);");
 
-          // I-split sa commas para suportahan ang Batch Add
           const rawList = rawInput.split(",").map(s => s.trim()).filter(Boolean);
           const addedSubjects = [];
           const skippedSubjects = [];
 
           for (const subjectName of rawList) {
-            // Suriin kung umiiral na ang subject
             const existing = await db.query(
               "SELECT id FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1) AND LOWER(TRIM(COALESCE(grade_level, ''))) = LOWER($2)",
               [subjectName, gradeLevel]
@@ -528,7 +525,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // GET /api/admin/sections (Fetches sections along with assigned room details)
+      // GET /api/admin/sections
       if (pathname === "/api/admin/sections" && req.method === "GET") {
         try {
           const queryText = `
@@ -551,12 +548,11 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // POST /api/admin/sections (Saves grade level and room assignment)
+      // POST /api/admin/sections
       if (pathname === "/api/admin/sections" && req.method === "POST") {
         try {
           const body = await parseBody(req);
           
-          // Accept variations in incoming field names from frontend
           const sectionName = (body.sectionName || body.name || "").trim();
           const gradeLevel = (body.gradeLevel || body.grade || "").trim();
           const roomIdRaw = body.assignedRoom || body.room_id || body.roomId || null;
@@ -566,10 +562,8 @@ const server = http.createServer(async (req, res) => {
             return send(res, 400, { error: "Section Name is required." });
           }
 
-          // Parse roomId or set null if missing/empty string
           const roomId = roomIdRaw && !isNaN(parseInt(roomIdRaw, 10)) ? parseInt(roomIdRaw, 10) : null;
 
-          // Check if section name already exists
           const existing = await db.query(
             "SELECT id FROM sections WHERE LOWER(TRIM(name)) = LOWER($1)",
             [sectionName]
@@ -578,13 +572,11 @@ const server = http.createServer(async (req, res) => {
             return send(res, 400, { error: "This section already exists." });
           }
 
-          // Insert into PostgreSQL with updated columns
           await db.query(
             "INSERT INTO sections (name, students, grade_level, room_id) VALUES ($1, $2, $3, $4)",
             [sectionName, students, gradeLevel, roomId]
           );
 
-          // Return updated sections list joined with room names
           const { rows } = await db.query(`
             SELECT 
               s.id,
@@ -617,24 +609,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // 1. GET ROOMS (Accessible by both Admin and Teacher portals)
-      if ((pathname === "/api/admin/rooms" || pathname === "/api/teacher/rooms" || pathname === "/api/rooms") && req.method === "GET") {
-        try {
-          const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
-          const normalizedRooms = rows.map(r => ({
-            id: r.id,
-            name: r.name || r.room_name || "",
-            capacity: r.capacity || r.max_capacity || 0,
-            type: r.type || r.room_type || "Standard Classroom"
-          }));
-          return send(res, 200, normalizedRooms);
-        } catch (err) {
-          console.error("Fetch rooms failure:", err);
-          return send(res, 500, { error: err.message });
-        }
-      }
-
-      // 2. POST /api/admin/rooms (Admin only: Register new room)
+      // POST /api/admin/rooms
       if (pathname === "/api/admin/rooms" && req.method === "POST") {
         try {
           const body = await parseBody(req);
@@ -688,7 +663,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // 3. DELETE /api/admin/rooms/:id (Admin only: Delete room)
+      // DELETE /api/admin/rooms/:id
       if (pathname.startsWith("/api/admin/rooms/") && req.method === "DELETE") {
         try {
           const roomId = pathname.split("/").pop();
@@ -701,12 +676,11 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // GET /api/admin/teachers
+      // GET /api/admin/teachers (ALL TEACHERS)
       if (pathname === "/api/admin/teachers" && req.method === "GET") {
         try {
           const { rows } = await db.query("SELECT * FROM teachers ORDER BY id ASC");
           
-          // Format JSON string fields so frontend gets valid objects/arrays
           const formattedTeachers = rows.map(teacher => ({
             ...teacher,
             name: `${teacher.first_name} ${teacher.last_name}`,
@@ -722,7 +696,35 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // POST /api/admin/teachers
+      // GET /api/admin/teachers/:id (INDIVIDUAL TEACHER FETCH)
+      if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "GET") {
+        try {
+          const id = pathname.split("/").pop();
+          const { rows } = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
+          
+          if (rows.length === 0) return send(res, 404, { error: "Teacher not found" });
+
+          const teacher = rows[0];
+          const formattedTeacher = {
+            ...teacher,
+            firstName: teacher.first_name,
+            lastName: teacher.last_name,
+            targetGrade: teacher.target_grade,
+            workDays: safeJsonParse(teacher.work_days, []),
+            subjects: safeJsonParse(teacher.subjects, []),
+            availability: safeJsonParse(teacher.availability, []),
+            startTime: teacher.start_time,
+            endTime: teacher.end_time
+          };
+
+          return send(res, 200, formattedTeacher);
+        } catch (err) {
+          console.error("❌ Error fetching teacher details:", err);
+          return send(res, 500, { error: err.message });
+        }
+      }
+
+      // POST /api/admin/teachers (CREATE TEACHER)
       if (pathname === "/api/admin/teachers" && req.method === "POST") {
         try {
           const body = await parseBody(req);
@@ -851,42 +853,60 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // PUT /api/admin/teachers/:id
+      // PUT /api/admin/teachers/:id (UPDATE TEACHER)
       if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "PUT") {
         try {
           const id = pathname.split("/").pop();
           const body = await parseBody(req);
-          
-          const { rows } = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
-          if (rows.length === 0) return send(res, 404, { error: "Not found" });
 
-          const updated = { ...rows[0], ...body };
-          
-          const subjectsJSON = typeof updated.subjects === 'string' ? updated.subjects : JSON.stringify(updated.subjects || []);
-          const workDaysJSON = typeof updated.work_days === 'string' ? updated.work_days : JSON.stringify(updated.work_days || updated.workDays || []);
+          const { rows } = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
+          if (rows.length === 0) return send(res, 404, { error: "Teacher not found" });
+
+          const existing = rows[0];
+
+          const firstName = (body.firstName || body.first_name || existing.first_name || "").trim();
+          const lastName = (body.lastName || body.last_name || existing.last_name || "").trim();
+          const email = (body.email || existing.email || "").trim().toLowerCase();
+          const targetGrade = body.targetGrade || body.target_grade || existing.target_grade || "";
+          const startTime = body.startTime || body.start_time || existing.start_time || "08:00";
+          const endTime = body.endTime || body.end_time || existing.end_time || "16:00";
+
+          const rawSubjects = body.subjects !== undefined ? body.subjects : safeJsonParse(existing.subjects, []);
+          const subjectsJSON = JSON.stringify(Array.isArray(rawSubjects) ? rawSubjects : [rawSubjects].filter(Boolean));
+
+          const rawWorkDays = body.workDays !== undefined ? body.workDays : (body.work_days !== undefined ? body.work_days : safeJsonParse(existing.work_days, []));
+          const workDaysJSON = JSON.stringify(Array.isArray(rawWorkDays) ? rawWorkDays : []);
+
+          const rawAvailability = body.availability !== undefined ? body.availability : safeJsonParse(existing.availability, []);
+          const availabilityJSON = JSON.stringify(Array.isArray(rawAvailability) ? rawAvailability : []);
 
           await db.query(
-            `UPDATE teachers SET first_name=$1, last_name=$2, email=$3, subjects=$4, target_grade=$5, work_days=$6 WHERE id=$7`,
-            [
-              updated.first_name || updated.firstName, 
-              updated.last_name || updated.lastName, 
-              updated.email, 
-              subjectsJSON, 
-              updated.target_grade || updated.targetGrade, 
-              workDaysJSON, 
-              id
-            ]
+            `UPDATE teachers 
+             SET first_name = $1, last_name = $2, email = $3, subjects = $4, 
+                 target_grade = $5, work_days = $6, start_time = $7, end_time = $8, availability = $9
+             WHERE id = $10`,
+            [firstName, lastName, email, subjectsJSON, targetGrade, workDaysJSON, startTime, endTime, availabilityJSON, id]
           );
 
-          const newSlots = await generateSchedule(updated);
+          const updatedResult = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
+          const updatedTeacher = updatedResult.rows[0];
+
+          const newSlots = await generateSchedule({
+            ...updatedTeacher,
+            workDays: safeJsonParse(updatedTeacher.work_days, []),
+            subjects: safeJsonParse(updatedTeacher.subjects, []),
+            availability: safeJsonParse(updatedTeacher.availability, [])
+          });
+
+          await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
           await db.query(
-            `INSERT INTO schedules (teacher_id, slots, generated_at)
-             VALUES ($1, $2, NOW())`,
+            `INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())`,
             [String(id), JSON.stringify(newSlots)]
           );
 
-          return send(res, 200, { teacher: updated, schedule: { teacherId: id, slots: newSlots } });
+          return send(res, 200, { success: true, teacher: updatedTeacher, schedule: { teacherId: id, slots: newSlots } });
         } catch (err) {
+          console.error("❌ Error updating teacher:", err);
           return send(res, 500, { error: err.message });
         }
       }
