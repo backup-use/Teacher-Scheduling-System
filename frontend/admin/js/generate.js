@@ -353,7 +353,6 @@ async function processSystemTimetable() {
         `;
     }
 }
-
 // ==========================================
 // PART 2: DASHBOARD RENDERING & DOM EVENT BINDING
 // ==========================================
@@ -361,6 +360,46 @@ async function processSystemTimetable() {
 function renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers) {
     container.innerHTML = "";
 
+    // -----------------------------------------------------------
+    // 1. EXTRACT AND SAVE INDIVIDUAL TEACHER SCHEDULES FOR TEACHER PORTAL
+    // -----------------------------------------------------------
+    const teacherSchedulesMap = {};
+
+    Object.values(masterSectionSchedules).forEach(secObj => {
+        const sectionName = secObj.details.name;
+        const gradeLevel = secObj.gradeLevel;
+
+        Object.entries(secObj.timetable).forEach(([day, times]) => {
+            Object.entries(times).forEach(([time, slotData]) => {
+                if (slotData && slotData.teacher) {
+                    const rawTeacher = slotData.teacher.trim();
+                    if (!teacherSchedulesMap[rawTeacher]) {
+                        teacherSchedulesMap[rawTeacher] = {};
+                    }
+                    if (!teacherSchedulesMap[rawTeacher][day]) {
+                        teacherSchedulesMap[rawTeacher][day] = {};
+                    }
+
+                    teacherSchedulesMap[rawTeacher][day][time] = {
+                        subject: slotData.subject,
+                        section: sectionName,
+                        gradeLevel: gradeLevel,
+                        room: slotData.room || "N/A"
+                    };
+                }
+            });
+        });
+    });
+
+    // Save individual teacher schedules to localStorage so the Teacher Portal can read it
+    localStorage.setItem("cached_teacher_schedules", JSON.stringify(teacherSchedulesMap));
+    // Save master section schedule for global availability
+    localStorage.setItem("global_master_schedule", JSON.stringify(masterSectionSchedules));
+
+
+    // -----------------------------------------------------------
+    // 2. STYLESHEET INJECTION FOR PRINT / PDF FIT
+    // -----------------------------------------------------------
     if (!document.getElementById("printable-schedule-css")) {
         const styleEl = document.createElement("style");
         styleEl.id = "printable-schedule-css";
@@ -789,4 +828,4 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
         processSystemTimetable();
     }
-});
+});     

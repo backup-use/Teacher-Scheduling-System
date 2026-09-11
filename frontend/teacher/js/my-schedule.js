@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Session Protection check
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('userRole');
-    const userName = localStorage.getItem('userName');
+    const userName = localStorage.getItem('userName') || '';
 
     if (!token || role !== 'teacher') {
         alert('Unauthorized access! Redirecting to login.');
@@ -11,25 +11,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Set page title header dynamically
-    document.getElementById('instructor-title').textContent = `Instructor: ${userName}`;
+    const instructorTitleEl = document.getElementById('instructor-title');
+    if (instructorTitleEl) {
+        instructorTitleEl.textContent = `Instructor: ${userName}`;
+    }
 
-    // Generate dynamic date string (e.g., "May 22, 2026")
+    // Generate dynamic date string
     const formattedDate = new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
     });
 
-    // Define standard operational system hours grid matrix
+    // Standard operational system hours grid matrix
     const standardTimeSlots = [
-        "07:30 AM to 08:30 AM",
-        "08:30 AM to 09:30 AM",
-        "09:30 AM to 10:30 AM",
-        "10:30 AM to 11:30 AM",
-        "01:00 PM to 02:00 PM",
-        "02:00 PM to 03:00 PM",
-        "03:00 PM to 04:00 PM",
-        "04:00 PM to 05:00 PM"
+        "06:00-07:00",
+        "07:00-08:00",
+        "08:00-09:00",
+        "09:00-10:00", // Recess / Break
+        "10:00-11:00",
+        "11:00-12:00",
+        "12:00-01:00", // Lunch Break
+        "01:00-02:00",
+        "02:00-03:00",
+        "03:00-04:00",
+        "04:00-05:00",
+        "05:00-06:00"
     ];
 
     const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -61,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
             #timetable-container table td {
                 border: 1px solid #cbd5e1 !important;
                 padding: 6px !important; 
-                height: 75px !important; 
+                height: 65px !important; 
                 vertical-align: middle !important;
                 text-align: center !important;
                 box-sizing: border-box;
@@ -72,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 color: #0f172a !important;
                 font-size: 0.8rem !important;
                 background-color: #f8fafc !important;
+                width: 130px !important;
             }
 
             .schedule-card {
@@ -105,8 +113,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 position: relative;
             }
 
+            .break-cell {
+                font-weight: 800 !important;
+                letter-spacing: 1px !important;
+                font-size: 0.82rem !important;
+            }
+
+            .recess-row {
+                background-color: #fef08a !important;
+                color: #854d0e !important;
+            }
+
+            .lunch-row {
+                background-color: #fed7aa !important;
+                color: #9a3412 !important;
+            }
+
             .vacant-text {
-                display: none !important; /* Hide casual '-- Vacant --' text for formal look */
+                display: none !important;
             }
 
             .add-note-btn {
@@ -156,7 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     margin: 12mm 10mm 10mm 10mm;
                 }
 
-                /* Official School Document Header */
                 #instructor-title {
                     text-transform: capitalize !important;
                     font-size: 1.4rem !important;
@@ -215,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 td {
                     border: 1px solid #000000 !important;
-                    height: 55px !important;
+                    height: 45px !important;
                     padding: 4px !important;
                     text-align: center !important;
                     vertical-align: middle !important;
@@ -247,40 +270,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     color: #1e293b !important;
                     display: block !important;
                 }
-
-                .vacant-cell-fill {
-                    background-color: #ffffff !important;
-                    border: none !important;
-                }
-
-                .vacant-text {
-                    display: none !important;
-                }
-
-                .saved-cell-note {
-                    color: #000000 !important;
-                    font-size: 0.72rem !important;
-                    font-style: italic !important;
-                    font-weight: 600 !important;
-                }
-
-                .card-math { background-color: #fefae0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .card-science { background-color: #e8f5e9 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .card-default { background-color: #eff6ff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-
-                .schedule-card {
-                    border-radius: 0px !important;
-                    color: #000000 !important;
-                    box-shadow: none !important;
-                    padding: 6px 3px !important;
-                    font-weight: bold !important;
-                }
             }
         `;
         document.head.appendChild(printStyles);
     }
 
-    // Initialize English HTML Modal into DOM if it doesn't exist
+    // Modal Injection
     if (!document.getElementById("vacant-note-modal")) {
         const modalHTML = `
             <div id="vacant-note-modal" class="vacant-modal-overlay">
@@ -316,9 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById("vacant-note-modal").classList.remove("modal-active");
     };
 
-    document.getElementById("modal-cancel-btn").addEventListener('click', closeModal);
+    document.getElementById("modal-cancel-btn")?.addEventListener('click', closeModal);
     
-    document.getElementById("modal-save-btn").addEventListener('click', () => {
+    document.getElementById("modal-save-btn")?.addEventListener('click', () => {
         const noteValue = document.getElementById("modal-note-textarea").value.trim();
         const storageKey = `note_${userName}_${currentEditingDay}_${currentEditingTime}`;
         
@@ -332,49 +327,103 @@ document.addEventListener('DOMContentLoaded', () => {
         loadTeacherTimetable(); 
     });
 
-    async function loadTeacherTimetable() {
-        try {
-            const sessionToken = localStorage.getItem('token');
+    // Helper: Normalize teacher name strings for fuzzy matching
+    function matchTeacherName(nameA, nameB) {
+        if (!nameA || !nameB) return false;
+        const cleanA = nameA.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanB = nameB.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
+    }
 
+    // Primary function to fetch and render the teacher's schedule
+    async function loadTeacherTimetable() {
+        const tbody = document.getElementById('timetable-rows');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        let myClassesMap = {}; // Format: { "Monday": { "08:00-09:00": { subject, section, room } } }
+
+        // Attempt 1: Fetch from Backend API
+        try {
             const response = await fetch('/api/timetable', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${sessionToken}`,
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             }); 
+
+            if (response.ok) {
+                const fullTimetable = await response.json();
+                fullTimetable.forEach(slot => {
+                    if (matchTeacherName(slot.instructor || slot.teacher, userName)) {
+                        if (!myClassesMap[slot.day]) myClassesMap[slot.day] = {};
+                        myClassesMap[slot.day][slot.timeSlot] = {
+                            subject: slot.subject,
+                            section: slot.section,
+                            room: slot.room || 'N/A'
+                        };
+                    }
+                });
+            } else {
+                throw new Error("Backend API unavailable, switching to local cache.");
+            }
+        } catch (apiError) {
+            console.warn("API load failed or offline mode detected. Fetching from local cache...", apiError);
             
-            if (!response.ok) throw new Error('Failed to grab active allocation database blocks.');
-            
-            const fullTimetable = await response.json();
+            // Attempt 2: Fallback to Local Storage Cached Schedules (generated by Admin)
+            const cachedTeacherSchedules = localStorage.getItem("cached_teacher_schedules");
+            if (cachedTeacherSchedules) {
+                try {
+                    const parsedMap = JSON.parse(cachedTeacherSchedules);
+                    
+                    // Find key matching instructor name
+                    const teacherKey = Object.keys(parsedMap).find(k => matchTeacherName(k, userName));
+                    if (teacherKey && parsedMap[teacherKey]) {
+                        myClassesMap = parsedMap[teacherKey];
+                    }
+                } catch (err) {
+                    console.error("Error reading cached teacher schedules:", err);
+                }
+            }
+        }
 
-            const myClasses = fullTimetable.filter(slot => 
-                slot.instructor && slot.instructor.toLowerCase().trim() === userName.toLowerCase().trim()
-            );
+        // Render standard grid row by row
+        standardTimeSlots.forEach(timeSlot => {
+            const tr = document.createElement('tr');
 
-            const tbody = document.getElementById('timetable-rows');
-            tbody.innerHTML = ''; 
+            // Time Column
+            const timeCell = document.createElement('td');
+            timeCell.className = 'time-cell';
+            timeCell.textContent = timeSlot;
+            tr.appendChild(timeCell);
 
-            standardTimeSlots.forEach(timeSlot => {
-                const tr = document.createElement('tr');
-
-                const timeCell = document.createElement('td');
-                timeCell.className = 'time-cell';
-                timeCell.textContent = timeSlot;
-                tr.appendChild(timeCell);
-
+            // Special Recess Break Row
+            if (timeSlot === "09:00-10:00") {
+                const breakTd = document.createElement('td');
+                breakTd.colSpan = targetDays.length;
+                breakTd.className = "break-cell recess-row";
+                breakTd.textContent = "RECESS / MORNING BREAK";
+                tr.appendChild(breakTd);
+            }
+            // Special Lunch Break Row
+            else if (timeSlot === "12:00-01:00") {
+                const breakTd = document.createElement('td');
+                breakTd.colSpan = targetDays.length;
+                breakTd.className = "break-cell lunch-row";
+                breakTd.textContent = "LUNCH BREAK / SHIFT TRANSITION";
+                tr.appendChild(breakTd);
+            }
+            // Regular Class Rows
+            else {
                 targetDays.forEach(day => {
                     const td = document.createElement('td');
-                    
-                    const matchingMatch = myClasses.find(c => 
-                        c.timeSlot === timeSlot && 
-                        c.day.toLowerCase() === day.toLowerCase()
-                    );
+                    const slotData = myClassesMap[day] ? myClassesMap[day][timeSlot] : null;
 
-                    if (matchingMatch) {
-                        const upperSubject = matchingMatch.subject ? matchingMatch.subject.toUpperCase() : '';
-                        const upperSection = matchingMatch.section ? matchingMatch.section.toUpperCase() : 'N/A';
-                        const upperRoom = matchingMatch.room ? matchingMatch.room.toUpperCase() : 'N/A';
+                    if (slotData) {
+                        const upperSubject = slotData.subject ? slotData.subject.toUpperCase() : '';
+                        const upperSection = slotData.section ? slotData.section.toUpperCase() : 'N/A';
+                        const upperRoom = slotData.room ? slotData.room.toUpperCase() : 'N/A';
 
                         td.innerHTML = `
                             <div class="cell-content-wrapper">
@@ -393,7 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             ? `<div class="saved-cell-note">${savedNote}</div>`
                             : `<span class="vacant-text">-- Vacant --</span>`;
 
-                        // DITO BINAGO: Magdadagdag ng class na 'has-note' kapag may naisave na note ang user
                         const extraClass = savedNote ? 'has-note' : '';
 
                         td.innerHTML = `
@@ -405,17 +453,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     tr.appendChild(td);
                 });
+            }
 
-                tbody.appendChild(tr);
-            });
-
-        } catch (error) {
-            console.error('Error drawing operational grid matrix:', error);
-            document.getElementById('timetable-rows').innerHTML = 
-                `<tr><td colspan="7" style="color:#ff5252; padding:2rem;">⚠️ Failed to parse matching timetable database grids.</td></tr>`;
-        }
+            tbody.appendChild(tr);
+        });
     }
 
+    // Action Buttons Configuration
     const printBtn = document.getElementById('print-schedule-btn');
     if (printBtn) {
         printBtn.addEventListener('click', () => {
@@ -441,5 +485,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Initialize timetable load
     loadTeacherTimetable();
 });
