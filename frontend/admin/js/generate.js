@@ -451,7 +451,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                             <span style="color: #991b1b; font-weight: bold; font-size: 0.95rem;">
                                 ${grade} <span style="color: #dc2626; font-size: 0.8rem; font-weight: 600;">(${item.teacherCount} Teachers Assigned for this Grade)</span>
                             </span>
-                            <a href="../pages/Addteachers.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
+                            <a href="../pages/Addteacher.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
                                 + Assign Teacher
                             </a>    
                         </div>
