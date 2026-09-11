@@ -2,7 +2,8 @@
  * Advanced Master Schedule Generator - Makiling Integrated School (MIS) Edition
  * - Full Unfiltered Time Slots (06:00 AM - 06:00 PM)
  * - Automatic RECESS & LUNCH BREAK Row Injections
- * - Strict Grade-Level Matching Constraint
+ * - Strict Grade-Level Matching Constraint with Fallbacks
+ * - Flexible Subject & Alias Matching Logic
  * - Suppresses Empty Tables for Sections without Active Schedules
  */
 
@@ -21,7 +22,7 @@ function safeParseArray(val) {
     return [];
 }
 
-// Helper: Extracts numerical grade level (e.g. "Grade 7" -> "7")
+// Helper: Extracts numerical grade level (e.g. "Grade 8" -> "8")
 function extractGradeNumber(str) {
     if (!str) return "";
     const match = str.toString().match(/\d+/);
@@ -41,6 +42,27 @@ function normalizeGradeLevelName(str) {
         return `Grade ${num}`;
     }
     return cleanStr;
+}
+
+// Helper: Standardizes subject strings for robust alias matching
+function sanitizeSubjectName(str) {
+    if (!str) return "";
+    let clean = str.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Alias mapping for common subject naming variations
+    if (clean.includes('values') || clean.includes('esp') || clean.includes('edukasyon')) {
+        return 'valueseducation';
+    }
+    if (clean.includes('mapeh') || clean.includes('music') || clean.includes('arts') || clean.includes('pe') || clean.includes('health')) {
+        return 'mapeh';
+    }
+    if (clean.includes('ap') || clean.includes('araling')) {
+        return 'aralingpanlipunan';
+    }
+    if (clean.includes('tle') || clean.includes('epp')) {
+        return 'tle';
+    }
+    return clean;
 }
 
 // High-contrast subject color palette
@@ -191,7 +213,6 @@ async function processSystemTimetable() {
         for (const section of savedSections) {
             const sectionGrade = normalizeGradeLevelName(section.grade_level || section.target_grade || section.gradeLevel || "Grade 7");
             const sectionGradeNum = extractGradeNumber(sectionGrade);
-            const isSHS = parseInt(sectionGradeNum, 10) >= 11;
 
             let sectionSubjects = safeParseArray(section.subjects || section.subject_list);
             
@@ -202,10 +223,8 @@ async function processSystemTimetable() {
             }
 
             for (const day of daySlots) {
+                // FIXED: JHS now receives full daily slot range so late/afternoon shifts are accessible
                 let activeSlots = timeSlots;
-                if (!isSHS) {
-                    activeSlots = timeSlots.slice(1, 10);
-                }
 
                 for (let timeIndex = 0; timeIndex < activeSlots.length; timeIndex++) {
                     const currentTime = activeSlots[timeIndex];
@@ -221,9 +240,17 @@ async function processSystemTimetable() {
                         const dailySubjectKey = `${section.name}-${day}-${cleanSubjectName.toLowerCase()}`;
                         if (subjectPerDayTracker[dailySubjectKey]) continue;
 
+                        // FIXED: Robust teacher matching logic using normalized aliases & flexible grade matching
                         let teacherToUse = normalizedTeachers.find(t => {
-                            const conductsSubject = t.subjects.some(s => s.toLowerCase().trim() === cleanSubjectName.toLowerCase());
-                            const matchesGrade = t.targetGradeNum === sectionGradeNum;
+                            const conductsSubject = t.subjects.some(s => {
+                                const sanitizedTeacherSubj = sanitizeSubjectName(s);
+                                const sanitizedSecSubj = sanitizeSubjectName(cleanSubjectName);
+                                return sanitizedTeacherSubj === sanitizedSecSubj || 
+                                       sanitizedTeacherSubj.includes(sanitizedSecSubj) || 
+                                       sanitizedSecSubj.includes(sanitizedTeacherSubj);
+                            });
+
+                            const matchesGrade = !t.targetGradeNum || t.targetGradeNum === sectionGradeNum;
                             const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
                             const teacherTimeKey = `${t.fullName}-${day}-${currentTime}`;
                             
@@ -266,7 +293,7 @@ async function processSystemTimetable() {
             const gNum = extractGradeNumber(normG);
             
             if (!gradeAuditMap[normG]) {
-                const assignedTeachersCount = normalizedTeachers.filter(t => t.targetGradeNum === gNum).length;
+                const assignedTeachersCount = normalizedTeachers.filter(t => !t.targetGradeNum || t.targetGradeNum === gNum).length;
                 gradeAuditMap[normG] = { 
                     missingSubjects: [], 
                     teacherCount: assignedTeachersCount 
@@ -288,13 +315,13 @@ async function processSystemTimetable() {
             const scheduledSubjs = new Set();
             Object.values(secObj.timetable).forEach(dayObj => {
                 Object.values(dayObj).forEach(slot => {
-                    if (slot && slot.subject) scheduledSubjs.add(slot.subject.toLowerCase().trim());
+                    if (slot && slot.subject) scheduledSubjs.add(sanitizeSubjectName(slot.subject));
                 });
             });
 
             requiredSubjs.forEach(req => {
                 const cleanReq = typeof req === 'string' ? req.trim() : req.name.trim();
-                if (!scheduledSubjs.has(cleanReq.toLowerCase())) {
+                if (!scheduledSubjs.has(sanitizeSubjectName(cleanReq))) {
                     if (gradeAuditMap[gName] && !gradeAuditMap[gName].missingSubjects.includes(cleanReq)) {
                         gradeAuditMap[gName].missingSubjects.push(cleanReq);
                     }
@@ -530,7 +557,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
             filename:     `MIS_Schedule_Section_${sectionName.replace(/\s+/g, '_')}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2.3, useCORS: true, backgroundColor: '#ffffff', logging: false },
-            jsPDF:         { unit: 'mm', format: 'letter', orientation: 'landscape' }
+            jsPDF:        { unit: 'mm', format: 'letter', orientation: 'landscape' }
         };
 
         html2pdf().set(configOptions).from(cardTarget).save().then(() => {
@@ -655,28 +682,35 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
 
 // Global Event Listeners & Auto-Restore
 document.addEventListener("DOMContentLoaded", () => {
+    // Bind trigger buttons across the dashboard
     const actionButtons = document.querySelectorAll("button");
     actionButtons.forEach(btn => {
-        if (btn.textContent.includes("INITIALIZE SCHEDULING GENERATOR")) {
-            btn.addEventListener("click", (e) => {
-                e.preventDefault();
-                processSystemTimetable();
-            });
+        if (btn.textContent.toLowerCase().includes("initialize") || btn.textContent.toLowerCase().includes("generate")) {
+            btn.addEventListener("click", () => processSystemTimetable());
         }
     });
 
-    const cachedSchedule = localStorage.getItem("cached_generated_schedule");
-    if (cachedSchedule) {
+    // Auto-load cached timetable if available or generate on load
+    const cachedData = localStorage.getItem("cached_generated_schedule");
+    if (cachedData) {
         try {
-            const { masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers } = JSON.parse(cachedSchedule);
-            const container = document.getElementById("timetable-matrix-output-body") || 
-                              document.querySelector('.dashboard-card-panel') || 
-                              document.querySelector('.main-content') ||
-                              document.body;
-            
-            renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers);
+            const parsed = JSON.parse(cachedData);
+            let container = document.getElementById("timetable-matrix-output-body") || 
+                            document.querySelector('.dashboard-card-panel') || 
+                            document.querySelector('.main-content') ||
+                            document.body;
+            renderMasterSectionScheduleDashboard(
+                container, 
+                parsed.masterSectionSchedules, 
+                parsed.auditSummary, 
+                parsed.daySlots, 
+                parsed.timeSlots, 
+                parsed.normalizedTeachers
+            );
         } catch (e) {
-            console.error("Failed to restore cached schedule:", e);
+            processSystemTimetable();
         }
+    } else {
+        processSystemTimetable();
     }
 });
