@@ -65,15 +65,14 @@ function sanitizeSubjectName(str) {
     return clean;
 }
 
-// High-contrast subject color palette
+// High-contrast light palette for subject background colors
 const subjectColorPalette = [
-    '#e63946', '#3a86ff', '#8338ec', '#fb5607', '#ff006e', 
-    '#00b4d8', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51',
-    '#4361ee', '#4cc9f0', '#7209b7', '#3f37c9', '#52b788'
+    '#e0f2fe', '#dcfce7', '#fef3c7', '#f3e8ff', '#ffe4e6', 
+    '#ccfbf1', '#ffedd5', '#fae8ff', '#e0e7ff', '#fce7f3'
 ];
 
 function getSubjectColor(subjectName) {
-    if (!subjectName) return '#e0e0e0';
+    if (!subjectName) return '#ffffff';
     let hash = 0;
     for (let i = 0; i < subjectName.length; i++) {
         hash = subjectName.charCodeAt(i) + ((hash << 5) - hash);
@@ -223,7 +222,6 @@ async function processSystemTimetable() {
             }
 
             for (const day of daySlots) {
-                // FIXED: JHS now receives full daily slot range so late/afternoon shifts are accessible
                 let activeSlots = timeSlots;
 
                 for (let timeIndex = 0; timeIndex < activeSlots.length; timeIndex++) {
@@ -240,7 +238,6 @@ async function processSystemTimetable() {
                         const dailySubjectKey = `${section.name}-${day}-${cleanSubjectName.toLowerCase()}`;
                         if (subjectPerDayTracker[dailySubjectKey]) continue;
 
-                        // FIXED: Robust teacher matching logic using normalized aliases & flexible grade matching
                         let teacherToUse = normalizedTeachers.find(t => {
                             const conductsSubject = t.subjects.some(s => {
                                 const sanitizedTeacherSubj = sanitizeSubjectName(s);
@@ -356,6 +353,10 @@ async function processSystemTimetable() {
         `;
     }
 }
+
+// ==========================================
+// PART 2: DASHBOARD RENDERING & DOM EVENT BINDING
+// ==========================================
 
 function renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers) {
     container.innerHTML = "";
@@ -577,8 +578,8 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 15px;";
         
         gradeHeaderBox.innerHTML = `
-            <h2 style="color: #ffffff; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #38bdf8; padding-bottom: 8px;">
-                ${gradeName} <span style="color: #38bdf8; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
+            <h2 style="color: #0f172a; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
+                ${gradeName} <span style="color: #0284c7; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
             </h2>
         `;
         mainWrapper.appendChild(gradeHeaderBox);
