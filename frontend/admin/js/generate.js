@@ -366,7 +366,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         styleEl.id = "printable-schedule-css";
         styleEl.innerHTML = `
             @media print {
-                /* Force exact background colors to show up in print/PDF */
+                /* Force background colors to show up in print/PDF */
                 * {
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
@@ -374,23 +374,22 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                 
                 @page {
                     size: landscape;
-                    margin: 5mm; /* Minimal margins so entire schedule fits 1 page */
+                    margin: 6mm; /* Balanced page margins */
                 }
 
                 html, body {
                     margin: 0 !important;
                     padding: 0 !important;
                     background: #ffffff !important;
+                    width: 100% !important;
                     height: auto !important;
-                    overflow: visible !important;
                 }
 
-                /* Hide all non-printable dashboard elements */
                 body * {
                     visibility: hidden;
                 }
 
-                /* Display ONLY the active print container */
+                /* Center and balance the print container horizontally */
                 .section-print-area, .section-print-area * {
                     visibility: visible;
                 }
@@ -398,33 +397,36 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                 .section-print-area {
                     position: absolute !important;
                     left: 0 !important;
+                    right: 0 !important;
                     top: 0 !important;
                     width: 100% !important;
-                    margin: 0 !important;
+                    max-width: 100% !important;
+                    margin: 0 auto !important;
                     padding: 0 !important;
+                    box-sizing: border-box !important;
                 }
 
                 .no-print {
                     display: none !important;
                 }
 
-                /* Scale table contents down slightly to guarantee 1-page fit */
+                /* Compact table sizing to guarantee 1-page fit */
                 .section-print-area table {
                     width: 100% !important;
-                    font-size: 0.72rem !important;
+                    font-size: 0.70rem !important;
                     border-collapse: collapse !important;
                     page-break-inside: avoid !important;
+                    margin: 0 auto !important;
                 }
 
                 .section-print-area th, 
                 .section-print-area td {
-                    padding: 3px 2px !important;
+                    padding: 2.5px 2px !important;
                     border: 1.5px solid #000000 !important;
                 }
 
                 .section-print-area h3 {
                     font-size: 1rem !important;
-                    margin-bottom: 6px !important;
                 }
             }
 
@@ -513,7 +515,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                             <span style="color: #991b1b; font-weight: bold; font-size: 0.95rem;">
                                 ${grade} <span style="color: #dc2626; font-size: 0.8rem; font-weight: 600;">(${item.teacherCount} Teachers Assigned for this Grade)</span>
                             </span>
-                            <a href="../pages/Addteacher.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
+                            <a href="Addteacher.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
                                 + Assign Teacher
                             </a>    
                         </div>
@@ -650,15 +652,26 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
             const secName = secObj.details.name;
             const uniqueCardId = `schedule-card-${gradeName.replace(/[^a-zA-Z0-9]/g, '')}-${secIdx}`;
             
+            // Format generation timestamp
+            const generatedTimestamp = new Date().toLocaleString('en-US', {
+                dateStyle: 'medium',
+                timeStyle: 'short'
+            });
+
             const secCard = document.createElement("div");
             secCard.id = uniqueCardId;
             secCard.style.cssText = "background: #ffffff; border: 2px solid #000000; border-radius: 4px; padding: 15px; margin-bottom: 30px; overflow-x: auto;";
 
             let tableHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h3 style="color: #000000; margin: 0; font-size: 1.15rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
-                        SECTION: <span style="color: #000000;">${secName}</span>
-                    </h3>
+                    <div>
+                        <h3 style="color: #000000; margin: 0; font-size: 1.15rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+                            SECTION: <span style="color: #000000;">${secName}</span>
+                        </h3>
+                        <div style="color: #475569; font-size: 0.75rem; font-weight: 600; margin-top: 2px;">
+                            Generated on: ${generatedTimestamp}
+                        </div>
+                    </div>
                     <div class="no-print" style="display: flex; gap: 8px;">
                         <button onclick="printSectionSchedule('${uniqueCardId}')" style="background: #000000; color: #ffffff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem;">
                             Print
