@@ -578,8 +578,8 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 15px;";
         
         gradeHeaderBox.innerHTML = `
-            <h2 style="color: #0f172a; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
-                ${gradeName} <span style="color: #0284c7; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
+            <h2 style="color: #ffffff; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
+                ${gradeName} <span style="color: #38bdf8; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
             </h2>
         `;
         mainWrapper.appendChild(gradeHeaderBox);
