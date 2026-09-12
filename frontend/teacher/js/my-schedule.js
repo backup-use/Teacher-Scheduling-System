@@ -10,18 +10,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Set page title header dynamically
-    const instructorTitleEl = document.getElementById('instructor-title');
-    if (instructorTitleEl) {
-        instructorTitleEl.textContent = `Instructor: ${userName}`;
+    // Dynamic Subject Color Palette matching Admin View
+    const subjectColorMap = {
+        'ARALING PANLIPUNAN': '#fef08a',
+        'ENGLISH': '#dbeafe',
+        'FILIPINO': '#e0e7ff',
+        'MAPEH': '#f3e8ff',
+        'MATHEMATICS': '#ffe4e6',
+        'SCIENCE': '#dcfce7',
+        'TLE': '#ffedd5',
+        'VALUES EDUCATION': '#fef9c3'
+    };
+
+    function getSubjectColor(subjectName) {
+        if (!subjectName) return '#f1f5f9';
+        const key = subjectName.trim().toUpperCase();
+        return subjectColorMap[key] || '#e2e8f0';
     }
 
-    // Generate dynamic date string
-    const formattedDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    // Set instructor header title dynamically
+    const instructorTitleEl = document.getElementById('instructor-title');
+    if (instructorTitleEl) {
+        instructorTitleEl.textContent = `INSTRUCTOR: ${userName.toUpperCase()}`;
+    }
 
     // Standard operational system hours grid matrix
     const standardTimeSlots = [
@@ -41,92 +52,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-    // Dynamic Print & View Styles for Official Teacher Attendance / Schedule
-    if (!document.getElementById("print-isolated-matrix-rules")) {
+    // Dynamic Print & Screen CSS Matching Admin View
+    if (!document.getElementById("admin-style-matrix-rules")) {
         const printStyles = document.createElement("style");
-        printStyles.id = "print-isolated-matrix-rules";
+        printStyles.id = "admin-style-matrix-rules";
         printStyles.innerHTML = `
-            /* --- SCREEN VIEW RULES --- */
+            /* --- SCREEN VIEW MATCHING ADMIN DASHBOARD --- */
             #timetable-container table {
                 width: 100% !important;
                 border-collapse: collapse !important;
-                font-family: 'Arial', 'Helvetica', sans-serif !important;
-                border: 2px solid #1e293b !important;
+                font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
+                border: 2px solid #000000 !important;
                 background: #ffffff !important;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
             }
 
             #timetable-container table th {
-                background-color: #1e293b !important;
-                color: #ffffff !important;
-                text-transform: uppercase;
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                text-transform: uppercase !important;
                 font-size: 0.85rem !important;
-                padding: 12px 8px !important;
-                letter-spacing: 0.5px;
-                border: 1px solid #334155 !important;
+                font-weight: 800 !important;
+                padding: 10px 4px !important;
+                letter-spacing: 0.5px !important;
+                border: 2px solid #000000 !important;
             }
 
             #timetable-container table td {
-                border: 1px solid #cbd5e1 !important;
+                border: 2px solid #000000 !important;
                 padding: 6px !important; 
-                height: 65px !important; 
+                height: 60px !important; 
                 vertical-align: middle !important;
                 text-align: center !important;
-                box-sizing: border-box;
+                box-sizing: border-box !important;
             }
 
             .time-cell {
-                font-weight: 700 !important;
-                color: #0f172a !important;
-                font-size: 0.8rem !important;
-                background-color: #f8fafc !important;
-                width: 130px !important;
-            }
-
-            .schedule-card {
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                justify-content: center !important;
-                background-color: #eff6ff !important;
-                border: 1px solid #bfdbfe !important;
-                border-radius: 4px !important;
-                padding: 6px !important;
-                height: 100% !important;
-            }
-
-            .schedule-card strong {
-                color: #1e3a8a !important;
-                font-size: 0.85rem !important;
                 font-weight: 800 !important;
-            }
-
-            .schedule-card span {
-                color: #1e40af !important;
-                font-size: 0.72rem !important;
-                font-weight: 600 !important;
-            }
-
-            .vacant-cell-fill {
-                background-color: #ffffff !important;
-                color: #94a3b8 !important;
-                font-size: 0.75rem !important;
-                position: relative;
-            }
-
-            .break-cell {
-                font-weight: 800 !important;
-                letter-spacing: 1px !important;
+                color: #000000 !important;
                 font-size: 0.82rem !important;
+                background-color: #ffffff !important;
+                width: 120px !important;
             }
 
             .recess-row {
                 background-color: #fef08a !important;
                 color: #854d0e !important;
+                font-weight: 800 !important;
+                letter-spacing: 1.5px !important;
+                font-size: 0.85rem !important;
+                border: 2px solid #000000 !important;
             }
 
             .lunch-row {
                 background-color: #fed7aa !important;
                 color: #9a3412 !important;
+                font-weight: 800 !important;
+                letter-spacing: 1.5px !important;
+                font-size: 0.85rem !important;
+                border: 2px solid #000000 !important;
+            }
+
+            .vacant-cell-fill {
+                background-color: #ffffff !important;
+                position: relative;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
             .vacant-text {
@@ -140,19 +133,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 width: 18px !important;
                 height: 18px !important;
                 border-radius: 3px !important;
-                background: #64748b !important; 
+                background: #000000 !important; 
                 border: none !important;
                 color: #ffffff !important;      
                 font-size: 0.7rem !important;
                 cursor: pointer !important;
                 opacity: 0;
+                transition: opacity 0.2s ease;
             }
 
             .vacant-cell-fill:hover .add-note-btn { opacity: 1 !important; }
 
             .saved-cell-note {
                 font-size: 0.75rem !important;
-                color: #334155 !important;
+                color: #1e293b !important;
                 font-style: italic !important;
                 font-weight: 600 !important;
             }
@@ -164,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     color: #000000 !important;
                     margin: 0 !important;
                     padding: 0 !important;
-                    font-family: 'Times New Roman', Times, serif, sans-serif !important;
+                    font-family: Arial, sans-serif !important;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
@@ -177,105 +171,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 @page {
                     size: letter landscape;
-                    margin: 12mm 10mm 10mm 10mm;
+                    margin: 8mm;
                 }
 
-                #instructor-title {
-                    text-transform: capitalize !important;
-                    font-size: 1.4rem !important;
-                    font-weight: bold !important;
-                    text-align: left !important;
-                    color: #000000 !important;
-                    margin: 0 0 4px 0 !important;
-                    border-bottom: 2px solid #000000 !important;
-                    padding-bottom: 4px !important;
-                }
-
-                #instructor-title::before {
-                    content: "FACULTY OFFICIAL CLASS SCHEDULE & LOAD\\A";
-                    white-space: pre !important;
-                    font-size: 0.9rem !important;
-                    letter-spacing: 1px !important;
-                    color: #333333 !important;
-                    display: block !important;
-                    margin-bottom: 2px !important;
-                }
-
-                #instructor-title::after {
-                    content: "Academic Year: 2026-2027   |   Date Generated: ${formattedDate}   |   Status: Verified";
-                    display: block !important;
-                    font-size: 0.8rem !important;
-                    font-weight: normal !important;
-                    color: #444444 !important;
-                    margin-top: 4px !important;
-                }
-
-                .main-content, .dashboard-card-panel, .timetable-card, #timetable-container {
-                    background: #ffffff !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    border: none !important;
-                    box-shadow: none !important;
+                #timetable-container table {
                     width: 100% !important;
-                }
-
-                table {
-                    width: 100% !important;
-                    border-collapse: collapse !important;
                     border: 2px solid #000000 !important;
-                    margin-top: 10px !important;
                 }
 
-                th {
-                    background-color: #0f172a !important;
-                    color: #ffffff !important;
-                    padding: 8px 4px !important;
-                    font-size: 0.8rem !important;
-                    font-weight: bold !important;
-                    text-transform: uppercase !important;
-                    border: 1px solid #000000 !important;
-                }
-
-                td {
-                    border: 1px solid #000000 !important;
-                    height: 45px !important;
+                #timetable-container table th, 
+                #timetable-container table td {
+                    border: 1.5px solid #000000 !important;
                     padding: 4px !important;
-                    text-align: center !important;
-                    vertical-align: middle !important;
-                }
-
-                .time-cell {
-                    background-color: #f1f5f9 !important;
-                    font-size: 0.75rem !important;
-                    font-weight: bold !important;
-                    color: #000000 !important;
-                }
-
-                .schedule-card {
-                    background-color: transparent !important;
-                    border: none !important;
-                    padding: 0 !important;
-                }
-
-                .schedule-card strong {
-                    font-size: 0.85rem !important;
-                    font-weight: 900 !important;
-                    color: #000000 !important;
-                    display: block !important;
-                }
-
-                .schedule-card span {
-                    font-size: 0.72rem !important;
-                    font-weight: 700 !important;
-                    color: #1e293b !important;
-                    display: block !important;
                 }
             }
         `;
         document.head.appendChild(printStyles);
     }
 
-    // Modal Injection
+    // Modal Injection for Vacant Notes
     if (!document.getElementById("vacant-note-modal")) {
         const modalHTML = `
             <div id="vacant-note-modal" class="vacant-modal-overlay">
@@ -327,7 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
         loadTeacherTimetable(); 
     });
 
-    // Helper: Normalize teacher name strings for fuzzy matching
     function matchTeacherName(nameA, nameB) {
         if (!nameA || !nameB) return false;
         const cleanA = nameA.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -335,15 +248,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
     }
 
-    // Primary function to fetch and render the teacher's schedule
     async function loadTeacherTimetable() {
         const tbody = document.getElementById('timetable-rows');
         if (!tbody) return;
         
         tbody.innerHTML = '';
-        let myClassesMap = {}; // Format: { "Monday": { "08:00-09:00": { subject, section, room } } }
+        let myClassesMap = {};
 
-        // Attempt 1: Fetch from Backend API
+        // 1. Fetch backend API
         try {
             const response = await fetch('/api/timetable', {
                 method: 'GET',
@@ -366,29 +278,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             } else {
-                throw new Error("Backend API unavailable, switching to local cache.");
+                throw new Error("API unready");
             }
         } catch (apiError) {
-            console.warn("API load failed or offline mode detected. Fetching from local cache...", apiError);
-            
-            // Attempt 2: Fallback to Local Storage Cached Schedules (generated by Admin)
+            // 2. Local Storage Fallback
             const cachedTeacherSchedules = localStorage.getItem("cached_teacher_schedules");
             if (cachedTeacherSchedules) {
                 try {
                     const parsedMap = JSON.parse(cachedTeacherSchedules);
-                    
-                    // Find key matching instructor name
                     const teacherKey = Object.keys(parsedMap).find(k => matchTeacherName(k, userName));
                     if (teacherKey && parsedMap[teacherKey]) {
                         myClassesMap = parsedMap[teacherKey];
                     }
                 } catch (err) {
-                    console.error("Error reading cached teacher schedules:", err);
+                    console.error("Error parsing cached schedules:", err);
                 }
             }
         }
 
-        // Render standard grid row by row
+        // Render schedule rows
         standardTimeSlots.forEach(timeSlot => {
             const tr = document.createElement('tr');
 
@@ -398,40 +306,42 @@ document.addEventListener('DOMContentLoaded', () => {
             timeCell.textContent = timeSlot;
             tr.appendChild(timeCell);
 
-            // Special Recess Break Row
+            // Recess Row
             if (timeSlot === "09:00-10:00") {
                 const breakTd = document.createElement('td');
                 breakTd.colSpan = targetDays.length;
-                breakTd.className = "break-cell recess-row";
+                breakTd.className = "recess-row";
                 breakTd.textContent = "RECESS / MORNING BREAK";
                 tr.appendChild(breakTd);
             }
-            // Special Lunch Break Row
+            // Lunch Row
             else if (timeSlot === "12:00-01:00") {
                 const breakTd = document.createElement('td');
                 breakTd.colSpan = targetDays.length;
-                breakTd.className = "break-cell lunch-row";
+                breakTd.className = "lunch-row";
                 breakTd.textContent = "LUNCH BREAK / SHIFT TRANSITION";
                 tr.appendChild(breakTd);
             }
-            // Regular Class Rows
+            // Standard Academic Classes
             else {
                 targetDays.forEach(day => {
                     const td = document.createElement('td');
                     const slotData = myClassesMap[day] ? myClassesMap[day][timeSlot] : null;
 
                     if (slotData) {
-                        const upperSubject = slotData.subject ? slotData.subject.toUpperCase() : '';
-                        const upperSection = slotData.section ? slotData.section.toUpperCase() : 'N/A';
-                        const upperRoom = slotData.room ? slotData.room.toUpperCase() : 'N/A';
+                        const cellBg = getSubjectColor(slotData.subject);
+                        td.style.backgroundColor = cellBg;
+                        td.style.color = '#000000';
 
                         td.innerHTML = `
-                            <div class="cell-content-wrapper">
-                                <div class="schedule-card" style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; box-sizing: border-box;">
-                                    <strong style="margin-bottom: 2px;">${upperSubject}</strong>
-                                    <span style="font-size: 0.75rem;">SEC: ${upperSection}</span>
-                                    <span style="font-size: 0.75rem;">ROOM: ${upperRoom}</span>
-                                </div>
+                            <div style="font-size: 0.9rem; font-weight: 800; line-height: 1.2;">
+                                ${slotData.subject}
+                            </div>
+                            <div style="font-size: 0.78rem; font-weight: 600; margin-top: 3px;">
+                                ${slotData.section || userName}
+                            </div>
+                            <div style="font-size: 0.72rem; font-weight: 500; opacity: 0.9;">
+                                (room ${slotData.room || '10'})
                             </div>
                         `;
                     } else {
@@ -442,10 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             ? `<div class="saved-cell-note">${savedNote}</div>`
                             : `<span class="vacant-text">-- Vacant --</span>`;
 
-                        const extraClass = savedNote ? 'has-note' : '';
-
                         td.innerHTML = `
-                            <div class="cell-content-wrapper vacant-cell-fill ${extraClass}">
+                            <div class="vacant-cell-fill">
                                 ${cellMarkup}
                                 <button class="add-note-btn" onclick="window.openVacantNoteModal('${day}', '${timeSlot}')" title="Add Memo Note">+</button>
                             </div>
@@ -459,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Action Buttons Configuration
+    // Print & PDF Event Binding
     const printBtn = document.getElementById('print-schedule-btn');
     if (printBtn) {
         printBtn.addEventListener('click', () => {
@@ -485,6 +393,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initialize timetable load
     loadTeacherTimetable();
 });
