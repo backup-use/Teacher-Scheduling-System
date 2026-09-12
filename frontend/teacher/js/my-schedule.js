@@ -52,34 +52,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-    // Dynamic Style Injection to force Admin Background Theme
-    if (!document.getElementById("admin-dark-theme-rules")) {
+    // Dynamic Style Injection to tighten layout and eliminate excess whitespace
+    if (!document.getElementById("admin-tight-layout-rules")) {
         const adminStyles = document.createElement("style");
-        adminStyles.id = "admin-dark-theme-rules";
+        adminStyles.id = "admin-tight-layout-rules";
         adminStyles.innerHTML = `
-            /* --- PAGE BACKGROUND & CONTAINER MATCHING ADMIN THEME --- */
+            /* --- PAGE LAYOUT & SPACING FIXES --- */
             body, .main-content, .dashboard-container, main {
-                background-color: #0b0f19 !important; /* Dark Admin Outer Background */
+                background-color: #0b0f19 !important;
                 color: #ffffff !important;
+                padding: 15px 20px !important; /* Reduced layout padding */
+                margin: 0 !important;
             }
 
-            /* Title Header & Subtitle Styling */
+            /* Header Section Spacing */
+            .header-container, .page-header, header {
+                margin-bottom: 12px !important;
+                padding: 0 !important;
+            }
+
             #instructor-title, h1, h2, h3 {
                 color: #ffffff !important;
                 font-weight: 800 !important;
+                margin-top: 0 !important;
+                margin-bottom: 4px !important;
             }
 
             p, .subtitle, .text-muted {
                 color: #94a3b8 !important;
+                margin-top: 0 !important;
+                margin-bottom: 12px !important;
             }
 
-            /* Outer Card Container */
+            /* Outer Card Container - Tight border without white padding gaps */
             .timetable-card, .card, .dashboard-card-panel {
-                background-color: #0f172a !important; /* Dark Admin Card Container */
+                background-color: #0f172a !important;
                 border: 1px solid #1e293b !important;
-                border-radius: 8px !important;
-                padding: 20px !important;
-                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
+                border-radius: 6px !important;
+                padding: 0 !important; /* Strips internal card padding causing excess whitespace */
+                margin: 0 !important;
+                overflow: hidden !important;
+            }
+
+            #timetable-container {
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
             }
 
             /* --- TIMETABLE MATRIX TABLE --- */
@@ -89,23 +107,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 font-family: Arial, sans-serif !important;
                 border: 2px solid #000000 !important;
                 background-color: #ffffff !important;
+                margin: 0 !important;
             }
 
             #timetable-container table th {
                 background-color: #ffffff !important;
                 color: #000000 !important;
                 text-transform: uppercase !important;
-                font-size: 0.9rem !important;
+                font-size: 0.88rem !important;
                 font-weight: 800 !important;
-                padding: 10px 4px !important;
+                padding: 8px 4px !important;
                 letter-spacing: 0.5px !important;
                 border: 2px solid #000000 !important;
             }
 
             #timetable-container table td {
                 border: 2px solid #000000 !important;
-                padding: 6px !important; 
-                height: 60px !important; 
+                padding: 4px !important; 
+                height: 52px !important; /* Tightened row height */
                 vertical-align: middle !important;
                 text-align: center !important;
                 box-sizing: border-box !important;
@@ -117,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 color: #000000 !important;
                 font-size: 0.82rem !important;
                 background-color: #ffffff !important;
-                width: 120px !important;
+                width: 110px !important;
                 border: 2px solid #000000 !important;
             }
 
@@ -128,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 letter-spacing: 1.5px !important;
                 font-size: 0.85rem !important;
                 border: 2px solid #000000 !important;
+                padding: 6px !important;
             }
 
             .lunch-row {
@@ -137,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 letter-spacing: 1.5px !important;
                 font-size: 0.85rem !important;
                 border: 2px solid #000000 !important;
+                padding: 6px !important;
             }
 
             .cell-content-wrapper, .vacant-cell-fill {
@@ -182,11 +203,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 font-weight: 700 !important;
             }
 
-            /* PRINT RESET FOR PAPER / PDF EXPORT */
+            /* PRINT / PDF EXPORT CLEANUP */
             @media print {
                 body, .main-content, .timetable-card {
                     background-color: #ffffff !important;
                     color: #000000 !important;
+                    padding: 0 !important;
                 }
 
                 header, nav, .sidebar, .sidebar-wrapper, .nav-container, 
@@ -362,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div style="font-size: 0.88rem; font-weight: 800; line-height: 1.2; text-transform: uppercase;">
                                 ${slotData.subject}
                             </div>
-                            <div style="font-size: 0.76rem; font-weight: 600; margin-top: 3px;">
+                            <div style="font-size: 0.76rem; font-weight: 600; margin-top: 2px;">
                                 ${slotData.section || userName.toLowerCase()}
                             </div>
                             <div style="font-size: 0.72rem; font-weight: 500; color: #1e293b;">
