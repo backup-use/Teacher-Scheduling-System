@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function getSubjectColor(subjectName) {
-        if (!subjectName) return '#f1f5f9';
+        if (!subjectName) return '#ffffff';
         const key = subjectName.trim().toUpperCase();
         return subjectColorMap[key] || '#e2e8f0';
     }
@@ -52,26 +52,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-    // Dynamic Print & Screen CSS Matching Admin View
+    // Aggressive CSS injection to override external stylesheet rules
     if (!document.getElementById("admin-style-matrix-rules")) {
         const printStyles = document.createElement("style");
         printStyles.id = "admin-style-matrix-rules";
         printStyles.innerHTML = `
-            /* --- SCREEN VIEW MATCHING ADMIN DASHBOARD --- */
+            /* --- FORCE ADMIN TABLE VISUALS --- */
+            #timetable-container, .timetable-card {
+                background: #ffffff !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+            }
+
             #timetable-container table {
                 width: 100% !important;
                 border-collapse: collapse !important;
-                font-family: 'Inter', 'Segoe UI', Arial, sans-serif !important;
+                font-family: Arial, sans-serif !important;
                 border: 2px solid #000000 !important;
                 background: #ffffff !important;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
             }
 
             #timetable-container table th {
                 background-color: #ffffff !important;
                 color: #000000 !important;
                 text-transform: uppercase !important;
-                font-size: 0.85rem !important;
+                font-size: 0.9rem !important;
                 font-weight: 800 !important;
                 padding: 10px 4px !important;
                 letter-spacing: 0.5px !important;
@@ -85,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 vertical-align: middle !important;
                 text-align: center !important;
                 box-sizing: border-box !important;
+                background-color: #ffffff;
             }
 
             .time-cell {
@@ -93,6 +100,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 font-size: 0.82rem !important;
                 background-color: #ffffff !important;
                 width: 120px !important;
+                border: 2px solid #000000 !important;
+            }
+
+            /* Remove dotted inner boxes from old teacher UI */
+            .cell-content-wrapper, .vacant-cell-fill {
+                border: none !important;
+                outline: none !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                height: 100% !important;
+                width: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                position: relative !important;
             }
 
             .recess-row {
@@ -113,23 +136,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 border: 2px solid #000000 !important;
             }
 
-            .vacant-cell-fill {
-                background-color: #ffffff !important;
-                position: relative;
-                height: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-
             .vacant-text {
                 display: none !important;
             }
 
             .add-note-btn {
                 position: absolute !important;
-                bottom: 4px !important;
-                right: 4px !important;
+                bottom: 2px !important;
+                right: 2px !important;
                 width: 18px !important;
                 height: 18px !important;
                 border-radius: 3px !important;
@@ -142,30 +156,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 transition: opacity 0.2s ease;
             }
 
-            .vacant-cell-fill:hover .add-note-btn { opacity: 1 !important; }
+            td:hover .add-note-btn { opacity: 1 !important; }
 
             .saved-cell-note {
                 font-size: 0.75rem !important;
-                color: #1e293b !important;
+                color: #000000 !important;
                 font-style: italic !important;
-                font-weight: 600 !important;
+                font-weight: 700 !important;
             }
 
-            /* --- FORMAL OFFICIAL PRINT & PDF EXPORT --- */
+            /* Print/PDF Layout */
             @media print {
-                html, body {
-                    background: #ffffff !important;
-                    color: #000000 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    font-family: Arial, sans-serif !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-
                 header, nav, .sidebar, .sidebar-wrapper, .nav-container, 
                 button, .btn, .print-actions, #btn-logout, .add-note-btn, 
-                .vacant-modal-overlay, .timetable-card p {
+                .vacant-modal-overlay {
                     display: none !important;
                 }
 
@@ -181,15 +185,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 #timetable-container table th, 
                 #timetable-container table td {
-                    border: 1.5px solid #000000 !important;
-                    padding: 4px !important;
+                    border: 2px solid #000000 !important;
                 }
             }
         `;
         document.head.appendChild(printStyles);
     }
 
-    // Modal Injection for Vacant Notes
+    // Modal Injection
     if (!document.getElementById("vacant-note-modal")) {
         const modalHTML = `
             <div id="vacant-note-modal" class="vacant-modal-overlay">
@@ -255,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = '';
         let myClassesMap = {};
 
-        // 1. Fetch backend API
+        // 1. Fetch from Backend API
         try {
             const response = await fetch('/api/timetable', {
                 method: 'GET',
@@ -273,15 +276,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         myClassesMap[slot.day][slot.timeSlot] = {
                             subject: slot.subject,
                             section: slot.section,
-                            room: slot.room || 'N/A'
+                            room: slot.room || '10'
                         };
                     }
                 });
             } else {
-                throw new Error("API unready");
+                throw new Error("Backend API unready");
             }
         } catch (apiError) {
-            // 2. Local Storage Fallback
+            // 2. Fallback to Local Storage (Generated by Admin)
             const cachedTeacherSchedules = localStorage.getItem("cached_teacher_schedules");
             if (cachedTeacherSchedules) {
                 try {
@@ -291,16 +294,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         myClassesMap = parsedMap[teacherKey];
                     }
                 } catch (err) {
-                    console.error("Error parsing cached schedules:", err);
+                    console.error("Error reading cached schedules:", err);
                 }
             }
         }
 
-        // Render schedule rows
+        // Render standard timetable matrix rows
         standardTimeSlots.forEach(timeSlot => {
             const tr = document.createElement('tr');
 
-            // Time Column
+            // Time Slot Column
             const timeCell = document.createElement('td');
             timeCell.className = 'time-cell';
             timeCell.textContent = timeSlot;
@@ -322,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 breakTd.textContent = "LUNCH BREAK / SHIFT TRANSITION";
                 tr.appendChild(breakTd);
             }
-            // Standard Academic Classes
+            // Regular Academic Slot
             else {
                 targetDays.forEach(day => {
                     const td = document.createElement('td');
@@ -334,13 +337,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         td.style.color = '#000000';
 
                         td.innerHTML = `
-                            <div style="font-size: 0.9rem; font-weight: 800; line-height: 1.2;">
+                            <div style="font-size: 0.88rem; font-weight: 800; line-height: 1.2; text-transform: uppercase;">
                                 ${slotData.subject}
                             </div>
-                            <div style="font-size: 0.78rem; font-weight: 600; margin-top: 3px;">
-                                ${slotData.section || userName}
+                            <div style="font-size: 0.76rem; font-weight: 600; margin-top: 3px;">
+                                ${slotData.section || userName.toLowerCase()}
                             </div>
-                            <div style="font-size: 0.72rem; font-weight: 500; opacity: 0.9;">
+                            <div style="font-size: 0.72rem; font-weight: 500; color: #1e293b;">
                                 (room ${slotData.room || '10'})
                             </div>
                         `;
@@ -367,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Print & PDF Event Binding
+    // Action button listeners
     const printBtn = document.getElementById('print-schedule-btn');
     if (printBtn) {
         printBtn.addEventListener('click', () => {
