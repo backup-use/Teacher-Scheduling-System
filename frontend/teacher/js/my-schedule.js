@@ -52,25 +52,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-    // Aggressive CSS injection to override external stylesheet rules
-    if (!document.getElementById("admin-style-matrix-rules")) {
-        const printStyles = document.createElement("style");
-        printStyles.id = "admin-style-matrix-rules";
-        printStyles.innerHTML = `
-            /* --- FORCE ADMIN TABLE VISUALS --- */
-            #timetable-container, .timetable-card {
-                background: #ffffff !important;
-                border: none !important;
-                box-shadow: none !important;
-                padding: 0 !important;
+    // Dynamic Style Injection to force Admin Background Theme
+    if (!document.getElementById("admin-dark-theme-rules")) {
+        const adminStyles = document.createElement("style");
+        adminStyles.id = "admin-dark-theme-rules";
+        adminStyles.innerHTML = `
+            /* --- PAGE BACKGROUND & CONTAINER MATCHING ADMIN THEME --- */
+            body, .main-content, .dashboard-container, main {
+                background-color: #0b0f19 !important; /* Dark Admin Outer Background */
+                color: #ffffff !important;
             }
 
+            /* Title Header & Subtitle Styling */
+            #instructor-title, h1, h2, h3 {
+                color: #ffffff !important;
+                font-weight: 800 !important;
+            }
+
+            p, .subtitle, .text-muted {
+                color: #94a3b8 !important;
+            }
+
+            /* Outer Card Container */
+            .timetable-card, .card, .dashboard-card-panel {
+                background-color: #0f172a !important; /* Dark Admin Card Container */
+                border: 1px solid #1e293b !important;
+                border-radius: 8px !important;
+                padding: 20px !important;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            /* --- TIMETABLE MATRIX TABLE --- */
             #timetable-container table {
                 width: 100% !important;
                 border-collapse: collapse !important;
                 font-family: Arial, sans-serif !important;
                 border: 2px solid #000000 !important;
-                background: #ffffff !important;
+                background-color: #ffffff !important;
             }
 
             #timetable-container table th {
@@ -103,21 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 border: 2px solid #000000 !important;
             }
 
-            /* Remove dotted inner boxes from old teacher UI */
-            .cell-content-wrapper, .vacant-cell-fill {
-                border: none !important;
-                outline: none !important;
-                background: transparent !important;
-                box-shadow: none !important;
-                height: 100% !important;
-                width: 100% !important;
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                justify-content: center !important;
-                position: relative !important;
-            }
-
             .recess-row {
                 background-color: #fef08a !important;
                 color: #854d0e !important;
@@ -134,6 +137,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 letter-spacing: 1.5px !important;
                 font-size: 0.85rem !important;
                 border: 2px solid #000000 !important;
+            }
+
+            .cell-content-wrapper, .vacant-cell-fill {
+                border: none !important;
+                outline: none !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                height: 100% !important;
+                width: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                position: relative !important;
             }
 
             .vacant-text {
@@ -165,8 +182,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 font-weight: 700 !important;
             }
 
-            /* Print/PDF Layout */
+            /* PRINT RESET FOR PAPER / PDF EXPORT */
             @media print {
+                body, .main-content, .timetable-card {
+                    background-color: #ffffff !important;
+                    color: #000000 !important;
+                }
+
                 header, nav, .sidebar, .sidebar-wrapper, .nav-container, 
                 button, .btn, .print-actions, #btn-logout, .add-note-btn, 
                 .vacant-modal-overlay {
@@ -189,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         `;
-        document.head.appendChild(printStyles);
+        document.head.appendChild(adminStyles);
     }
 
     // Modal Injection
@@ -299,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Render standard timetable matrix rows
+        // Render timetable rows
         standardTimeSlots.forEach(timeSlot => {
             const tr = document.createElement('tr');
 
@@ -325,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 breakTd.textContent = "LUNCH BREAK / SHIFT TRANSITION";
                 tr.appendChild(breakTd);
             }
-            // Regular Academic Slot
+            // Regular Class Row
             else {
                 targetDays.forEach(day => {
                     const td = document.createElement('td');
