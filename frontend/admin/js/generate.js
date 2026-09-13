@@ -354,6 +354,35 @@ async function processSystemTimetable() {
     }
 }
 // ==========================================
+// UTILITY & HELPER FUNCTIONS
+// ==========================================
+
+// Fallback subject color resolver to prevent execution crashes
+function getSubjectColor(subjectName) {
+    if (typeof window.getSubjectColor === "function" && window.getSubjectColor !== getSubjectColor) {
+        return window.getSubjectColor(subjectName);
+    }
+    const colorMap = {
+        "Mathematics": "#e0f2fe",
+        "English": "#fef9c3",
+        "Science": "#dcfce7",
+        "Filipino": "#ffe4e6",
+        "Araling Panlipunan": "#f3e8ff",
+        "Values Education": "#f1f5f9",
+        "ESP": "#f1f5f9",
+        "MAPEH": "#ffedd5",
+        "TLE": "#ccfbf1"
+    };
+    return colorMap[subjectName] || "#f8fafc";
+}
+
+// Helper to sanitize/normalize teacher names for standard lookup keys
+function sanitizeTeacherKey(name) {
+    if (!name) return "";
+    return name.toString().trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// ==========================================
 // PART 2: DASHBOARD RENDERING & DOM EVENT BINDING
 // ==========================================
 
@@ -373,13 +402,33 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
             Object.entries(times).forEach(([time, slotData]) => {
                 if (slotData && slotData.teacher) {
                     const rawTeacher = slotData.teacher.trim();
+                    const normalizedKey = sanitizeTeacherKey(rawTeacher);
+
+                    // 1. Store under normalized key for case-insensitive lookup in my-schedule.js
+                    if (!teacherSchedulesMap[normalizedKey]) {
+                        teacherSchedulesMap[normalizedKey] = {
+                            teacherName: rawTeacher, // Keep original formatted display name
+                            days: {}
+                        };
+                    }
+                    if (!teacherSchedulesMap[normalizedKey].days[day]) {
+                        teacherSchedulesMap[normalizedKey].days[day] = {};
+                    }
+
+                    teacherSchedulesMap[normalizedKey].days[day][time] = {
+                        subject: slotData.subject,
+                        section: sectionName,
+                        gradeLevel: gradeLevel,
+                        room: slotData.room || "N/A"
+                    };
+
+                    // 2. Also preserve direct raw name key for backwards compatibility
                     if (!teacherSchedulesMap[rawTeacher]) {
                         teacherSchedulesMap[rawTeacher] = {};
                     }
                     if (!teacherSchedulesMap[rawTeacher][day]) {
                         teacherSchedulesMap[rawTeacher][day] = {};
                     }
-
                     teacherSchedulesMap[rawTeacher][day][time] = {
                         subject: slotData.subject,
                         section: sectionName,
@@ -405,7 +454,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         styleEl.id = "printable-schedule-css";
         styleEl.innerHTML = `
             @media print {
-                /* Force background colors to show up in print/PDF */
                 * {
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
@@ -413,7 +461,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                 
                 @page {
                     size: landscape;
-                    margin: 6mm; /* Balanced page margins */
+                    margin: 6mm;
                 }
 
                 html, body {
@@ -428,7 +476,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                     visibility: hidden;
                 }
 
-                /* Center and balance the print container horizontally */
                 .section-print-area, .section-print-area * {
                     visibility: visible;
                 }
@@ -449,7 +496,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                     display: none !important;
                 }
 
-                /* Compact table sizing to guarantee 1-page fit */
                 .section-print-area table {
                     width: 100% !important;
                     font-size: 0.70rem !important;
@@ -691,7 +737,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
             const secName = secObj.details.name;
             const uniqueCardId = `schedule-card-${gradeName.replace(/[^a-zA-Z0-9]/g, '')}-${secIdx}`;
             
-            // Format generation timestamp
             const generatedTimestamp = new Date().toLocaleString('en-US', {
                 dateStyle: 'medium',
                 timeStyle: 'short'
@@ -733,7 +778,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
 
             tableHTML += `</tr></thead><tbody>`;
 
-            // Render ALL time slots continuously from 06:00 AM to 06:00 PM
             timeSlots.forEach(time => {
                 tableHTML += `
                     <tr>
@@ -742,7 +786,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                         </td>
                 `;
 
-                // Fixed Recess Row
+                // Fixed Recess Row (Corrected Colspan: daySlots.length + 1)
                 if (time === "09:00-10:00") {
                     tableHTML += `
                         <td colspan="${daySlots.length}" style="padding: 8px; background: #fef08a; color: #854d0e; font-weight: 800; border: 2px solid #000000; letter-spacing: 2px; font-size: 0.85rem;">
@@ -750,7 +794,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                         </td>
                     `;
                 }
-                // Fixed Lunch / Shift Transition Row
+                // Fixed Lunch Row (Corrected Colspan: daySlots.length + 1)
                 else if (time === "12:00-01:00") {
                     tableHTML += `
                         <td colspan="${daySlots.length}" style="padding: 8px; background: #fed7aa; color: #9a3412; font-weight: 800; border: 2px solid #000000; letter-spacing: 2px; font-size: 0.85rem;">
@@ -797,13 +841,11 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
 
 // Global Event Listeners & Auto-Restore
 document.addEventListener("DOMContentLoaded", () => {
-    // Bind trigger buttons across the dashboard
-    const actionButtons = document.querySelectorAll("button");
-    actionButtons.forEach(btn => {
-        if (btn.textContent.toLowerCase().includes("initialize") || btn.textContent.toLowerCase().includes("generate")) {
-            btn.addEventListener("click", () => processSystemTimetable());
-        }
-    });
+    // Target action buttons safely
+    const generateBtn = document.getElementById("btn-generate-schedule") || document.getElementById("generate-btn");
+    if (generateBtn) {
+        generateBtn.addEventListener("click", () => processSystemTimetable());
+    }
 
     // Auto-load cached timetable if available or generate on load
     const cachedData = localStorage.getItem("cached_generated_schedule");
@@ -823,9 +865,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 parsed.normalizedTeachers
             );
         } catch (e) {
+            console.error("Failed to parse cached schedule:", e);
             processSystemTimetable();
         }
     } else {
         processSystemTimetable();
     }
-});     
+});

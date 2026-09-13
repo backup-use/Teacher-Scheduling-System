@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'MATHEMATICS': '#ffe4e6',
         'SCIENCE': '#dcfce7',
         'TLE': '#ffedd5',
-        'VALUES EDUCATION': '#fef9c3'
+        'VALUES EDUCATION': '#fef9c3',
+        'ESP': '#fef9c3'
     };
 
     function getSubjectColor(subjectName) {
@@ -52,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-    // Clean Fuzzy Name Matching (Handles case sensitivity, extra spaces, etc.)
+    // Clean Fuzzy Name Matching (Handles case sensitivity, extra spaces, middle initial formats, etc.)
     function matchTeacherName(nameA, nameB) {
         if (!nameA || !nameB) return false;
         const cleanA = nameA.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -285,9 +286,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         tbody.innerHTML = '';
         let myClassesMap = {};
+        let loadedFromApi = false;
 
         // 1. Attempt API fetch first
-        let loadedFromApi = false;
         try {
             const response = await fetch('/api/timetable', {
                 method: 'GET',
@@ -320,54 +321,66 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("API unavailable, switching to LocalStorage parser...");
         }
 
-        // 2. Fallback: Parse Admin Master Schedule from LocalStorage
+        // 2. Fallback: Parse generated data from LocalStorage (Matches generate.js exports)
         if (!loadedFromApi) {
-            const possibleKeys = ["generated_timetable", "master_schedule", "cached_teacher_schedules", "lectura_schedules"];
-            let rawData = null;
 
-            for (const key of possibleKeys) {
-                const item = localStorage.getItem(key);
-                if (item) {
-                    try {
-                        rawData = JSON.parse(item);
-                        break;
-                    } catch (err) {}
+            // A. First Check: Pre-mapped teacher schedules key from generate.js
+            const cachedTeacherMapStr = localStorage.getItem("cached_teacher_schedules");
+            if (cachedTeacherMapStr) {
+                try {
+                    const teacherMap = JSON.parse(cachedTeacherMapStr);
+                    const matchedKey = Object.keys(teacherMap).find(k => matchTeacherName(k, userName));
+                    
+                    if (matchedKey && teacherMap[matchedKey]) {
+                        const teacherData = teacherMap[matchedKey];
+                        myClassesMap = teacherData.days ? teacherData.days : teacherData;
+                    }
+                } catch (err) {
+                    console.error("Error parsing cached_teacher_schedules:", err);
                 }
             }
 
-            if (rawData) {
-                // If stored as flat array of class objects
-                if (Array.isArray(rawData)) {
-                    rawData.forEach(item => {
-                        const teacherInSlot = item.instructor || item.teacher || item.teacherName;
-                        if (matchTeacherName(teacherInSlot, userName)) {
-                            const day = item.day || "Monday"; // Default all days if weekly repetition
-                            const timeSlot = item.timeSlot || item.time;
-                            
-                            // If day is unspecified, assign across Monday-Friday
-                            const daysToApply = item.day ? [item.day] : targetDays;
-                            daysToApply.forEach(d => {
-                                if (!myClassesMap[d]) myClassesMap[d] = {};
-                                myClassesMap[d][timeSlot] = {
-                                    subject: item.subject,
-                                    section: item.section || '',
-                                    room: item.room || '10'
-                                };
-                            });
-                        }
-                    });
-                } 
-                // If stored as structured Map by Teacher
-                else if (typeof rawData === 'object') {
-                    const matchedTeacherKey = Object.keys(rawData).find(k => matchTeacherName(k, userName));
-                    if (matchedTeacherKey && rawData[matchedTeacherKey]) {
-                        myClassesMap = rawData[matchedTeacherKey];
+            // B. Second Check: If no direct match found, extract directly from masterSectionSchedules / global_master_schedule
+            if (Object.keys(myClassesMap).length === 0) {
+                const masterScheduleKeys = ["global_master_schedule", "cached_generated_schedule", "generated_timetable", "master_schedule"];
+                let masterData = null;
+
+                for (const key of masterScheduleKeys) {
+                    const item = localStorage.getItem(key);
+                    if (item) {
+                        try {
+                            const parsed = JSON.parse(item);
+                            // If cached under "cached_generated_schedule", extract masterSectionSchedules property
+                            masterData = parsed.masterSectionSchedules || parsed;
+                            break;
+                        } catch (err) {}
                     }
+                }
+
+                if (masterData && typeof masterData === 'object') {
+                    // Iterate through each section in the master schedule
+                    Object.values(masterData).forEach(secObj => {
+                        const sectionName = secObj.details ? secObj.details.name : (secObj.sectionName || '');
+                        const timetable = secObj.timetable || {};
+
+                        Object.entries(timetable).forEach(([day, times]) => {
+                            Object.entries(times).forEach(([time, slotData]) => {
+                                if (slotData && slotData.teacher && matchTeacherName(slotData.teacher, userName)) {
+                                    if (!myClassesMap[day]) myClassesMap[day] = {};
+                                    myClassesMap[day][time] = {
+                                        subject: slotData.subject,
+                                        section: sectionName,
+                                        room: slotData.room || '10'
+                                    };
+                                }
+                            });
+                        });
+                    });
                 }
             }
         }
 
-        // Render the Grid Matrix
+        // 3. Render the Grid Matrix
         standardTimeSlots.forEach(timeSlot => {
             const tr = document.createElement('tr');
 
@@ -409,10 +422,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${slotData.subject}
                             </div>
                             <div style="font-size: 0.76rem; font-weight: 600; margin-top: 2px; color: #334155;">
-                                ${slotData.section || userName.toLowerCase()}
+                                ${slotData.section || ''}
                             </div>
                             <div style="font-size: 0.72rem; font-weight: 500; color: #475569;">
-                                (room ${slotData.room || '10'})
+                                (room ${slotData.room || 'N/A'})
                             </div>
                         `;
                     } else {
