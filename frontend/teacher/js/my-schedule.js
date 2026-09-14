@@ -3,9 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('userRole');
     const userName = localStorage.getItem('userName') || 
-                 localStorage.getItem('fullName') || 
-                 localStorage.getItem('teacherName') || 
-                 localStorage.getItem('name') || '';
+                     localStorage.getItem('fullName') || 
+                     localStorage.getItem('teacherName') || 
+                     localStorage.getItem('name') || '';
 
     if (!token || role !== 'teacher') {
         alert('Unauthorized access! Redirecting to login.');
@@ -32,6 +32,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return subjectColorMap[key] || '#e2e8f0';
     }
 
+    // Helper function to safely escape HTML strings and prevent XSS
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     // Set instructor header title dynamically
     const instructorTitleEl = document.getElementById('instructor-title');
     if (instructorTitleEl) {
@@ -56,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-    // Clean Fuzzy Name Matching (Handles case sensitivity, extra spaces, middle initial formats, etc.)
+    // Clean Fuzzy Name Matching
     function matchTeacherName(nameA, nameB) {
         if (!nameA || !nameB) return false;
         const cleanA = nameA.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -261,19 +272,24 @@ document.addEventListener('DOMContentLoaded', () => {
         currentEditingTime = timeSlot;
         const storageKey = `note_${userName}_${day}_${timeSlot}`;
         const savedNote = localStorage.getItem(storageKey) || "";
-        document.getElementById("modal-note-textarea").value = savedNote;
-        document.getElementById("vacant-note-modal").classList.add("modal-active");
+        const textarea = document.getElementById("modal-note-textarea");
+        if (textarea) {
+            textarea.value = savedNote;
+        }
+        document.getElementById("vacant-note-modal")?.classList.add("modal-active");
     };
 
     const closeModal = () => {
-        document.getElementById("vacant-note-modal").classList.remove("modal-active");
+        document.getElementById("vacant-note-modal")?.classList.remove("modal-active");
     };
 
     document.getElementById("modal-cancel-btn")?.addEventListener('click', closeModal);
     
     document.getElementById("modal-save-btn")?.addEventListener('click', () => {
-        const noteValue = document.getElementById("modal-note-textarea").value.trim();
+        const textarea = document.getElementById("modal-note-textarea");
+        const noteValue = textarea ? textarea.value.trim() : "";
         const storageKey = `note_${userName}_${currentEditingDay}_${currentEditingTime}`;
+        
         if (noteValue) {
             localStorage.setItem(storageKey, noteValue);
         } else {
@@ -324,10 +340,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("API unavailable, switching to LocalStorage parser...");
         }
 
-        // 2. Fallback: Parse generated data from LocalStorage (Matches generate.js exports)
+        // 2. Fallback: Parse generated data from LocalStorage
         if (!loadedFromApi) {
-
-            // A. First Check: Pre-mapped teacher schedules key from generate.js
+            // A. Check cached teacher schedules key
             const cachedTeacherMapStr = localStorage.getItem("cached_teacher_schedules");
             if (cachedTeacherMapStr) {
                 try {
@@ -343,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // B. Second Check: If no direct match found, extract directly from masterSectionSchedules / global_master_schedule
+            // B. Fallback to master section schedules
             if (Object.keys(myClassesMap).length === 0) {
                 const masterScheduleKeys = ["global_master_schedule", "cached_generated_schedule", "generated_timetable", "master_schedule"];
                 let masterData = null;
@@ -353,15 +368,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (item) {
                         try {
                             const parsed = JSON.parse(item);
-                            // If cached under "cached_generated_schedule", extract masterSectionSchedules property
                             masterData = parsed.masterSectionSchedules || parsed;
                             break;
-                        } catch (err) {}
+                        } catch (err) {
+                            // Continue searching next key on error
+                        }
                     }
                 }
 
                 if (masterData && typeof masterData === 'object') {
-                    // Iterate through each section in the master schedule
                     Object.values(masterData).forEach(secObj => {
                         const sectionName = secObj.details ? secObj.details.name : (secObj.sectionName || '');
                         const timetable = secObj.timetable || {};
@@ -422,13 +437,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         td.innerHTML = `
                             <div style="font-size: 0.88rem; font-weight: 800; line-height: 1.2; text-transform: uppercase;">
-                                ${slotData.subject}
+                                ${escapeHTML(slotData.subject)}
                             </div>
                             <div style="font-size: 0.76rem; font-weight: 600; margin-top: 2px; color: #334155;">
-                                ${slotData.section || ''}
+                                ${escapeHTML(slotData.section || '')}
                             </div>
                             <div style="font-size: 0.72rem; font-weight: 500; color: #475569;">
-                                (room ${slotData.room || 'N/A'})
+                                (room ${escapeHTML(slotData.room || 'N/A')})
                             </div>
                         `;
                     } else {
@@ -436,15 +451,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         const savedNote = localStorage.getItem(storageKey) || "";
                         
                         const cellMarkup = savedNote 
-                            ? `<div class="saved-cell-note">${savedNote}</div>`
+                            ? `<div class="saved-cell-note">${escapeHTML(savedNote)}</div>`
                             : `<span class="vacant-text">-- Vacant --</span>`;
 
                         td.innerHTML = `
                             <div class="vacant-cell-fill">
                                 ${cellMarkup}
-                                <button class="add-note-btn" onclick="window.openVacantNoteModal('${day}', '${timeSlot}')" title="Add Memo Note">+</button>
+                                <button class="add-note-btn" title="Add Memo Note">+</button>
                             </div>
                         `;
+
+                        // Attach event listener via JS instead of inline onclick attribute
+                        const noteBtn = td.querySelector('.add-note-btn');
+                        if (noteBtn) {
+                            noteBtn.addEventListener('click', () => {
+                                window.openVacantNoteModal(day, timeSlot);
+                            });
+                        }
                     }
                     tr.appendChild(td);
                 });
