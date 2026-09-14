@@ -2,7 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Session Protection check
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('userRole');
-    const userName = localStorage.getItem('userName') || '';
+    const userName = localStorage.getItem('userName') || 
+                 localStorage.getItem('fullName') || 
+                 localStorage.getItem('teacherName') || 
+                 localStorage.getItem('name') || '';
 
     if (!token || role !== 'teacher') {
         alert('Unauthorized access! Redirecting to login.');
