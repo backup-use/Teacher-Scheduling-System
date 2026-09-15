@@ -3,7 +3,11 @@ const url = require("url");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-const { db, initAdmin, genId, hashPassword, signToken, verifyToken } = require("./db");
+
+// Import from db.js with fallback handling for 'db' or 'pool'
+const dbModule = require("./db");
+const db = dbModule.db || dbModule.pool || dbModule;
+const { initAdmin, genId, hashPassword, signToken, verifyToken } = dbModule;
 
 const PORT = process.env.PORT || 3000;
 
@@ -52,7 +56,7 @@ function serveFile(res, filePath) {
   });
 }
 
-// Helper: Safe JSON Parse to prevent crashes on non-JSON input
+// Helper: Safe JSON Parse to prevent crashes on non-JSON/double-stringified input
 function safeJsonParse(data, fallback = []) {
   if (typeof data !== "string") return data || fallback;
   try {
@@ -70,7 +74,7 @@ function getAuth(req) {
   return verifyToken(authHeader.split(" ")[1]);
 }
 
-// Helper: Dummy Schedule Generator
+// Helper: Schedule Generator
 async function generateSchedule(teacher) {
   const days = Array.isArray(teacher.work_days) 
     ? teacher.work_days 
@@ -431,7 +435,7 @@ const server = http.createServer(async (req, res) => {
     const auth = getAuth(req);
     if (!auth || auth.role !== "teacher") return send(res, 403, { error: "Forbidden access" });
 
-    // GET /api/teacher/schedule (UPDATED FIXED ROUTE)
+    // GET /api/teacher/schedule
     if (pathname === "/api/teacher/schedule" && req.method === "GET") {
       try {
         const { rows: userRows } = await db.query("SELECT teacher_id FROM users WHERE id::text = $1::text", [String(auth.id)]);
@@ -496,16 +500,20 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", async () => {
-  await initAdmin();
+  if (typeof initAdmin === "function") {
+    await initAdmin();
+  }
   console.log(`\n Scheduler running locally at http://localhost:${PORT}`);
   console.log(` Admin login: admin / admin123`);
 });
 
 // Test connection on server start
-db.query("SELECT NOW()", (err, res) => {
-  if (err) {
-    console.error("❌ Supabase Connection Failed:", err.message);
-  } else {
-    console.log("✅ Successfully connected to Supabase PostgreSQL at:", res.rows[0].now);
-  }
-});
+if (db && typeof db.query === "function") {
+  db.query("SELECT NOW()", (err, res) => {
+    if (err) {
+      console.error("❌ Database Connection Failed:", err.message);
+    } else {
+      console.log("✅ Successfully connected to PostgreSQL at:", res.rows[0].now);
+    }
+  });
+}
