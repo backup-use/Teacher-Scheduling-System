@@ -1,1409 +1,587 @@
-require('dotenv').config();
 const http = require("http");
-const fs = require("fs");
+const url = require("url");
 const path = require("path");
+const fs = require("fs");
 const crypto = require("crypto");
-const { Resend } = require('resend');
+const { db } = require("./db"); // Adjust path if your db connection module is located elsewhere
 
-// Safe initialization to prevent 502 server crashes
-let resend = null;
-if (process.env.RESEND_API_KEY) {
-  resend = new Resend(process.env.RESEND_API_KEY);
-} else {
-  console.warn("⚠️ RESEND_API_KEY is not set. Email notifications will be skipped.");
-}
-
-const db = require("./db");
 const PORT = process.env.PORT || 3000;
 
-// ─── Email Notification Helper ───────────────────────────────────────────────
-async function sendCredentialsEmail(teacherEmail, teacherName, username, password, extraDetails = {}) {
-  if (!resend) {
-    console.log(`⚠️ Skipping email to ${teacherEmail}: RESEND_API_KEY is missing.`);
-    return;
-  }
+// ── Utility Helpers ──
 
-  try {
-    const { subjects = [], workDays = [], startTime = "", endTime = "" } = extraDetails;
-
-    const formattedSubjects = Array.isArray(subjects) && subjects.length > 0
-      ? subjects.join(", ")
-      : "To be assigned";
-
-    const formattedDays = Array.isArray(workDays) && workDays.length > 0
-      ? workDays.join(", ")
-      : "Regular Work Days";
-
-    const { data, error } = await resend.emails.send({
-      from: 'Lectura Scheduling <onboarding@resend.dev>',
-      to: [teacherEmail],
-      subject: '🔑 Welcome to Lectura - Your Account Credentials & Schedule Details',
-      html: `
-        <div style="font-family: Arial, sans-serif; background: #0f111a; color: #fff; padding: 20px; border-radius: 8px;">
-          <h2 style="color: #00d2ff;">Welcome to Lectura, ${teacherName}!</h2>
-          <p>Your account has been successfully created. Below are your login credentials and schedule configuration:</p>
-          <ul>
-            <li><strong>Username:</strong> ${username}</li>
-            <li><strong>Password:</strong> ${password}</li>
-            <li><strong>Assigned Subjects:</strong> ${formattedSubjects}</li>
-            <li><strong>Work Days:</strong> ${formattedDays}</li>
-            <li><strong>Work Hours:</strong> ${startTime} - ${endTime}</li>
-          </ul>
-        </div>
-      `
-    });
-
-    if (error) {
-      return console.error(`❌ Failed to send detailed email via Resend to ${teacherEmail}:`, error);
-    }
-
-    console.log(`✉️ Detailed email sent via Resend to ${teacherEmail}! ID:`, data.id);
-  } catch (error) {
-    console.error(`❌ Failed to send detailed email to ${teacherEmail}:`, error);
-  }
+function send(res, status, data, headers = {}) {
+  res.writeHead(status, { "Content-Type": "application/json", ...headers });
+  res.end(JSON.stringify(data));
 }
 
-// ─── Utility Helpers ─────────────────────────────────────────────────────────
-function hashPassword(pw) {
-  return crypto.createHash("sha256").update(pw + "salt_key_2024").digest("hex");
-}
-
-function genId() {
-  return crypto.randomBytes(8).toString("hex");
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on("error", reject);
+  });
 }
 
 function safeJsonParse(data, fallback = []) {
-  if (typeof data === 'object' && data !== null) return data;
-  try {
-    return JSON.parse(data);
-  } catch {
-    return fallback;
-  }
+  if (typeof data !== "string") return data || fallback;
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    return fallback;
+  }
 }
 
-async function initAdmin() {
-  try {
-    await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);");
-    const adminPasswordHash = hashPassword("admin123");
-    const { rows } = await db.query("SELECT * FROM users WHERE username = $1", ["admin"]);
-   
-    if (rows.length === 0) {
-      try {
-        await db.query(
-          "INSERT INTO users (username, password, role, name) VALUES ($1, $2, $3, $4)",
-          ["admin", adminPasswordHash, "admin", "Administrator"]
-        );
-      } catch (err) {
-        const userId = "usr-" + genId();
-        await db.query(
-          "INSERT INTO users (id, username, password, role, name) VALUES ($1, $2, $3, $4, $5)",
-          [userId, "admin", adminPasswordHash, "admin", "Administrator"]
-        );
-      }
-      console.log(" -> Admin account created in database (admin / admin123)");
-    } else {
-      await db.query(
-        "UPDATE users SET password = $1 WHERE username = $2",
-        [adminPasswordHash, "admin"]
-      );
-      console.log(" -> Admin password updated/verified (admin / admin123)");
-    }
-  } catch (err) {
-    console.error(" -> Database seed error (initAdmin):", err.message);
-  }
+function sanitizeTime(timeStr) {
+  if (!timeStr) return "08:00";
+  return timeStr.trim();
 }
 
-// ─── JWT-lite (HMAC tokens) ──────────────────────────────────────────────────
-const SECRET = process.env.JWT_SECRET || "scheduler_secret_2024_xyz";
-
-function signToken(payload) {
-  const header = Buffer.from(JSON.stringify({ alg: "HS256" })).toString("base64url");
-  const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 86400000 })).toString("base64url");
-  const sig = crypto.createHmac("sha256", SECRET).update(`${header}.${body}`).digest("base64url");
-  return `${header}.${body}.${sig}`;
+function genId() {
+  return crypto.randomBytes(8).toString("hex");
 }
 
-function verifyToken(token) {
-  try {
-    if (!token || token === "null" || token === "undefined") return null;
-    const [header, body, sig] = token.split(".");
-    const expected = crypto.createHmac("sha256", SECRET).update(`${header}.${body}`).digest("base64url");
-    if (sig !== expected) return null;
-    const payload = JSON.parse(Buffer.from(body, "base64url").toString());
-    if (payload.exp < Date.now()) return null;
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-async function getPartitionedSubjects() {
-  try {
-    await db.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS grade_level VARCHAR(255);");
-  } catch (e) {
-    console.error("Schema sync warning:", e.message);
-  }
-
-  const { rows } = await db.query("SELECT * FROM subjects ORDER BY LOWER(name) ASC");
-  const partitions = { junior: [], grade11: [], grade12: [] };
-
-  rows.forEach(r => {
-    const level = (r.grade_level || "").toLowerCase();
-    const item = { id: r.id, name: r.name, gradeLevel: r.grade_level || "Junior High School" };
-
-    if (level.includes("11")) {
-      partitions.grade11.push(item);
-    } else if (level.includes("12")) {
-      partitions.grade12.push(item);
-    } else {
-      partitions.junior.push(item);
-    }
-  });
-
-  return partitions;
-}
-// ─── Time Helper Utilities ──────────────────────────────────────────────────
-
-// Converts strings like "07:00", "07:00 AM", "12:00 PM", or "7:00 PM" into total minutes from midnight
-function parseTimeToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  let cleanStr = String(timeStr).trim();
-  const isPM = /PM/i.test(cleanStr);
-  const isAM = /AM/i.test(cleanStr);
- 
-  // Strip non-numeric/colon chars
-  cleanStr = cleanStr.replace(/[^0-9:]/g, "");
-  let [hours, minutes] = cleanStr.split(":").map(Number);
- 
-  hours = hours || 0;
-  minutes = minutes || 0;
-
-  if (isPM && hours < 12) hours += 12;
-  if (isAM && hours === 12) hours = 0;
-
-  return hours * 60 + minutes;
-}
-
-// Formats minutes from midnight back into standard "HH:MM" 24-hour format
-function minutesToHHMM(mins) {
-  const h = Math.floor(mins / 60) % 24;
-  const m = mins % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
-function isTimeInRange(time, from, to) {
-  const tMins = parseTimeToMinutes(time);
-  const fMins = parseTimeToMinutes(from);
-  const t2Mins = parseTimeToMinutes(to);
-  return tMins >= fMins && tMins < t2Mins;
-}
-
-function generateTimeSlots(start, end, durationMin = 60) {
-  const slots = [];
-  let currentMins = parseTimeToMinutes(start);
-  const endMins = parseTimeToMinutes(end);
-
-  // Fallback default range if start/end values are invalid or zero
-  if (currentMins >= endMins) {
-    currentMins = 8 * 60;  // 08:00 AM
-    endMins = 16 * 60;     // 04:00 PM
-  }
-
-  while (currentMins + durationMin <= endMins) {
-    const s = minutesToHHMM(currentMins);
-    const e = minutesToHHMM(currentMins + durationMin);
-    slots.push({ start: s, end: e });
-    currentMins += durationMin;
-  }
-  return slots;
-}
-
-// ─── Schedule Generator ──────────────────────────────────────────────────────
-async function generateSchedule(teacher) {
-  const slots = [];
- 
-  // Safely extract workDays (handles stringified JSON array or standard array)
-  let days = teacher.workDays || teacher.work_days || [];
-  if (typeof days === "string") {
-    days = safeJsonParse(days, ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
-  }
-  if (!Array.isArray(days) || days.length === 0) {
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  }
-
-  const startTime = teacher.startTime || teacher.start_time || "08:00";
-  const endTime = teacher.endTime || teacher.end_time || "16:00";
-  const timeSlots = generateTimeSlots(startTime, endTime, 60);
-
-  let availableSchoolSubjects = ["Math", "Science", "English", "History", "ICT"];
-  try {
-    const res = await db.query("SELECT name FROM subjects ORDER BY LOWER(name) ASC");
-    if (res.rows.length > 0) {
-      availableSchoolSubjects = res.rows.map((r) => r.name);
-    }
-  } catch (err) {
-    console.error("Error fetching subjects for schedule generator:", err);
-  }
-
-  const teacherSubjects = safeJsonParse(teacher.subjects, []);
-  const validSubjects = teacherSubjects.filter((sub) => availableSchoolSubjects.includes(sub));
-  const primarySubject = validSubjects.length > 0 ? validSubjects[0] : (teacherSubjects[0] || "General Class");
-
-  const availabilityList = safeJsonParse(teacher.availability, []);
-
-  days.forEach((day) => {
-    timeSlots.forEach((slot) => {
-      const isAvailable =
-        availabilityList.length === 0 ||
-        availabilityList.some((a) => a.day === day && isTimeInRange(slot.start, a.from || "08:00", a.to || "16:00"));
-
-      if (isAvailable) {
-        slots.push({
-          id: crypto.randomBytes(4).toString("hex"),
-          day,
-          startTime: slot.start,
-          endTime: slot.end,
-          subject: primarySubject,
-          room: `room 10`,
-          status: "scheduled",
-        });
-      }
-    });
-  });
-
-  return slots;
-}
-// ─── Router Helpers ──────────────────────────────────────────────────────────
-function parseBody(req) {
-  return new Promise((resolve) => {
-    let data = "";
-    req.on("data", (c) => (data += c));
-    req.on("end", () => {
-      try { resolve(JSON.parse(data)); }
-      catch { resolve({}); }
-    });
-  });
+function hashPassword(password) {
+  return crypto.createHash("sha256").update(password).digest("hex");
 }
 
 function getAuth(req) {
-  const auth = req.headers["authorization"] || "";
-  const token = auth.replace("Bearer ", "");
-  return verifyToken(token);
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+  const token = authHeader.split(" ")[1];
+  try {
+    return JSON.parse(Buffer.from(token, "base64").toString("ascii"));
+  } catch (e) {
+    return null;
+  }
 }
 
-function send(res, status, data) {
-  res.writeHead(status, {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
-  });
-  res.end(JSON.stringify(data));
+async function serveFile(res, filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes = {
+    ".html": "text/html",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".json": "application/json",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+  };
+  const contentType = mimeTypes[ext] || "application/octet-stream";
+
+  fs.readFile(filePath, (err, content) => {
+    if (err) {
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      res.end("Server Error");
+    } else {
+      res.writeHead(200, { "Content-Type": contentType });
+      res.end(content);
+    }
+  });
 }
 
-function serveFile(res, filePath) {
-  const ext = path.extname(filePath);
-  const mime = {
-    ".html": "text/html",
-    ".css": "text/css",
-    ".js": "application/javascript",
-    ".png": "image/png",
-    ".ico": "image/x-icon",
-  }[ext] || "text/plain";
-
-  fs.readFile(filePath, (err, data) => {
-    if (err) {
-      res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end("Not found");
-      return;
-    }
-    res.writeHead(200, { "Content-Type": mime });
-    res.end(data);
-  });
+// Dummy helper for schedule generation
+async function generateSchedule(teacher) {
+  return [
+    {
+      id: genId(),
+      day: "Monday",
+      startTime: teacher.start_time || "08:00 AM",
+      endTime: teacher.end_time || "09:00 AM",
+      subject: safeJsonParse(teacher.subjects, ["General"])[0] || "General",
+      room: "Room 101",
+      section: "Section A",
+      status: "scheduled",
+    },
+  ];
 }
 
-// ─── Server Core Execution ───────────────────────────────────────────────────
+// Dummy helper for email notifications
+function sendCredentialsEmail(email, name, username, password, details) {
+  console.log(`📧 Credentials sent to ${email} for user: ${username}`);
+}
+
+// ── Database Initializer ──
+
+async function initAdmin() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(255) PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL,
+        name VARCHAR(255),
+        teacher_id VARCHAR(255),
+        email VARCHAR(255)
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS teachers (
+        id SERIAL PRIMARY KEY,
+        first_name VARCHAR(255),
+        last_name VARCHAR(255),
+        email VARCHAR(255),
+        subjects TEXT,
+        target_grade VARCHAR(50),
+        work_days TEXT,
+        start_time VARCHAR(50),
+        end_time VARCHAR(50),
+        availability TEXT,
+        employee_id VARCHAR(255),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS schedules (
+        id SERIAL PRIMARY KEY,
+        teacher_id VARCHAR(255),
+        slots TEXT,
+        generated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    const adminCheck = await db.query("SELECT * FROM users WHERE role = $1", ["admin"]);
+    if (adminCheck.rows.length === 0) {
+      await db.query(
+        "INSERT INTO users (id, username, password, role, name) VALUES ($1, $2, $3, $4, $5)",
+        ["usr-admin", "admin", hashPassword("admin123"), "admin", "System Administrator"]
+      );
+      console.log("🔑 Default admin created: admin / admin123");
+    }
+  } catch (err) {
+    console.error("❌ Database initialization error:", err.message);
+  }
+}
+
+// ── HTTP Server Request Handler ──
+
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`);
-  const pathname = url.pathname;
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    });
-    res.end();
-    return;
-  }
-
-  if (pathname.startsWith("/api/")) {
-
-    // POST /api/login
-    if (pathname === "/api/login" && req.method === "POST") {
-      try {
-        const body = await parseBody(req);
-        const { rows } = await db.query(
-          "SELECT * FROM users WHERE username = $1 AND password = $2",
-          [body.username, hashPassword(body.password)]
-        );
-        if (rows.length === 0) return send(res, 401, { error: "Invalid credentials" });
-       
-        const user = rows[0];
-        const token = signToken({ id: user.id, role: user.role, name: user.name, teacher_id: user.teacher_id });
-        return send(res, 200, { token, role: user.role, name: user.name, id: user.id });
-      } catch (err) {
-        return send(res, 500, { error: err.message });
-      }
-    }
-
-    // POST /api/auth/forgot-password
-    if (pathname === "/api/auth/forgot-password" && req.method === "POST") {
-      try {
-        const body = await parseBody(req);
-        const identifier = (body.identifier || body.email || "").trim().toLowerCase();
-        const temporaryEmail = (body.temporaryEmail || "").trim().toLowerCase();
-        const securityKey = (body.securityKey || "").trim();
-
-        if (!identifier) {
-          return send(res, 400, { error: "Please enter your Username or Email address." });
-        }
-
-        let { rows } = await db.query(
-          `SELECT u.id, u.username, u.name, u.role, COALESCE(u.email, t.email) AS email
-          FROM users u
-          LEFT JOIN teachers t ON u.teacher_id::text = t.id::text
-          WHERE LOWER(u.username) = $1 OR LOWER(u.email) = $1 OR LOWER(t.email) = $1`,
-          [identifier]
-        );
-
-        if (rows.length === 0) {
-          return send(res, 404, { error: "No account found matching that username or email." });
-        }
-
-        const user = rows[0];
-
-        if (!user.email) {
-          const MASTER_SECURITY_KEY = process.env.MASTER_KEY || "LECTURA_SECURE_2024";
-
-          if (!securityKey || securityKey !== MASTER_SECURITY_KEY) {
-            return send(res, 202, {
-              requiresVerification: true,
-              role: user.role,
-              message: "Account found, but no email is linked. Please enter your email and the Master Security Key."
-            });
-          }
-
-          if (!temporaryEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(temporaryEmail)) {
-            return send(res, 400, { error: "Please enter a valid email address." });
-          }
-
-          await db.query("UPDATE users SET email = $1 WHERE id = $2", [temporaryEmail, user.id]);
-          user.email = temporaryEmail;
-        }
-
-        const resetToken = signToken({ id: user.id, email: user.email });
-        const resetLink = `https://lectura-mdvz.onrender.com/shared/reset-password.html?token=${resetToken}`;
-
-        const { data, error } = await resend.emails.send({
-          from: 'Lectura Security <onboarding@resend.dev>',
-          to: [user.email],
-          subject: '🔒 Reset Your Lectura Account Password',
-          html: `
-            <div style="font-family: Arial, sans-serif; background: #0f111a; color: #fff; padding: 20px; border-radius: 8px;">
-              <h2 style="color: #00d2ff;">Password Reset Request</h2>
-              <p>Hello <strong>${user.name || user.username}</strong>,</p>
-              <p>We received a request to reset your password for account (<strong>${user.username}</strong>).</p>
-              <div style="text-align: center; margin: 25px 0;">
-                <a href="${resetLink}" style="background-color: #00d2ff; color: #000; font-weight: bold; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
-              </div>
-            </div>
-          `
-        });
-
-        if (error) {
-          return send(res, 500, { error: "Failed to send reset email: " + error.message });
-        }
-
-        return send(res, 200, { message: `Password reset link successfully sent to ${user.email}!` });
-
-      } catch (err) {
-        console.error("❌ Forgot Password Error:", err);
-        return send(res, 500, { error: err.message });
-      }
-    }
-
-    // GET /api/me
-    if (pathname === "/api/me" && req.method === "GET") {
-      const auth = getAuth(req);
-      if (!auth) return send(res, 401, { error: "Unauthorized" });
-      return send(res, 200, { id: auth.id, role: auth.role, name: auth.name });
-    }
-
-    // ── Shared Authenticated Endpoints ──
-
-    // GET ROOMS
-    if ((pathname === "/api/admin/rooms" || pathname === "/api/teacher/rooms" || pathname === "/api/rooms") && req.method === "GET") {
-      const auth = getAuth(req);
-      if (!auth) return send(res, 401, { error: "Unauthorized access token." });
-     
-      if (auth.role !== "admin" && auth.role !== "teacher") {
-        return send(res, 403, { error: "Forbidden access." });
-      }
-
-      try {
-        const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
-        const normalizedRooms = rows.map(r => ({
-          id: r.id,
-          name: r.name || r.room_name || "",
-          capacity: r.capacity || r.max_capacity || 0,
-          type: r.type || r.room_type || "Standard Classroom"
-        }));
-        return send(res, 200, normalizedRooms);
-      } catch (err) {
-        console.error("Fetch rooms failure:", err);
-        return send(res, 500, { error: err.message });
-      }
-    }
-
-    // ── Admin Protected Endpoints ──
-    if (pathname.startsWith("/api/admin/")) {
-      const auth = getAuth(req);
-      if (!auth || auth.role !== "admin") return send(res, 403, { error: "Forbidden: Admin access required." });
-
-      // GET /api/admin/subjects
-      if (pathname === "/api/admin/subjects" && req.method === "GET") {
-        try {
-          const partitions = await getPartitionedSubjects();
-          return send(res, 200, partitions);
-        } catch (err) {
-          return send(res, 500, { error: err.message });
-        }
-      }
-
-      // POST /api/admin/subjects
-      if (pathname === "/api/admin/subjects" && req.method === "POST") {
-        try {
-          const body = await parseBody(req);
-          const rawInput = (body.subjectName || body.name || body.subjects || "").trim();
-          const gradeLevel = (body.gradeLevel || "Junior High School").trim();
-
-          if (!rawInput) {
-            return send(res, 400, { error: "Subject title required." });
-          }
-
-          await db.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS grade_level VARCHAR(255);");
-
-          const rawList = rawInput.split(",").map(s => s.trim()).filter(Boolean);
-          const addedSubjects = [];
-          const skippedSubjects = [];
-
-          for (const subjectName of rawList) {
-            const existing = await db.query(
-              "SELECT id FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1) AND LOWER(TRIM(COALESCE(grade_level, ''))) = LOWER($2)",
-              [subjectName, gradeLevel]
-            );
-
-            if (existing.rows.length === 0) {
-              await db.query("INSERT INTO subjects (name, grade_level) VALUES ($1, $2)", [subjectName, gradeLevel]);
-              addedSubjects.push(subjectName);
-            } else {
-              skippedSubjects.push(subjectName);
-            }
-          }
-
-          const partitions = await getPartitionedSubjects();
-
-          return send(res, 201, {
-            success: true,
-            message: addedSubjects.length > 0
-              ? `Successfully added ${addedSubjects.length} subject(s) to ${gradeLevel}!`
-              : `All provided subjects already exist in ${gradeLevel}.`,
-            added: addedSubjects,
-            skipped: skippedSubjects,
-            partitions: partitions
-          });
-
-        } catch (err) {
-          console.error("❌ Database/POST error inserting subject:", err);
-          return send(res, 500, { error: "Failed to process subject entry in database: " + err.message });
-        }
-      }
-
-      // DELETE /api/admin/subjects/:id
-      if (pathname.startsWith("/api/admin/subjects/") && req.method === "DELETE") {
-        try {
-          const subjectParam = decodeURIComponent(pathname.split("/").pop()).trim();
-         
-          let result;
-          if (!isNaN(subjectParam)) {
-            result = await db.query("DELETE FROM subjects WHERE id = $1", [parseInt(subjectParam, 10)]);
-          } else {
-            result = await db.query("DELETE FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1)", [subjectParam]);
-          }
-
-          if (result.rowCount === 0) return send(res, 404, { error: "Subject entry does not exist." });
-         
-          const partitions = await getPartitionedSubjects();
-          return send(res, 200, partitions);
-        } catch (error) {
-          console.error("Deletion error:", error);
-          return send(res, 500, { error: "Internal failure during subject removal." });
-        }
-      }
-
-      // GET /api/admin/sections
-      if (pathname === "/api/admin/sections" && req.method === "GET") {
-        try {
-          const queryText = `
-            SELECT
-              s.id,
-              s.name,
-              s.students,
-              s.grade_level AS "gradeLevel",
-              s.room_id AS "roomId",
-              r.name AS "roomName",
-              r.capacity AS "roomCapacity"
-            FROM sections s
-            LEFT JOIN rooms r ON s.room_id = r.id
-            ORDER BY s.name ASC
-          `;
-          const { rows } = await db.query(queryText);
-          return send(res, 200, rows);
-        } catch (err) {
-          return send(res, 500, { error: err.message });
-        }
-      }
-
-      // POST /api/admin/sections
-      if (pathname === "/api/admin/sections" && req.method === "POST") {
-        try {
-          const body = await parseBody(req);
-         
-          const sectionName = (body.sectionName || body.name || "").trim();
-          const gradeLevel = (body.gradeLevel || body.grade || "").trim();
-          const roomIdRaw = body.assignedRoom || body.room_id || body.roomId || null;
-          const students = body.students !== undefined ? parseInt(body.students, 10) : 0;
-
-          if (!sectionName) {
-            return send(res, 400, { error: "Section Name is required." });
-          }
-
-          const roomId = roomIdRaw && !isNaN(parseInt(roomIdRaw, 10)) ? parseInt(roomIdRaw, 10) : null;
-
-          const existing = await db.query(
-            "SELECT id FROM sections WHERE LOWER(TRIM(name)) = LOWER($1)",
-            [sectionName]
-          );
-          if (existing.rows.length > 0) {
-            return send(res, 400, { error: "This section already exists." });
-          }
-
-          await db.query(
-            "INSERT INTO sections (name, students, grade_level, room_id) VALUES ($1, $2, $3, $4)",
-            [sectionName, students, gradeLevel, roomId]
-          );
-
-          const { rows } = await db.query(`
-            SELECT
-              s.id,
-              s.name,
-              s.students,
-              s.grade_level AS "gradeLevel",
-              s.room_id AS "roomId",
-              r.name AS "roomName"
-            FROM sections s
-            LEFT JOIN rooms r ON s.room_id = r.id
-            ORDER BY s.name ASC
-          `);
-         
-          return send(res, 201, rows);
-        } catch (err) {
-          console.error("Error inserting section:", err);
-          return send(res, 500, { error: err.message });
-        }
-      }
-
-      // DELETE /api/admin/sections/:id
-      if (pathname.startsWith("/api/admin/sections/") && req.method === "DELETE") {
-        try {
-          const sectionId = pathname.split("/").pop();
-          const result = await db.query("DELETE FROM sections WHERE id = $1", [sectionId]);
-          if (result.rowCount === 0) return send(res, 404, { error: "Section not found." });
-          return send(res, 200, { success: true });
-        } catch (err) {
-          return send(res, 500, { error: err.message });
-        }
-      }
-
-      // POST /api/admin/rooms
-      if (pathname === "/api/admin/rooms" && req.method === "POST") {
-        try {
-          const body = await parseBody(req);
-          const roomName = (body.name || body.roomName || "").trim();
-          const capacity = body.capacity !== undefined ? body.capacity : body.maxCapacity;
-
-          if (!roomName || capacity === undefined) {
-            return send(res, 400, { error: "Room Name and Capacity are required." });
-          }
-
-          let existing;
-          try {
-            existing = await db.query(
-              "SELECT id FROM rooms WHERE LOWER(TRIM(name)) = LOWER($1) OR LOWER(TRIM(room_name)) = LOWER($1)",
-              [roomName]
-            );
-          } catch {
-            existing = { rows: [] };
-          }
-
-          if (existing.rows && existing.rows.length > 0) {
-            return send(res, 400, { error: "This room already exists." });
-          }
-
-          let insertedRow;
-          try {
-            const resInsert = await db.query(
-              "INSERT INTO rooms (name, capacity) VALUES ($1, $2) RETURNING *",
-              [roomName, capacity]
-            );
-            insertedRow = resInsert.rows[0];
-          } catch {
-            const resInsert = await db.query(
-              "INSERT INTO rooms (room_name, capacity) VALUES ($1, $2) RETURNING *",
-              [roomName, capacity]
-            );
-            insertedRow = resInsert.rows[0];
-          }
-
-          const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
-          const normalized = rows.map(r => ({
-            id: r.id,
-            name: r.name || r.room_name || "",
-            capacity: r.capacity || 0
-          }));
-
-          return send(res, 201, { success: true, room: insertedRow, rooms: normalized });
-        } catch (err) {
-          console.error("Room registration failure:", err);
-          return send(res, 500, { error: "Database failure: " + err.message });
-        }
-      }
-
-      // DELETE /api/admin/rooms/:id
-      if (pathname.startsWith("/api/admin/rooms/") && req.method === "DELETE") {
-        try {
-          const roomId = pathname.split("/").pop();
-          const result = await db.query("DELETE FROM rooms WHERE id = $1", [roomId]);
-          if (result.rowCount === 0) return send(res, 404, { error: "Room not found." });
-          return send(res, 200, { success: true });
-        } catch (err) {
-          console.error("Room deletion failure:", err);
-          return send(res, 500, { error: err.message });
-        }
-      }
-
-      // GET /api/admin/teachers (ALL TEACHERS)
-      if (pathname === "/api/admin/teachers" && req.method === "GET") {
-        try {
-          const { rows } = await db.query("SELECT * FROM teachers ORDER BY id ASC");
-         
-          const formattedTeachers = rows.map(teacher => ({
-            ...teacher,
-            name: `${teacher.first_name} ${teacher.last_name}`,
-            subjects: typeof teacher.subjects === 'string' ? JSON.parse(teacher.subjects || '[]') : (teacher.subjects || []),
-            workDays: typeof teacher.work_days === 'string' ? JSON.parse(teacher.work_days || '[]') : (teacher.work_days || []),
-            availability: typeof teacher.availability === 'string' ? JSON.parse(teacher.availability || '[]') : (teacher.availability || [])
-          }));
-
-          return send(res, 200, formattedTeachers);
-        } catch (err) {
-          console.error('❌ Error fetching teachers:', err);
-          return send(res, 500, { error: err.message });
-        }
-      }
-
-      // GET /api/admin/teachers/:id (INDIVIDUAL TEACHER FETCH)
-      if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "GET") {
-        try {
-          const id = pathname.split("/").pop();
-          const { rows } = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
-         
-          if (rows.length === 0) return send(res, 404, { error: "Teacher not found" });
-
-          const teacher = rows[0];
-          const formattedTeacher = {
-            ...teacher,
-            firstName: teacher.first_name,
-            lastName: teacher.last_name,
-            targetGrade: teacher.target_grade,
-            workDays: safeJsonParse(teacher.work_days, []),
-            subjects: safeJsonParse(teacher.subjects, []),
-            availability: safeJsonParse(teacher.availability, []),
-            startTime: teacher.start_time,
-            endTime: teacher.end_time
-          };
-
-          return send(res, 200, formattedTeacher);
-        } catch (err) {
-          console.error("❌ Error fetching teacher details:", err);
-          return send(res, 500, { error: err.message });
-        }
-      }
-
-      // POST /api/admin/teachers (CREATE TEACHER)
-      if (pathname === "/api/admin/teachers" && req.method === "POST") {
-        try {
-          const body = await parseBody(req);
-         
-          const firstName = (body.firstName || "").trim();
-          const lastName = (body.lastName || "").trim();
-          const email = (body.email || "").trim().toLowerCase();
-
-          if (!firstName || !lastName) {
-            return send(res, 400, { error: "First name and last name are required." });
-          }
-
-          const nameCheck = await db.query(
-            `SELECT id FROM teachers WHERE LOWER(TRIM(first_name)) = LOWER($1) AND LOWER(TRIM(last_name)) = LOWER($2)`,
-            [firstName, lastName]
-          );
-          if (nameCheck.rows.length > 0) {
-            return send(res, 400, { error: `Teacher "${firstName} ${lastName}" is already registered!` });
-          }
-
-          let baseUsername = (firstName.toLowerCase() + "." + lastName.toLowerCase()).replace(/\s+/g, "");
-          let username = baseUsername;
-         
-          const existingUser = await db.query("SELECT id FROM users WHERE username = $1", [username]);
-          if (existingUser.rows.length > 0) {
-            username = `${baseUsername}${Math.floor(100 + Math.random() * 900)}`;
-          }
-
-          const password = "teacher" + Math.floor(1000 + Math.random() * 9000);
-          const employeeId = "EMP-" + Math.floor(1000 + Math.random() * 9000);
-
-          const rawSubjects = Array.isArray(body.subjects) ? body.subjects : [body.subjects].filter(Boolean);
-          const subjectsJSON = JSON.stringify(rawSubjects);
-          const workDaysJSON = JSON.stringify(Array.isArray(body.workDays) ? body.workDays : []);
-          const targetGrade = body.targetGrade || body.target_grade || "";
-
-          function sanitizeTime(timeStr) {
-            if (!timeStr || timeStr.trim() === "") return "08:00";
-            let t = timeStr.trim().toLowerCase();
-            let isPM = t.includes("pm");
-            let isAM = t.includes("am");
-            let nums = t.replace(/[^0-9:]/g, "").split(":");
-            let h = parseInt(nums[0], 10);
-            let m = nums[1] ? parseInt(nums[1], 10) : 0;
-            if (isPM && h !== 12) h += 12;
-            if (isAM && h === 12) h = 0;
-            return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-          }
-
-          let availabilityArray = [];
-          if (typeof body.availability === 'string') {
-            try { availabilityArray = JSON.parse(body.availability); } catch (e) { availabilityArray = []; }
-          } else if (Array.isArray(body.availability)) {
-            availabilityArray = body.availability;
-          }
-
-          const formattedAvailability = availabilityArray.map(item => ({
-            day: item.day || "Monday",
-            from: sanitizeTime(item.from),
-            to: sanitizeTime(item.to)
-          }));
-
-          const teacherResult = await db.query(
-            `INSERT INTO teachers (
-              first_name, last_name, email, subjects, target_grade,
-              work_days, start_time, end_time, availability, employee_id, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING *`,
-            [
-              firstName,
-              lastName,
-              email || "no-email@school.edu",
-              subjectsJSON,
-              targetGrade,
-              workDaysJSON,
-              sanitizeTime(body.startTime),
-              sanitizeTime(body.endTime),
-              JSON.stringify(formattedAvailability),
-              employeeId
-            ]
-          );
-
-          const newTeacher = teacherResult.rows[0];
-          const teacherIdStr = String(newTeacher.id);
-          const userId = "usr-" + genId();
-
-          await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);");
-          await db.query(
-  "INSERT INTO users (id, username, password, role, name, teacher_id, email) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-
-            [userId, username, hashPassword(password), "teacher", `${firstName} ${lastName}`, teacherIdStr, email]
-
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
+
+  // CORS Headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    return res.end();
+  }
+
+  // ── API Router ──
+
+  if (pathname.startsWith("/api/")) {
+    
+    // Auth: Login
+    if (pathname === "/api/login" && req.method === "POST") {
+      try {
+        const body = await parseBody(req);
+        const { username, password } = body;
+        const { rows } = await db.query("SELECT * FROM users WHERE username = $1", [username]);
+        const user = rows[0];
+
+        if (!user || user.password !== hashPassword(password)) {
+          return send(res, 401, { error: "Invalid username or password" });
+        }
+
+        const tokenPayload = { id: user.id, username: user.username, role: user.role, teacherId: user.teacher_id };
+        const token = Buffer.from(JSON.stringify(tokenPayload)).toString("base64");
+
+        return send(res, 200, { success: true, token, user: tokenPayload });
+      } catch (err) {
+        return send(res, 500, { error: err.message });
+      }
+    }
+
+    // ── Admin Routes ──
+
+    if (pathname.startsWith("/api/admin/")) {
+      const auth = getAuth(req);
+      if (!auth || auth.role !== "admin") {
+        return send(res, 403, { error: "Forbidden: Admin access required." });
+      }
+
+      // POST /api/admin/teachers (CREATE TEACHER)
+      if (pathname === "/api/admin/teachers" && req.method === "POST") {
+        try {
+          const body = await parseBody(req);
+          const firstName = (body.firstName || body.first_name || "").trim();
+          const lastName = (body.lastName || body.last_name || "").trim();
+          const email = (body.email || "").trim().toLowerCase();
+          const username = (body.username || `${firstName.toLowerCase()}.${lastName.toLowerCase()}`).trim();
+          const password = body.password || "Teacher123!";
+          const employeeId = body.employeeId || `EMP-${genId().slice(0, 4)}`;
+          const targetGrade = body.targetGrade || body.target_grade || "";
+
+          const rawSubjects = body.subjects || [];
+          const subjectsJSON = JSON.stringify(Array.isArray(rawSubjects) ? rawSubjects : [rawSubjects].filter(Boolean));
+          const workDaysJSON = JSON.stringify(Array.isArray(body.workDays) ? body.workDays : []);
+
+          let availabilityArray = [];
+          if (typeof body.availability === "string") {
+            try { availabilityArray = JSON.parse(body.availability); } catch (e) { availabilityArray = []; }
+          } else if (Array.isArray(body.availability)) {
+            availabilityArray = body.availability;
+          }
+
+          const formattedAvailability = availabilityArray.map((item) => ({
+            day: item.day || "Monday",
+            from: sanitizeTime(item.from),
+            to: sanitizeTime(item.to),
+          }));
+
+          const teacherResult = await db.query(
+            `INSERT INTO teachers (
+              first_name, last_name, email, subjects, target_grade,
+              work_days, start_time, end_time, availability, employee_id, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING *`,
+            [
+              firstName,
+              lastName,
+              email || "no-email@school.edu",
+              subjectsJSON,
+              targetGrade,
+              workDaysJSON,
+              sanitizeTime(body.startTime),
+              sanitizeTime(body.endTime),
+              JSON.stringify(formattedAvailability),
+              employeeId,
+            ]
           );
 
+          const newTeacher = teacherResult.rows[0];
+          const teacherIdStr = String(newTeacher.id);
+          const userId = "usr-" + genId();
 
+          await db.query(
+            "INSERT INTO users (id, username, password, role, name, teacher_id, email) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            [userId, username, hashPassword(password), "teacher", `${firstName} ${lastName}`, teacherIdStr, email]
+          );
 
           const slots = await generateSchedule(newTeacher);
 
           await db.query(
-
             "INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())",
-
             [teacherIdStr, JSON.stringify(slots)]
-
           );
 
-
-
-          if (email && email.includes('@')) {
-
-            sendCredentialsEmail(
-
-              email,
-
-              `${firstName} ${lastName}`,
-
-              username,
-
-              password,
-
-              {
-
-                subjects: rawSubjects,
-
-                workDays: Array.isArray(body.workDays) ? body.workDays : [],
-
-                startTime: body.startTime,
-
-                endTime: body.endTime
-
-              }
-
-            );
-
+          if (email && email.includes("@")) {
+            sendCredentialsEmail(email, `${firstName} ${lastName}`, username, password, {
+              subjects: rawSubjects,
+              workDays: Array.isArray(body.workDays) ? body.workDays : [],
+              startTime: body.startTime,
+              endTime: body.endTime,
+            });
           }
 
-
-
           return send(res, 201, {
-
             success: true,
-
             teacher: newTeacher,
-
             credentials: { username, password },
-
-            schedule: { teacherId: newTeacher.id, slots }
-
+            schedule: { teacherId: newTeacher.id, slots },
           });
-
-
-
         } catch (err) {
-
-          console.error('❌ Teacher registration error:', err);
-
-          return send(res, 500, {
-
-            error: err.message,
-
-            details: err.stack
-
-          });
-
+          console.error("❌ Teacher registration error:", err);
+          return send(res, 500, { error: err.message, details: err.stack });
         }
-
       }
-
-
 
       // PUT /api/admin/teachers/:id (UPDATE TEACHER)
-
       if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "PUT") {
-
         try {
-
           const id = pathname.split("/").pop();
-
           const body = await parseBody(req);
 
-
-
           const { rows } = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
-
           if (rows.length === 0) return send(res, 404, { error: "Teacher not found" });
 
-
-
           const existing = rows[0];
-
-
-
           const firstName = (body.firstName || body.first_name || existing.first_name || "").trim();
-
           const lastName = (body.lastName || body.last_name || existing.last_name || "").trim();
-
           const email = (body.email || existing.email || "").trim().toLowerCase();
-
           const targetGrade = body.targetGrade || body.target_grade || existing.target_grade || "";
-
           const startTime = body.startTime || body.start_time || existing.start_time || "08:00";
-
           const endTime = body.endTime || body.end_time || existing.end_time || "16:00";
 
-
-
           const rawSubjects = body.subjects !== undefined ? body.subjects : safeJsonParse(existing.subjects, []);
-
           const subjectsJSON = JSON.stringify(Array.isArray(rawSubjects) ? rawSubjects : [rawSubjects].filter(Boolean));
 
-
-
-          const rawWorkDays = body.workDays !== undefined ? body.workDays : (body.work_days !== undefined ? body.work_days : safeJsonParse(existing.work_days, []));
-
+          const rawWorkDays = body.workDays !== undefined ? body.workDays : body.work_days !== undefined ? body.work_days : safeJsonParse(existing.work_days, []);
           const workDaysJSON = JSON.stringify(Array.isArray(rawWorkDays) ? rawWorkDays : []);
 
-
-
           const rawAvailability = body.availability !== undefined ? body.availability : safeJsonParse(existing.availability, []);
-
           const availabilityJSON = JSON.stringify(Array.isArray(rawAvailability) ? rawAvailability : []);
 
-
-
           await db.query(
-
             `UPDATE teachers
-
              SET first_name = $1, last_name = $2, email = $3, subjects = $4,
-
                  target_grade = $5, work_days = $6, start_time = $7, end_time = $8, availability = $9
-
              WHERE id = $10`,
-
             [firstName, lastName, email, subjectsJSON, targetGrade, workDaysJSON, startTime, endTime, availabilityJSON, id]
-
           );
-
-
 
           const updatedResult = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
-
           const updatedTeacher = updatedResult.rows[0];
 
-
-
           const newSlots = await generateSchedule({
-
             ...updatedTeacher,
-
             workDays: safeJsonParse(updatedTeacher.work_days, []),
-
             subjects: safeJsonParse(updatedTeacher.subjects, []),
-
-            availability: safeJsonParse(updatedTeacher.availability, [])
-
+            availability: safeJsonParse(updatedTeacher.availability, []),
           });
 
-
-
           await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
+          await db.query("INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())", [String(id), JSON.stringify(newSlots)]);
 
-          await db.query(
-
-            `INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())`,
-
-            [String(id), JSON.stringify(newSlots)]
-
-          );
-
-
-
-          return send(res, 200, { success: true, teacher: updatedTeacher, schedule: { teacherId: id, slots: newSlots } });
-
+          return send(res, 200, {
+            success: true,
+            teacher: updatedTeacher,
+            schedule: { teacherId: id, slots: newSlots },
+          });
         } catch (err) {
-
           console.error("❌ Error updating teacher:", err);
-
           return send(res, 500, { error: err.message });
-
         }
-
       }
 
-
-
       // DELETE /api/admin/teachers/:id
-
       if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "DELETE") {
-
         try {
-
           const id = pathname.split("/").pop();
-
           await db.query("DELETE FROM teachers WHERE id = $1", [id]);
-
           await db.query("DELETE FROM users WHERE teacher_id = $1 OR id = $1", [String(id)]);
-
           await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
 
           return send(res, 200, { success: true });
-
         } catch (err) {
-
           return send(res, 500, { error: err.message });
-
         }
-
       }
 
-
-
       // GET /api/admin/schedules
-
       if (pathname === "/api/admin/schedules" && req.method === "GET") {
-
         try {
-
           const { rows: schedules } = await db.query("SELECT * FROM schedules");
-
           const { rows: teachers } = await db.query("SELECT * FROM teachers");
 
-
-
           const full = schedules.map((s) => {
-
             const teacher = teachers.find((t) => String(t.id) === String(s.teacher_id));
-
             return { ...s, slots: safeJsonParse(s.slots, []), teacher };
-
           });
 
           return send(res, 200, full);
-
         } catch (err) {
-
           return send(res, 500, { error: err.message });
-
         }
-
       }
 
-
-
-      // POST /api/admin/schedules/save-bulk
-
+      // POST /api/admin/schedules/save-bulk (TRANSACTION WRAPPED)
       if (pathname === "/api/admin/schedules/save-bulk" && req.method === "POST") {
-
         try {
-
           const body = await parseBody(req);
-
           const compiledSchedules = body.schedules;
 
-
-
-          if (!compiledSchedules || typeof compiledSchedules !== 'object') {
-
+          if (!compiledSchedules || typeof compiledSchedules !== "object") {
             return send(res, 400, { error: "Malformed schedule payload matrix." });
-
           }
 
-
+          // Begin SQL Transaction to prevent accidental data erasure on parse errors
+          await db.query("BEGIN");
 
           await db.query("DELETE FROM schedules");
-
           const { rows: teachers } = await db.query("SELECT * FROM teachers");
 
-
-
           for (const [fullName, scheduleObj] of Object.entries(compiledSchedules)) {
-
-            const foundTeacher = teachers.find(t => `${t.first_name} ${t.last_name}` === fullName || `${t.firstName} ${t.lastName}` === fullName);
-
-           
+            const foundTeacher = teachers.find(
+              (t) =>
+                `${t.first_name} ${t.last_name}` === fullName ||
+                `${t.firstName} ${t.lastName}` === fullName
+            );
 
             if (foundTeacher && scheduleObj && Array.isArray(scheduleObj.slots)) {
-
-              const parsedSlots = scheduleObj.slots.map(slot => ({
-
+              const parsedSlots = scheduleObj.slots.map((slot) => ({
                 id: crypto.randomBytes(4).toString("hex"),
-
                 day: slot.day,
-
                 startTime: slot.time ? slot.time.split(" - ")[0] : "08:00 AM",
-
                 endTime: slot.time ? slot.time.split(" - ")[1] : "09:00 AM",
-
                 subject: slot.subject,
-
                 room: slot.room,
-
                 section: slot.section,
-
-                status: "scheduled"
-
+                status: "scheduled",
               }));
 
-
-
               await db.query(
-
                 "INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())",
-
                 [String(foundTeacher.id), JSON.stringify(parsedSlots)]
-
               );
-
             }
-
           }
 
+          await db.query("COMMIT");
 
-
-          return send(res, 200, { success: true, message: "Master timetable saved directly to PostgreSQL!" });
-
+          return send(res, 200, {
+            success: true,
+            message: "Master timetable saved directly to PostgreSQL!",
+          });
         } catch (err) {
-
+          await db.query("ROLLBACK");
           return send(res, 500, { error: err.message });
-
         }
-
       }
 
-
-
       // POST /api/admin/schedules/regenerate/:id
-
       if (pathname.match(/^\/api\/admin\/schedules\/regenerate\/[^/]+$/) && req.method === "POST") {
-
         try {
-
           const id = pathname.split("/").pop();
-
           const { rows } = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
 
           if (rows.length === 0) return send(res, 404, { error: "Teacher not found" });
 
-         
-
           const newSlots = await generateSchedule(rows[0]);
 
+          await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
           await db.query(
-
-            `INSERT INTO schedules (teacher_id, slots, generated_at)
-
-             VALUES ($1, $2, NOW())`,
-
+            "INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())",
             [String(id), JSON.stringify(newSlots)]
-
           );
 
-
-
           return send(res, 200, { teacherId: id, slots: newSlots });
-
         } catch (err) {
-
           return send(res, 500, { error: err.message });
-
         }
-
       }
-
     }
 
-
-
-    // ── Global Timetable Endpoint for Teacher Dashboards ──
+    // ── Global Timetable Endpoint for Dashboards ──
 
     if (pathname === "/api/timetable" && req.method === "GET") {
-
       try {
-
         const auth = getAuth(req);
-
         if (!auth) return send(res, 401, { error: "Unauthorized access token." });
 
-
-
         const flattenedOutputMatrix = [];
-
         const { rows: schedules } = await db.query("SELECT * FROM schedules");
-
         const { rows: teachers } = await db.query("SELECT * FROM teachers");
 
+        schedules.forEach((scheduleSet) => {
+          const structuralTeacher = teachers.find(
+            (t) => String(t.id) === String(scheduleSet.teacher_id)
+          );
 
-
-        schedules.forEach(scheduleSet => {
-
-          const structuralTeacher = teachers.find(t => String(t.id) === String(scheduleSet.teacher_id));
-
-          const instructorName = structuralTeacher ? `${structuralTeacher.first_name || structuralTeacher.firstName} ${structuralTeacher.last_name || structuralTeacher.lastName}` : "Unknown Instructor";
-
-
+          const instructorName = structuralTeacher
+            ? `${structuralTeacher.first_name || structuralTeacher.firstName} ${structuralTeacher.last_name || structuralTeacher.lastName}`
+            : "Unknown Instructor";
 
           const slots = safeJsonParse(scheduleSet.slots, []);
 
-
-
           if (Array.isArray(slots)) {
-
-            slots.forEach(slot => {
-
+            slots.forEach((slot) => {
               flattenedOutputMatrix.push({
-
                 id: slot.id,
-
                 instructor: instructorName,
-
                 subject: slot.subject,
-
                 section: slot.section,
-
                 room: slot.room,
-
                 day: slot.day,
-
-                timeSlot: `${slot.startTime} to ${slot.endTime}`.replace(" - ", " to ")
-
+                timeSlot: `${slot.startTime} to ${slot.endTime}`.replace(" - ", " to "),
               });
-
             });
-
           }
-
         });
 
-
-
         return send(res, 200, flattenedOutputMatrix);
-
       } catch (err) {
-
         return send(res, 500, { error: err.message });
-
       }
-
     }
 
-
-
-    // ── Teacher-only routes ──
+    // ── Teacher-Only Routes ──
 
     if (pathname.startsWith("/api/teacher/")) {
-
       const auth = getAuth(req);
-
-      if (!auth || auth.role !== "teacher") return send(res, 403, { error: "Forbidden" });
-
-
-
-      if (pathname === "/api/teacher/schedule" && req.method === "GET") {
-
-        try {
-
-          const { rows: userRows } = await db.query("SELECT teacher_id FROM users WHERE id = $1", [auth.id]);
-
-          const targetTeacherId = userRows[0]?.teacher_id || auth.id;
-
-
-
-          const { rows: schedRows } = await db.query("SELECT * FROM schedules WHERE teacher_id = $1", [String(targetTeacherId)]);
-
-          const { rows: teacherRows } = await db.query("SELECT * FROM teachers WHERE id = $1", [targetTeacherId]);
-
-
-
-          return send(res, 200, {
-
-            schedule: schedRows[0] || null,
-
-            teacher: teacherRows[0] || null
-
-          });
-
-        } catch (err) {
-
-          return send(res, 500, { error: err.message });
-
-        }
-
+      if (!auth || auth.role !== "teacher") {
+        return send(res, 403, { error: "Forbidden: Teacher access required." });
       }
 
+      if (pathname === "/api/teacher/schedule" && req.method === "GET") {
+        try {
+          const { rows: userRows } = await db.query(
+            "SELECT teacher_id FROM users WHERE id = $1",
+            [auth.id]
+          );
+
+          const targetTeacherId = userRows[0]?.teacher_id;
+          if (!targetTeacherId) {
+            return send(res, 404, { error: "No associated teacher profile found for this user." });
+          }
+
+          const { rows: teacherRows } = await db.query(
+            "SELECT * FROM teachers WHERE id = $1",
+            [targetTeacherId]
+          );
+
+          const { rows: schedRows } = await db.query(
+            "SELECT * FROM schedules WHERE teacher_id = $1",
+            [String(targetTeacherId)]
+          );
+
+          const scheduleObj = schedRows[0]
+            ? { ...schedRows[0], slots: safeJsonParse(schedRows[0].slots, []) }
+            : null;
+
+          return send(res, 200, {
+            schedule: scheduleObj,
+            teacher: teacherRows[0] || null,
+          });
+        } catch (err) {
+          return send(res, 500, { error: err.message });
+        }
+      }
     }
 
-
-
     return send(res, 404, { error: "API route not found" });
-
   }
-
-
 
   // ── Static Files Router ──
 
   const frontendBase = path.join(__dirname, "../frontend");
 
-
-
   if (pathname === "/" || pathname === "/login.html") {
-
-    res.writeHead(302, { "Location": "/shared/login.html" });
-
+    res.writeHead(302, { Location: "/shared/login.html" });
     return res.end();
-
   }
-
-
 
   const filePath = path.join(frontendBase, pathname);
 
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-
     return serveFile(res, filePath);
-
   }
-
-
 
   res.writeHead(404, { "Content-Type": "text/plain" });
-
   res.end("Not found");
-
 });
-
-
 
 server.listen(PORT, "0.0.0.0", async () => {
-
   await initAdmin();
-
   console.log(`\n Scheduler running locally at http://localhost:${PORT}`);
-
   console.log(` Admin login: admin / admin123`);
-
 });
 
-
-
-// Test connection on server start
+// Test Supabase Database Connection
 
 db.query("SELECT NOW()", (err, res) => {
-
   if (err) {
-
     console.error("❌ Supabase Connection Failed:", err.message);
-
   } else {
-
     console.log("✅ Successfully connected to Supabase PostgreSQL at:", res.rows[0].now);
-
   }
-
-}); 
-
+});

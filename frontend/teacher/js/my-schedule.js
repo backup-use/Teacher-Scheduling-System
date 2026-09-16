@@ -1,91 +1,107 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Session Protection check
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('userRole');
-    const userName = localStorage.getItem('userName') || 
-                     localStorage.getItem('fullName') || 
-                     localStorage.getItem('teacherName') || 
-                     localStorage.getItem('name') || '';
+document.addEventListener("DOMContentLoaded", () => {
+  // 1. Session Protection check
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("userRole");
+  const userName =
+    localStorage.getItem("userName") ||
+    localStorage.getItem("fullName") ||
+    localStorage.getItem("teacherName") ||
+    localStorage.getItem("name") ||
+    "";
 
-    if (!token || role !== 'teacher') {
-        alert('Unauthorized access! Redirecting to login.');
-        window.location.href = '/index.html';
-        return;
+  if (!token || role !== "teacher") {
+    alert("Unauthorized access! Redirecting to login.");
+    window.location.href = "/index.html";
+    return;
+  }
+
+  // Dynamic Subject Color Palette matching Admin View
+  const subjectColorMap = {
+    "ARALING PANLIPUNAN": "#fef08a",
+    ENGLISH: "#dbeafe",
+    FILIPINO: "#e0e7ff",
+    MAPEH: "#f3e8ff",
+    MATHEMATICS: "#ffe4e6",
+    SCIENCE: "#dcfce7",
+    TLE: "#ffedd5",
+    "VALUES EDUCATION": "#fef9c3",
+    ESP: "#fef9c3",
+  };
+
+  function getSubjectColor(subjectName) {
+    if (!subjectName) return "#ffffff";
+    const key = subjectName.trim().toUpperCase();
+    return subjectColorMap[key] || "#e2e8f0";
+  }
+
+  // Helper function to safely escape HTML strings and prevent XSS
+  function escapeHTML(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // Set instructor header title dynamically
+  const instructorTitleEl = document.getElementById("instructor-title");
+  if (instructorTitleEl) {
+    instructorTitleEl.textContent = `INSTRUCTOR: ${userName.toUpperCase()}`;
+  }
+
+  // Standard operational system hours grid matrix
+  const standardTimeSlots = [
+    "06:00-07:00",
+    "07:00-08:00",
+    "08:00-09:00",
+    "09:00-10:00", // Recess / Break
+    "10:00-11:00",
+    "11:00-12:00",
+    "12:00-01:00", // Lunch Break
+    "01:00-02:00",
+    "02:00-03:00",
+    "03:00-04:00",
+    "04:00-05:00",
+    "05:00-06:00",
+  ];
+
+  const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+  // UPDATED: Tokenized Fuzzy Name Matching
+  function matchTeacherName(nameA, nameB) {
+    if (!nameA || !nameB) return false;
+    
+    const cleanA = nameA.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+    const cleanB = nameB.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+
+    if (cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA)) {
+      return true;
     }
 
-    // Dynamic Subject Color Palette matching Admin View
-    const subjectColorMap = {
-        'ARALING PANLIPUNAN': '#fef08a',
-        'ENGLISH': '#dbeafe',
-        'FILIPINO': '#e0e7ff',
-        'MAPEH': '#f3e8ff',
-        'MATHEMATICS': '#ffe4e6',
-        'SCIENCE': '#dcfce7',
-        'TLE': '#ffedd5',
-        'VALUES EDUCATION': '#fef9c3',
-        'ESP': '#fef9c3'
-    };
+    const tokensA = cleanA.split(/\s+/).filter(t => t.length > 2);
+    const tokensB = cleanB.split(/\s+/).filter(t => t.length > 2);
 
-    function getSubjectColor(subjectName) {
-        if (!subjectName) return '#ffffff';
-        const key = subjectName.trim().toUpperCase();
-        return subjectColorMap[key] || '#e2e8f0';
-    }
+    return tokensA.some(token => tokensB.includes(token));
+  }
 
-    // Helper function to safely escape HTML strings and prevent XSS
-    function escapeHTML(str) {
-        if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
+  // UPDATED: Standardize time formatting across formats (AM/PM, leading zeros)
+  function normalizeTimeSlot(str) {
+    if (!str) return "";
+    return str
+      .toLowerCase()
+      .replace(/am|pm/g, "")
+      .replace(/\s+/g, "")
+      .replace(/to/g, "-")
+      .replace(/(^|-)0+/g, "$1"); // Strips leading zeroes for precise key alignment
+  }
 
-    // Set instructor header title dynamically
-    const instructorTitleEl = document.getElementById('instructor-title');
-    if (instructorTitleEl) {
-        instructorTitleEl.textContent = `INSTRUCTOR: ${userName.toUpperCase()}`;
-    }
-
-    // Standard operational system hours grid matrix
-    const standardTimeSlots = [
-        "06:00-07:00",
-        "07:00-08:00",
-        "08:00-09:00",
-        "09:00-10:00", // Recess / Break
-        "10:00-11:00",
-        "11:00-12:00",
-        "12:00-01:00", // Lunch Break
-        "01:00-02:00",
-        "02:00-03:00",
-        "03:00-04:00",
-        "04:00-05:00",
-        "05:00-06:00"
-    ];
-
-    const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-    // Clean Fuzzy Name Matching
-    function matchTeacherName(nameA, nameB) {
-        if (!nameA || !nameB) return false;
-        const cleanA = nameA.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanB = nameB.toLowerCase().replace(/[^a-z0-9]/g, '');
-        return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
-    }
-
-    // Standardize time formatting for accurate key lookup
-    function normalizeTimeSlot(str) {
-        if (!str) return '';
-        return str.replace(/\s+/g, '').replace(/to/gi, '-');
-    }
-
-    // Dynamic Style Injection
-    if (!document.getElementById("admin-tight-layout-rules")) {
-        const adminStyles = document.createElement("style");
-        adminStyles.id = "admin-tight-layout-rules";
-        adminStyles.innerHTML = `
+  // Dynamic Style Injection
+  if (!document.getElementById("admin-tight-layout-rules")) {
+    const adminStyles = document.createElement("style");
+    adminStyles.id = "admin-tight-layout-rules";
+    adminStyles.innerHTML = `
             body, .main-content, .dashboard-container, main {
                 background-color: #0b0f19 !important;
                 color: #ffffff !important;
@@ -249,12 +265,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         `;
-        document.head.appendChild(adminStyles);
-    }
+    document.head.appendChild(adminStyles);
+  }
 
-    // Modal Injection for vacant notes
-    if (!document.getElementById("vacant-note-modal")) {
-        const modalHTML = `
+  // Modal Injection for vacant notes
+  if (!document.getElementById("vacant-note-modal")) {
+    const modalHTML = `
             <div id="vacant-note-modal" class="vacant-modal-overlay">
                 <div class="vacant-modal-content">
                     <h3>Personal Task / Memo</h3>
@@ -267,261 +283,286 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `;
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+  }
+
+  let currentEditingDay = "";
+  let currentEditingTime = "";
+
+  window.openVacantNoteModal = function (day, timeSlot) {
+    currentEditingDay = day;
+    currentEditingTime = timeSlot;
+    const storageKey = `note_${userName}_${day}_${timeSlot}`;
+    const savedNote = localStorage.getItem(storageKey) || "";
+    const textarea = document.getElementById("modal-note-textarea");
+    if (textarea) {
+      textarea.value = savedNote;
     }
+    document.getElementById("vacant-note-modal")?.classList.add("modal-active");
+  };
 
-    let currentEditingDay = '';
-    let currentEditingTime = '';
+  const closeModal = () => {
+    document
+      .getElementById("vacant-note-modal")
+      ?.classList.remove("modal-active");
+  };
 
-    window.openVacantNoteModal = function(day, timeSlot) {
-        currentEditingDay = day;
-        currentEditingTime = timeSlot;
-        const storageKey = `note_${userName}_${day}_${timeSlot}`;
-        const savedNote = localStorage.getItem(storageKey) || "";
-        const textarea = document.getElementById("modal-note-textarea");
-        if (textarea) {
-            textarea.value = savedNote;
-        }
-        document.getElementById("vacant-note-modal")?.classList.add("modal-active");
-    };
+  document
+    .getElementById("modal-cancel-btn")
+    ?.addEventListener("click", closeModal);
 
-    const closeModal = () => {
-        document.getElementById("vacant-note-modal")?.classList.remove("modal-active");
-    };
+  document.getElementById("modal-save-btn")?.addEventListener("click", () => {
+    const textarea = document.getElementById("modal-note-textarea");
+    const noteValue = textarea ? textarea.value.trim() : "";
+    const storageKey = `note_${userName}_${currentEditingDay}_${currentEditingTime}`;
 
-    document.getElementById("modal-cancel-btn")?.addEventListener('click', closeModal);
-    
-    document.getElementById("modal-save-btn")?.addEventListener('click', () => {
-        const textarea = document.getElementById("modal-note-textarea");
-        const noteValue = textarea ? textarea.value.trim() : "";
-        const storageKey = `note_${userName}_${currentEditingDay}_${currentEditingTime}`;
-        
-        if (noteValue) {
-            localStorage.setItem(storageKey, noteValue);
-        } else {
-            localStorage.removeItem(storageKey);
-        }
-        closeModal();
-        loadTeacherTimetable(); 
-    });
-
-    async function loadTeacherTimetable() {
-        const tbody = document.getElementById('timetable-rows');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '';
-        let myClassesMap = {};
-        let loadedFromApi = false;
-
-        // 1. Attempt API fetch first with strict error status checking
-        try {
-            const response = await fetch('/api/teacher/schedule', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            }); 
-
-            if (!response.ok) {
-                throw new Error(`Server endpoint error with status ${response.status}`);
-            }
-
-            const data = await response.json();
-            const slots = Array.isArray(data) ? data : (data.slots || data.schedule || []);
-            
-            if (Array.isArray(slots) && slots.length > 0) {
-                loadedFromApi = true;
-                slots.forEach(slot => {
-                    const teacherInSlot = slot.instructor || slot.teacher || slot.teacherName || userName;
-                    if (matchTeacherName(teacherInSlot, userName)) {
-                        const day = slot.day;
-                        const rawTime = slot.timeSlot || slot.time || '';
-                        const timeSlot = normalizeTimeSlot(rawTime);
-
-                        if (!myClassesMap[day]) myClassesMap[day] = {};
-                        myClassesMap[day][timeSlot] = {
-                            subject: slot.subject,
-                            section: slot.section || 'Grade 7',
-                            room: slot.room || '10'
-                        };
-                    }
-                });
-            }
-        } catch (e) {
-            console.warn("API request failed. Falling back to LocalStorage:", e.message);
-        }
-
-        // 2. Fallback: Parse generated data from LocalStorage
-        if (!loadedFromApi) {
-            // A. Check cached teacher schedules key
-            const cachedTeacherMapStr = localStorage.getItem("cached_teacher_schedules");
-            if (cachedTeacherMapStr) {
-                try {
-                    const teacherMap = JSON.parse(cachedTeacherMapStr);
-                    const matchedKey = Object.keys(teacherMap).find(k => matchTeacherName(k, userName));
-                    
-                    if (matchedKey && teacherMap[matchedKey]) {
-                        const teacherData = teacherMap[matchedKey];
-                        const rawDays = teacherData.days ? teacherData.days : teacherData;
-
-                        Object.entries(rawDays).forEach(([day, times]) => {
-                            if (!myClassesMap[day]) myClassesMap[day] = {};
-                            Object.entries(times).forEach(([tSlot, details]) => {
-                                myClassesMap[day][normalizeTimeSlot(tSlot)] = details;
-                            });
-                        });
-                    }
-                } catch (err) {
-                    console.error("Error parsing cached_teacher_schedules:", err);
-                }
-            }
-
-            // B. Fallback to master section schedules
-            if (Object.keys(myClassesMap).length === 0) {
-                const masterScheduleKeys = ["global_master_schedule", "cached_generated_schedule", "generated_timetable", "master_schedule"];
-                let masterData = null;
-
-                for (const key of masterScheduleKeys) {
-                    const item = localStorage.getItem(key);
-                    if (item) {
-                        try {
-                            const parsed = JSON.parse(item);
-                            masterData = parsed.masterSectionSchedules || parsed;
-                            break;
-                        } catch (err) {
-                            // Continue searching next key on error
-                        }
-                    }
-                }
-
-                if (masterData && typeof masterData === 'object') {
-                    Object.values(masterData).forEach(secObj => {
-                        const sectionName = secObj.details ? secObj.details.name : (secObj.sectionName || '');
-                        const timetable = secObj.timetable || {};
-
-                        Object.entries(timetable).forEach(([day, times]) => {
-                            Object.entries(times).forEach(([time, slotData]) => {
-                                if (slotData && slotData.teacher && matchTeacherName(slotData.teacher, userName)) {
-                                    if (!myClassesMap[day]) myClassesMap[day] = {};
-                                    myClassesMap[day][normalizeTimeSlot(time)] = {
-                                        subject: slotData.subject,
-                                        section: sectionName,
-                                        room: slotData.room || '10'
-                                    };
-                                }
-                            });
-                        });
-                    });
-                }
-            }
-        }
-
-        // 3. Render the Grid Matrix
-        standardTimeSlots.forEach(timeSlot => {
-            const tr = document.createElement('tr');
-
-            // Time Slot Label Column
-            const timeCell = document.createElement('td');
-            timeCell.className = 'time-cell';
-            timeCell.textContent = timeSlot;
-            tr.appendChild(timeCell);
-
-            // Recess Row
-            if (timeSlot === "09:00-10:00") {
-                const breakTd = document.createElement('td');
-                breakTd.colSpan = targetDays.length;
-                breakTd.className = "recess-row";
-                breakTd.textContent = "RECESS / MORNING BREAK";
-                tr.appendChild(breakTd);
-            }
-            // Lunch Row
-            else if (timeSlot === "12:00-01:00") {
-                const breakTd = document.createElement('td');
-                breakTd.colSpan = targetDays.length;
-                breakTd.className = "lunch-row";
-                breakTd.textContent = "LUNCH BREAK / SHIFT TRANSITION";
-                tr.appendChild(breakTd);
-            }
-            // Academic Class Slot
-            else {
-                targetDays.forEach(day => {
-                    const td = document.createElement('td');
-                    const normalizedCurrentSlot = normalizeTimeSlot(timeSlot);
-                    const slotData = myClassesMap[day] ? myClassesMap[day][normalizedCurrentSlot] : null;
-
-                    if (slotData) {
-                        const cellBg = getSubjectColor(slotData.subject);
-                        td.style.backgroundColor = cellBg;
-                        td.style.color = '#000000';
-
-                        td.innerHTML = `
-                            <div style="font-size: 0.88rem; font-weight: 800; line-height: 1.2; text-transform: uppercase;">
-                                ${escapeHTML(slotData.subject)}
-                            </div>
-                            <div style="font-size: 0.76rem; font-weight: 600; margin-top: 2px; color: #334155;">
-                                ${escapeHTML(slotData.section || '')}
-                            </div>
-                            <div style="font-size: 0.72rem; font-weight: 500; color: #475569;">
-                                (room ${escapeHTML(slotData.room || 'N/A')})
-                            </div>
-                        `;
-                    } else {
-                        const storageKey = `note_${userName}_${day}_${timeSlot}`;
-                        const savedNote = localStorage.getItem(storageKey) || "";
-                        
-                        const cellMarkup = savedNote 
-                            ? `<div class="saved-cell-note">${escapeHTML(savedNote)}</div>`
-                            : `<span class="vacant-text">-- Vacant --</span>`;
-
-                        td.innerHTML = `
-                            <div class="vacant-cell-fill">
-                                ${cellMarkup}
-                                <button class="add-note-btn" title="Add Memo Note">+</button>
-                            </div>
-                        `;
-
-                        // Attach event listener via JS instead of inline onclick attribute
-                        const noteBtn = td.querySelector('.add-note-btn');
-                        if (noteBtn) {
-                            noteBtn.addEventListener('click', () => {
-                                window.openVacantNoteModal(day, timeSlot);
-                            });
-                        }
-                    }
-                    tr.appendChild(td);
-                });
-            }
-
-            tbody.appendChild(tr);
-        });
+    if (noteValue) {
+      localStorage.setItem(storageKey, noteValue);
+    } else {
+      localStorage.removeItem(storageKey);
     }
-
-    // Action button handlers
-    const printBtn = document.getElementById('print-schedule-btn');
-    if (printBtn) {
-        printBtn.addEventListener('click', () => {
-            printBtn.blur();
-            window.print(); 
-        });
-    }
-
-    const pdfBtn = document.getElementById('download-pdf-btn');
-    if (pdfBtn) {
-        pdfBtn.addEventListener('click', () => {
-            pdfBtn.blur();
-            window.print();
-        });
-    }
-
-    const logoutBtn = document.getElementById('btn-logout');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.clear();
-            window.location.href = '/index.html?logout=success';
-        });
-    }
-
+    closeModal();
     loadTeacherTimetable();
+  });
+
+  async function loadTeacherTimetable() {
+    const tbody = document.getElementById("timetable-rows");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+    let myClassesMap = {};
+    let loadedFromApi = false;
+
+    // 1. Attempt API fetch with parameter appended to URL
+    try {
+      const response = await fetch(`/api/teacher/schedule?userName=${encodeURIComponent(userName)}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server endpoint error with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const slots = Array.isArray(data)
+        ? data
+        : data.slots || data.schedule || [];
+
+      if (Array.isArray(slots) && slots.length > 0) {
+        loadedFromApi = true;
+        slots.forEach((slot) => {
+          const teacherInSlot =
+            slot.instructor || slot.teacher || slot.teacherName || userName;
+          if (matchTeacherName(teacherInSlot, userName)) {
+            const day = slot.day;
+            const rawTime = slot.timeSlot || slot.time || "";
+            const timeSlot = normalizeTimeSlot(rawTime);
+
+            if (!myClassesMap[day]) myClassesMap[day] = {};
+            myClassesMap[day][timeSlot] = {
+              subject: slot.subject,
+              section: slot.section || "Grade 7",
+              room: slot.room || "10",
+            };
+          }
+        });
+      }
+    } catch (e) {
+      console.warn(
+        "API request failed. Falling back to LocalStorage:",
+        e.message,
+      );
+    }
+
+    // 2. Fallback: Parse generated data from LocalStorage
+    if (!loadedFromApi) {
+      const cachedTeacherMapStr = localStorage.getItem(
+        "cached_teacher_schedules",
+      );
+      if (cachedTeacherMapStr) {
+        try {
+          const teacherMap = JSON.parse(cachedTeacherMapStr);
+          const matchedKey = Object.keys(teacherMap).find((k) =>
+            matchTeacherName(k, userName),
+          );
+
+          if (matchedKey && teacherMap[matchedKey]) {
+            const teacherData = teacherMap[matchedKey];
+            const rawDays = teacherData.days ? teacherData.days : teacherData;
+
+            Object.entries(rawDays).forEach(([day, times]) => {
+              if (!myClassesMap[day]) myClassesMap[day] = {};
+              Object.entries(times).forEach(([tSlot, details]) => {
+                myClassesMap[day][normalizeTimeSlot(tSlot)] = details;
+              });
+            });
+          }
+        } catch (err) {
+          console.error("Error parsing cached_teacher_schedules:", err);
+        }
+      }
+
+      // Fallback to master section schedules
+      if (Object.keys(myClassesMap).length === 0) {
+        const masterScheduleKeys = [
+          "global_master_schedule",
+          "cached_generated_schedule",
+          "generated_timetable",
+          "master_schedule",
+        ];
+        let masterData = null;
+
+        for (const key of masterScheduleKeys) {
+          const item = localStorage.getItem(key);
+          if (item) {
+            try {
+              const parsed = JSON.parse(item);
+              masterData = parsed.masterSectionSchedules || parsed;
+              break;
+            } catch (err) {
+              // Continue searching next key on error
+            }
+          }
+        }
+
+        if (masterData && typeof masterData === "object") {
+          Object.values(masterData).forEach((secObj) => {
+            const sectionName = secObj.details
+              ? secObj.details.name
+              : secObj.sectionName || "";
+            const timetable = secObj.timetable || {};
+
+            Object.entries(timetable).forEach(([day, times]) => {
+              Object.entries(times).forEach(([time, slotData]) => {
+                if (
+                  slotData &&
+                  slotData.teacher &&
+                  matchTeacherName(slotData.teacher, userName)
+                ) {
+                  if (!myClassesMap[day]) myClassesMap[day] = {};
+                  myClassesMap[day][normalizeTimeSlot(time)] = {
+                    subject: slotData.subject,
+                    section: sectionName,
+                    room: slotData.room || "10",
+                  };
+                }
+              });
+            });
+          });
+        }
+      }
+    }
+
+    // 3. Render the Grid Matrix
+    standardTimeSlots.forEach((timeSlot) => {
+      const tr = document.createElement("tr");
+
+      // Time Slot Label Column
+      const timeCell = document.createElement("td");
+      timeCell.className = "time-cell";
+      timeCell.textContent = timeSlot;
+      tr.appendChild(timeCell);
+
+      // Recess Row
+      if (timeSlot === "09:00-10:00") {
+        const breakTd = document.createElement("td");
+        breakTd.colSpan = targetDays.length;
+        breakTd.className = "recess-row";
+        breakTd.textContent = "RECESS / MORNING BREAK";
+        tr.appendChild(breakTd);
+      }
+      // Lunch Row
+      else if (timeSlot === "12:00-01:00") {
+        const breakTd = document.createElement("td");
+        breakTd.colSpan = targetDays.length;
+        breakTd.className = "lunch-row";
+        breakTd.textContent = "LUNCH BREAK / SHIFT TRANSITION";
+        tr.appendChild(breakTd);
+      }
+      // Academic Class Slot
+      else {
+        targetDays.forEach((day) => {
+          const td = document.createElement("td");
+          const normalizedCurrentSlot = normalizeTimeSlot(timeSlot);
+          const slotData = myClassesMap[day]
+            ? myClassesMap[day][normalizedCurrentSlot]
+            : null;
+
+          if (slotData) {
+            const cellBg = getSubjectColor(slotData.subject);
+            td.style.backgroundColor = cellBg;
+            td.style.color = "#000000";
+
+            td.innerHTML = `
+                <div style="font-size: 0.88rem; font-weight: 800; line-height: 1.2; text-transform: uppercase;">
+                    ${escapeHTML(slotData.subject)}
+                </div>
+                <div style="font-size: 0.76rem; font-weight: 600; margin-top: 2px; color: #334155;">
+                    ${escapeHTML(slotData.section || "")}
+                </div>
+                <div style="font-size: 0.72rem; font-weight: 500; color: #475569;">
+                    (room ${escapeHTML(slotData.room || "N/A")})
+                </div>
+            `;
+          } else {
+            const storageKey = `note_${userName}_${day}_${timeSlot}`;
+            const savedNote = localStorage.getItem(storageKey) || "";
+
+            const cellMarkup = savedNote
+              ? `<div class="saved-cell-note">${escapeHTML(savedNote)}</div>`
+              : `<span class="vacant-text">-- Vacant --</span>`;
+
+            td.innerHTML = `
+                <div class="vacant-cell-fill">
+                    ${cellMarkup}
+                    <button class="add-note-btn" title="Add Memo Note">+</button>
+                </div>
+            `;
+
+            const noteBtn = td.querySelector(".add-note-btn");
+            if (noteBtn) {
+              noteBtn.addEventListener("click", () => {
+                window.openVacantNoteModal(day, timeSlot);
+              });
+            }
+          }
+          tr.appendChild(td);
+        });
+      }
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Action button handlers
+  const printBtn = document.getElementById("print-schedule-btn");
+  if (printBtn) {
+    printBtn.addEventListener("click", () => {
+      printBtn.blur();
+      window.print();
+    });
+  }
+
+  const pdfBtn = document.getElementById("download-pdf-btn");
+  if (pdfBtn) {
+    pdfBtn.addEventListener("click", () => {
+      pdfBtn.blur();
+      window.print();
+    });
+  }
+
+  const logoutBtn = document.getElementById("btn-logout");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.clear();
+      window.location.href = "/index.html?logout=success";
+    });
+  }
+
+  loadTeacherTimetable();
 });
