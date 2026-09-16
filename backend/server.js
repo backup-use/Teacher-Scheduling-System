@@ -4,7 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 
-// Import from db.js with fallback handling for 'db' or 'pool'
+// Safe Import handling both named and default pool exports from ./db.js
 const dbModule = require("./db");
 const db = dbModule.db || dbModule.pool || dbModule;
 const { initAdmin, genId, hashPassword, signToken, verifyToken } = dbModule;
@@ -391,7 +391,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // ── Global Timetable Endpoint ──
+  // ── Global Timetable Endpoint (FIXED PREVENT 500 ERROR) ──
   if (pathname === "/api/timetable" && req.method === "GET") {
     try {
       const auth = getAuth(req);
@@ -403,22 +403,28 @@ const server = http.createServer(async (req, res) => {
 
       schedules.forEach(scheduleSet => {
         const structuralTeacher = teachers.find(t => String(t.id) === String(scheduleSet.teacher_id));
-        const instructorName = structuralTeacher 
-          ? `${structuralTeacher.first_name || structuralTeacher.firstName} ${structuralTeacher.last_name || structuralTeacher.lastName}` 
-          : "Unknown Instructor";
+        
+        let instructorName = "Unknown Instructor";
+        if (structuralTeacher) {
+          const fName = structuralTeacher.first_name || structuralTeacher.firstName || "";
+          const lName = structuralTeacher.last_name || structuralTeacher.lastName || "";
+          instructorName = `${fName} ${lName}`.trim() || structuralTeacher.name || "Unknown Instructor";
+        }
 
         const slots = safeJsonParse(scheduleSet.slots, []);
 
         if (Array.isArray(slots)) {
           slots.forEach(slot => {
+            const rawTime = slot.time || slot.timeSlot || `${slot.startTime || ''} - ${slot.endTime || ''}`;
             flattenedOutputMatrix.push({
-              id: slot.id,
+              id: slot.id || crypto.randomBytes(4).toString("hex"),
               instructor: instructorName,
-              subject: slot.subject,
-              section: slot.section,
-              room: slot.room,
-              day: slot.day,
-              timeSlot: `${slot.startTime} to ${slot.endTime}`.replace(" - ", " to ")
+              subject: slot.subject || "General Subject",
+              section: slot.section || "N/A",
+              room: slot.room || "TBD",
+              day: slot.day || "N/A",
+              time: rawTime,
+              timeSlot: rawTime.replace(" - ", " to ")
             });
           });
         }
@@ -426,6 +432,7 @@ const server = http.createServer(async (req, res) => {
 
       return send(res, 200, flattenedOutputMatrix);
     } catch (err) {
+      console.error("❌ /api/timetable crash:", err);
       return send(res, 500, { error: err.message });
     }
   }
@@ -454,7 +461,7 @@ const server = http.createServer(async (req, res) => {
         const teacherObj = teacherRows[0] || null;
         const rawSlots = schedRows[0] ? safeJsonParse(schedRows[0].slots, []) : [];
         const instructorName = teacherObj 
-          ? `${teacherObj.first_name} ${teacherObj.last_name}` 
+          ? `${teacherObj.first_name || teacherObj.firstName} ${teacherObj.last_name || teacherObj.lastName}`.trim() 
           : auth.name;
 
         const formattedSlots = rawSlots.map(slot => ({
