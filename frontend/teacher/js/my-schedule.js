@@ -75,6 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
     }
 
+    // Standardize time formatting for accurate key lookup
+    function normalizeTimeSlot(str) {
+        if (!str) return '';
+        return str.replace(/\s+/g, '').replace(/to/gi, '-');
+    }
+
     // Dynamic Style Injection
     if (!document.getElementById("admin-tight-layout-rules")) {
         const adminStyles = document.createElement("style");
@@ -307,9 +313,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let myClassesMap = {};
         let loadedFromApi = false;
 
-        // 1. Attempt API fetch first
+        // 1. Attempt API fetch first with strict error status checking
         try {
-            const response = await fetch('/api/timetable', {
+            const response = await fetch('/api/teacher/schedule', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -317,27 +323,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }); 
 
-            if (response.ok) {
-                const fullTimetable = await response.json();
-                if (Array.isArray(fullTimetable) && fullTimetable.length > 0) {
-                    loadedFromApi = true;
-                    fullTimetable.forEach(slot => {
-                        const teacherInSlot = slot.instructor || slot.teacher || slot.teacherName;
-                        if (matchTeacherName(teacherInSlot, userName)) {
-                            const day = slot.day;
-                            const timeSlot = slot.timeSlot || slot.time;
-                            if (!myClassesMap[day]) myClassesMap[day] = {};
-                            myClassesMap[day][timeSlot] = {
-                                subject: slot.subject,
-                                section: slot.section || 'Grade 7',
-                                room: slot.room || '10'
-                            };
-                        }
-                    });
-                }
+            if (!response.ok) {
+                throw new Error(`Server endpoint error with status ${response.status}`);
+            }
+
+            const data = await response.json();
+            const slots = Array.isArray(data) ? data : (data.slots || data.schedule || []);
+            
+            if (Array.isArray(slots) && slots.length > 0) {
+                loadedFromApi = true;
+                slots.forEach(slot => {
+                    const teacherInSlot = slot.instructor || slot.teacher || slot.teacherName || userName;
+                    if (matchTeacherName(teacherInSlot, userName)) {
+                        const day = slot.day;
+                        const rawTime = slot.timeSlot || slot.time || '';
+                        const timeSlot = normalizeTimeSlot(rawTime);
+
+                        if (!myClassesMap[day]) myClassesMap[day] = {};
+                        myClassesMap[day][timeSlot] = {
+                            subject: slot.subject,
+                            section: slot.section || 'Grade 7',
+                            room: slot.room || '10'
+                        };
+                    }
+                });
             }
         } catch (e) {
-            console.log("API unavailable, switching to LocalStorage parser...");
+            console.warn("API request failed. Falling back to LocalStorage:", e.message);
         }
 
         // 2. Fallback: Parse generated data from LocalStorage
@@ -351,7 +363,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if (matchedKey && teacherMap[matchedKey]) {
                         const teacherData = teacherMap[matchedKey];
-                        myClassesMap = teacherData.days ? teacherData.days : teacherData;
+                        const rawDays = teacherData.days ? teacherData.days : teacherData;
+
+                        Object.entries(rawDays).forEach(([day, times]) => {
+                            if (!myClassesMap[day]) myClassesMap[day] = {};
+                            Object.entries(times).forEach(([tSlot, details]) => {
+                                myClassesMap[day][normalizeTimeSlot(tSlot)] = details;
+                            });
+                        });
                     }
                 } catch (err) {
                     console.error("Error parsing cached_teacher_schedules:", err);
@@ -385,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             Object.entries(times).forEach(([time, slotData]) => {
                                 if (slotData && slotData.teacher && matchTeacherName(slotData.teacher, userName)) {
                                     if (!myClassesMap[day]) myClassesMap[day] = {};
-                                    myClassesMap[day][time] = {
+                                    myClassesMap[day][normalizeTimeSlot(time)] = {
                                         subject: slotData.subject,
                                         section: sectionName,
                                         room: slotData.room || '10'
@@ -428,7 +447,8 @@ document.addEventListener('DOMContentLoaded', () => {
             else {
                 targetDays.forEach(day => {
                     const td = document.createElement('td');
-                    const slotData = myClassesMap[day] ? myClassesMap[day][timeSlot] : null;
+                    const normalizedCurrentSlot = normalizeTimeSlot(timeSlot);
+                    const slotData = myClassesMap[day] ? myClassesMap[day][normalizedCurrentSlot] : null;
 
                     if (slotData) {
                         const cellBg = getSubjectColor(slotData.subject);

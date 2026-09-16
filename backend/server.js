@@ -391,15 +391,18 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // ── Global Timetable Endpoint (FIXED PREVENT 500 ERROR) ──
+// ── Global Timetable Endpoint ──
   if (pathname === "/api/timetable" && req.method === "GET") {
     try {
       const auth = getAuth(req);
       if (!auth) return send(res, 401, { error: "Unauthorized access token." });
 
       const flattenedOutputMatrix = [];
-      const { rows: schedules } = await db.query("SELECT * FROM schedules");
-      const { rows: teachers } = await db.query("SELECT * FROM teachers");
+      const schedulesResult = await db.query("SELECT * FROM schedules");
+      const teachersResult = await db.query("SELECT * FROM teachers");
+
+      const schedules = schedulesResult.rows || [];
+      const teachers = teachersResult.rows || [];
 
       schedules.forEach(scheduleSet => {
         const structuralTeacher = teachers.find(t => String(t.id) === String(scheduleSet.teacher_id));
