@@ -32,7 +32,7 @@ function send(res, statusCode, data) {
   res.end(JSON.stringify(data));
 }
 
-// Helper: Serve Static Files
+// Helper: Serve Static Files safely
 function serveFile(res, filePath) {
   const ext = path.extname(filePath);
   const mimeTypes = {
@@ -42,13 +42,18 @@ function serveFile(res, filePath) {
     ".json": "application/json",
     ".png": "image/png",
     ".jpg": "image/jpeg",
+    ".svg": "image/svg+xml"
   };
   const contentType = mimeTypes[ext] || "application/octet-stream";
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
-      res.writeHead(500);
-      res.end(`Server Error: ${err.code}`);
+      if (err.code === "ENOENT") {
+        send(res, 404, { error: "File not found" });
+      } else {
+        res.writeHead(500);
+        res.end(`Server Error: ${err.code}`);
+      }
     } else {
       res.writeHead(200, { "Content-Type": contentType });
       res.end(content, "utf-8");
@@ -126,11 +131,18 @@ const server = http.createServer(async (req, res) => {
       const body = await parseBody(req);
       const { username, password } = body;
 
+      if (!username || !password) {
+        return send(res, 400, { error: "Username and password are required" });
+      }
+
       const { rows } = await db.query("SELECT * FROM users WHERE username = $1", [username]);
       if (rows.length === 0) return send(res, 401, { error: "Invalid username or password" });
 
       const user = rows[0];
-      if (user.password !== hashPassword(password)) {
+
+      // Safe password verification supporting async/sync hash functions
+      const hashedInput = await Promise.resolve(hashPassword(password));
+      if (user.password !== hashedInput) {
         return send(res, 401, { error: "Invalid username or password" });
       }
 
@@ -152,6 +164,7 @@ const server = http.createServer(async (req, res) => {
         }
       });
     } catch (err) {
+      console.error("❌ Login Error:", err);
       return send(res, 500, { error: err.message });
     }
   }
@@ -205,11 +218,12 @@ const server = http.createServer(async (req, res) => {
         const newTeacher = teacherResult.rows[0];
         const teacherIdStr = String(newTeacher.id);
         const userId = "usr-" + genId();
+        const hashedPassword = await Promise.resolve(hashPassword(password));
 
         await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);");
         await db.query(
           "INSERT INTO users (id, username, password, role, name, teacher_id, email) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-          [userId, username, hashPassword(password), "teacher", `${firstName} ${lastName}`, teacherIdStr, email]
+          [userId, username, hashedPassword, "teacher", `${firstName} ${lastName}`.trim(), teacherIdStr, email]
         );
 
         const slots = await generateSchedule(newTeacher);
@@ -391,7 +405,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // ── Global Timetable Endpoint (FIXED PREVENT 500 ERROR) ──
+  // ── Global Timetable Endpoint ──
   if (pathname === "/api/timetable" && req.method === "GET") {
     try {
       const auth = getAuth(req);
@@ -498,7 +512,10 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
-  const filePath = path.join(frontendBase, pathname);
+  // Prevent directory traversal attacks
+  const safePath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
+  const filePath = path.join(frontendBase, safePath);
+
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     return serveFile(res, filePath);
   }
