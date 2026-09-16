@@ -4,61 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lectura | My Timetable</title>
-    <link rel="stylesheet" href="../css/my-schedule.css">
+    
+    <!-- Cache-busting CSS link -->
+    <link rel="stylesheet" href="../css/my-schedule.css?v=1.0.1">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
 </head>
 <body>
-        <aside class="sidebar">
-            <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold;">
+    <aside class="sidebar">
+        <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold;">
             Lectura
         </div>
         <nav class="nav-links-wrapper">
-            <button onclick="window.location.href='index.html'" class="nav-item     " id="btn-teachers">📊 Dashboard Home</button>
+            <button onclick="window.location.href='index.html'" class="nav-item" id="btn-teachers">📊 Dashboard Home</button>
             <button onclick="window.location.href='my-schedule.html'" class="nav-item active" id="btn-subjects">📅 My Timetable</button>
-            <button onclick="window.location.href='rooms-view.html'" class="nav-item " id="btn-database">🏫 View Rooms</button>
+            <button onclick="window.location.href='rooms-view.html'" class="nav-item" id="btn-database">🏫 View Rooms</button>
             <button onclick="window.location.href='cohorts-view.html'" class="nav-item" id="btn-rooms">👥 My Cohorts</button>
         </nav>       
-            <a href="../../shared/logout.html" class="nav-item logout-btn">
-                🚪 Logout
-            </a>
-        
-        </aside>
+        <a href="../../shared/logout.html" class="nav-item logout-btn">
+            🚪 Logout
+        </a>
+    </aside>
 
-        <main class="main-content">
-            
-            <div class="timetable-controls">
-                <div>
-                    <h1 id="instructor-title">Instructor: Loading...</h1>
-                    <p style="color: #aaa; font-size: 0.9rem;">Personalized matrix extracted from active schedule allocation blocks.</p>
-                </div>
-                <div class="btn-group">
-                    <button class="btn-action btn-print" id="print-schedule-btn">🖨️ Print Schedules</button>
-                    <button class="btn-action btn-pdf" id="download-pdf-btn">📥 Download PDF File</button>
-                </div>
+    <main class="main-content">
+        <div class="timetable-controls">
+            <div>
+                <h1 id="instructor-title">Instructor: Loading...</h1>
+                <p style="color: #64748b; font-size: 0.9rem; margin-top: 4px;">Personalized matrix extracted from active schedule allocation blocks.</p>
             </div>
-
-            <div class="timetable-wrapper card-glass">
-                <table class="timetable-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 15%;">Time Slot</th>
-                            <th style="width: 14%;">Monday</th>
-                            <th style="width: 14%;">Tuesday</th>
-                            <th style="width: 14%;">Wednesday</th>
-                            <th style="width: 14%;">Thursday</th>
-                            <th style="width: 14%;">Friday</th>
-                        </tr>
-                    </thead>
-                    <tbody id="timetable-rows">
-                        </tbody>
-                </table>
+            <div class="btn-group">
+                <button class="btn-action btn-print" id="print-schedule-btn">🖨️ Print Schedules</button>
+                <button class="btn-action btn-pdf" id="download-pdf-btn">📥 Download PDF File</button>
             </div>
+        </div>
 
-        </main>
+        <div class="timetable-wrapper card">
+            <table class="timetable-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Time Slot</th>
+                        <th style="width: 17%;">Monday</th>
+                        <th style="width: 17%;">Tuesday</th>
+                        <th style="width: 17%;">Wednesday</th>
+                        <th style="width: 17%;">Thursday</th>
+                        <th style="width: 17%;">Friday</th>
+                    </tr>
+                </thead>
+                <tbody id="timetable-rows">
+                    <!-- Populated dynamically by my-schedule.js -->
+                </tbody>
+            </table>
+        </div>
+    </main>
 
-    <script src="../js/my-schedule.js"></script>
+    <!-- Vacant Cell Memo Pop-Up Modal -->
+    <div class="vacant-modal-overlay" id="vacant-note-modal">
+        <div class="vacant-modal-content">
+            <h3 id="modal-cell-title">Add Cell Memo</h3>
+            <p class="modal-subtitle">Attach a personal reminder or note to this vacant block.</p>
+            <textarea id="modal-note-textarea" placeholder="Type your note or memo here..."></textarea>
+            <div class="modal-actions-row">
+                <button id="modal-cancel-btn">Cancel</button>
+                <button id="modal-save-btn">Save Note</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cache-busting JavaScript link -->
+    <script src="../js/my-schedule.js?v=1.0.1"></script>
 </body>
 </html>
