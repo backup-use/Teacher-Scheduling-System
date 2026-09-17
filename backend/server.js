@@ -3,7 +3,7 @@ const url = require("url");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const db  = require("./db");
+const db = require("./db");
 
 const PORT = process.env.PORT || 3000;
 
@@ -192,6 +192,78 @@ const server = http.createServer(async (req, res) => {
       const auth = getAuth(req);
       if (!auth || auth.role !== "admin") {
         return send(res, 403, { error: "Forbidden: Admin privileges required." });
+      }
+
+      // GET /api/admin/subjects
+      if (pathname === "/api/admin/subjects" && req.method === "GET") {
+        try {
+          const { rows } = await db.query("SELECT * FROM subjects ORDER BY id DESC");
+          const normalized = rows.map((s) => ({
+            id: s.id,
+            name: s.name || "",
+            gradeLevel: s.grade_level || s.gradeLevel || "",
+          }));
+          return send(res, 200, normalized);
+        } catch (err) {
+          console.error("❌ Error fetching subjects:", err);
+          return send(res, 500, { error: err.message });
+        }
+      }
+
+      // POST /api/admin/subjects
+      if (pathname === "/api/admin/subjects" && req.method === "POST") {
+        try {
+          const body = await parseBody(req);
+          const name = (body.name || body.subjectName || "").trim();
+          const gradeLevel = (body.gradeLevel || body.grade_level || "").trim();
+
+          if (!name) {
+            return send(res, 400, { error: "Subject Name is required." });
+          }
+
+          const existing = await db.query(
+            "SELECT id FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1)",
+            [name]
+          );
+
+          if (existing.rows.length > 0) {
+            return send(res, 400, { error: "This subject already exists." });
+          }
+
+          const resInsert = await db.query(
+            "INSERT INTO subjects (name, grade_level) VALUES ($1, $2) RETURNING *",
+            [name, gradeLevel]
+          );
+
+          const { rows } = await db.query("SELECT * FROM subjects ORDER BY id DESC");
+          const normalized = rows.map((s) => ({
+            id: s.id,
+            name: s.name || "",
+            gradeLevel: s.grade_level || "",
+          }));
+
+          return send(res, 201, {
+            success: true,
+            subject: resInsert.rows[0],
+            subjects: normalized,
+          });
+        } catch (err) {
+          console.error("❌ Subject creation failure:", err);
+          return send(res, 500, { error: err.message });
+        }
+      }
+
+      // DELETE /api/admin/subjects/:id
+      if (pathname.startsWith("/api/admin/subjects/") && req.method === "DELETE") {
+        try {
+          const subjectId = pathname.split("/").pop();
+          const result = await db.query("DELETE FROM subjects WHERE id = $1", [subjectId]);
+          if (result.rowCount === 0) return send(res, 404, { error: "Subject not found." });
+          return send(res, 200, { success: true });
+        } catch (err) {
+          console.error("❌ Subject deletion failure:", err);
+          return send(res, 500, { error: err.message });
+        }
       }
 
       // GET /api/admin/sections
