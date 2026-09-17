@@ -49,7 +49,6 @@ function sanitizeSubjectName(str) {
     if (!str) return "";
     let clean = str.toLowerCase().replace(/[^a-z0-9]/g, '');
     
-    // Alias mapping for common subject naming variations
     if (clean.includes('values') || clean.includes('esp') || clean.includes('edukasyon')) {
         return 'valueseducation';
     }
@@ -81,6 +80,24 @@ function getSubjectColor(subjectName) {
     return subjectColorPalette[index];
 }
 
+// Helper to sanitize/normalize teacher names for standard lookup keys
+function sanitizeTeacherKey(name) {
+    if (!name) return "";
+    return name.toString().trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// Helper: Secure token extraction across localStorage and sessionStorage
+function getAuthToken() {
+    return localStorage.getItem('token') || 
+           localStorage.getItem('jwt') || 
+           localStorage.getItem('authToken') || 
+           localStorage.getItem('accessToken') ||
+           sessionStorage.getItem('token') ||
+           sessionStorage.getItem('jwt') ||
+           sessionStorage.getItem('authToken') ||
+           sessionStorage.getItem('accessToken');
+}
+
 // ==========================================
 // PART 1: MASTER TIMETABLE GENERATION ENGINE
 // ==========================================
@@ -99,22 +116,22 @@ async function processSystemTimetable() {
         </div>
     `;
 
-    const token = localStorage.getItem('token') || 
-                  localStorage.getItem('jwt') || 
-                  localStorage.getItem('authToken') || 
-                  localStorage.getItem('accessToken');
+    const token = getAuthToken();
 
-    if (!token) {
+    if (!token || token === "null" || token === "undefined") {
         container.innerHTML = `
             <div style="text-align: center; color: #dc2626; padding: 30px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; margin-top: 20px; font-weight: bold;">
-                Authentication Failure: Security token missing or expired. Please log in again.
+                Authentication Failure (403): Access token missing or invalid. Please log in again to refresh your session.
             </div>
         `;
         return;
     }
 
     try {
-        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        const headers = { 
+            'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`, 
+            'Content-Type': 'application/json' 
+        };
         const baseOrigin = window.location.origin;
 
         const [teachersResponse, subjectsResponse, roomsResponse, sectionsResponse] = await Promise.all([
@@ -125,7 +142,9 @@ async function processSystemTimetable() {
         ]);
 
         if (!teachersResponse.ok || !subjectsResponse.ok || !roomsResponse.ok || !sectionsResponse.ok) {
-            throw new Error(`API Synchronization Failed with Status: ${teachersResponse.status}`);
+            const failedStatus = [teachersResponse, subjectsResponse, roomsResponse, sectionsResponse]
+                .find(r => !r.ok)?.status || 403;
+            throw new Error(`API Synchronization Failed with Status: ${failedStatus}`);
         }
 
         const rawTeachersData = await teachersResponse.json();
@@ -156,21 +175,10 @@ async function processSystemTimetable() {
         }
 
         const daySlots = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
-        
-        // MAKILING INTEGRATED SCHOOL (MIS) COMPLETE TIME SLOTS (06:00 AM to 06:00 PM)
         const timeSlots = [
-            "06:00-07:00",
-            "07:00-08:00",
-            "08:00-09:00",
-            "09:00-10:00", // Fixed Recess Slot
-            "10:00-11:00",
-            "11:00-12:00",
-            "12:00-01:00", // Fixed Lunch / Shift Transition Slot
-            "01:00-02:00",
-            "02:00-03:00",
-            "03:00-04:00",
-            "04:00-05:00",
-            "05:00-06:00"
+            "06:00-07:00", "07:00-08:00", "08:00-09:00", "09:00-10:00", 
+            "10:00-11:00", "11:00-12:00", "12:00-01:00", "01:00-02:00", 
+            "02:00-03:00", "03:00-04:00", "04:00-05:00", "05:00-06:00"
         ];
 
         const normalizedTeachers = rawTeachers.map(t => {
@@ -227,7 +235,6 @@ async function processSystemTimetable() {
                 for (let timeIndex = 0; timeIndex < activeSlots.length; timeIndex++) {
                     const currentTime = activeSlots[timeIndex];
 
-                    // Skip fixed break periods from academic subject assignment
                     if (currentTime === "09:00-10:00" || currentTime === "12:00-01:00") {
                         continue;
                     }
@@ -353,34 +360,6 @@ async function processSystemTimetable() {
         `;
     }
 }
-// ==========================================
-// UTILITY & HELPER FUNCTIONS
-// ==========================================
-
-// Fallback subject color resolver to prevent execution crashes
-function getSubjectColor(subjectName) {
-    if (typeof window.getSubjectColor === "function" && window.getSubjectColor !== getSubjectColor) {
-        return window.getSubjectColor(subjectName);
-    }
-    const colorMap = {
-        "Mathematics": "#e0f2fe",
-        "English": "#fef9c3",
-        "Science": "#dcfce7",
-        "Filipino": "#ffe4e6",
-        "Araling Panlipunan": "#f3e8ff",
-        "Values Education": "#f1f5f9",
-        "ESP": "#f1f5f9",
-        "MAPEH": "#ffedd5",
-        "TLE": "#ccfbf1"
-    };
-    return colorMap[subjectName] || "#f8fafc";
-}
-
-// Helper to sanitize/normalize teacher names for standard lookup keys
-function sanitizeTeacherKey(name) {
-    if (!name) return "";
-    return name.toString().trim().toLowerCase().replace(/\s+/g, ' ');
-}
 
 // ==========================================
 // PART 2: DASHBOARD RENDERING & DOM EVENT BINDING
@@ -389,9 +368,6 @@ function sanitizeTeacherKey(name) {
 function renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers) {
     container.innerHTML = "";
 
-    // -----------------------------------------------------------
-    // 1. EXTRACT AND SAVE INDIVIDUAL TEACHER SCHEDULES FOR TEACHER PORTAL
-    // -----------------------------------------------------------
     const teacherSchedulesMap = {};
 
     Object.values(masterSectionSchedules).forEach(secObj => {
@@ -404,10 +380,9 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                     const rawTeacher = slotData.teacher.trim();
                     const normalizedKey = sanitizeTeacherKey(rawTeacher);
 
-                    // 1. Store under normalized key for case-insensitive lookup in my-schedule.js
                     if (!teacherSchedulesMap[normalizedKey]) {
                         teacherSchedulesMap[normalizedKey] = {
-                            teacherName: rawTeacher, // Keep original formatted display name
+                            teacherName: rawTeacher,
                             days: {}
                         };
                     }
@@ -422,7 +397,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                         room: slotData.room || "N/A"
                     };
 
-                    // 2. Also preserve direct raw name key for backwards compatibility
                     if (!teacherSchedulesMap[rawTeacher]) {
                         teacherSchedulesMap[rawTeacher] = {};
                     }
@@ -440,89 +414,27 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         });
     });
 
-    // Save individual teacher schedules to localStorage so the Teacher Portal can read it
     localStorage.setItem("cached_teacher_schedules", JSON.stringify(teacherSchedulesMap));
-    // Save master section schedule for global availability
     localStorage.setItem("global_master_schedule", JSON.stringify(masterSectionSchedules));
 
-
-    // -----------------------------------------------------------
-    // 2. STYLESHEET INJECTION FOR PRINT / PDF FIT
-    // -----------------------------------------------------------
     if (!document.getElementById("printable-schedule-css")) {
         const styleEl = document.createElement("style");
         styleEl.id = "printable-schedule-css";
         styleEl.innerHTML = `
             @media print {
-                * {
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-                
-                @page {
-                    size: landscape;
-                    margin: 6mm;
-                }
-
-                html, body {
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    background: #ffffff !important;
-                    width: 100% !important;
-                    height: auto !important;
-                }
-
-                body * {
-                    visibility: hidden;
-                }
-
-                .section-print-area, .section-print-area * {
-                    visibility: visible;
-                }
-
-                .section-print-area {
-                    position: absolute !important;
-                    left: 0 !important;
-                    right: 0 !important;
-                    top: 0 !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    margin: 0 auto !important;
-                    padding: 0 !important;
-                    box-sizing: border-box !important;
-                }
-
-                .no-print {
-                    display: none !important;
-                }
-
-                .section-print-area table {
-                    width: 100% !important;
-                    font-size: 0.70rem !important;
-                    border-collapse: collapse !important;
-                    page-break-inside: avoid !important;
-                    margin: 0 auto !important;
-                }
-
-                .section-print-area th, 
-                .section-print-area td {
-                    padding: 2.5px 2px !important;
-                    border: 1.5px solid #000000 !important;
-                }
-
-                .section-print-area h3 {
-                    font-size: 1rem !important;
-                }
+                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                @page { size: landscape; margin: 6mm; }
+                html, body { margin: 0 !important; padding: 0 !important; background: #ffffff !important; width: 100% !important; height: auto !important; }
+                body * { visibility: hidden; }
+                .section-print-area, .section-print-area * { visibility: visible; }
+                .section-print-area { position: absolute !important; left: 0 !important; right: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; box-sizing: border-box !important; }
+                .no-print { display: none !important; }
+                .section-print-area table { width: 100% !important; font-size: 0.70rem !important; border-collapse: collapse !important; page-break-inside: avoid !important; margin: 0 auto !important; }
+                .section-print-area th, .section-print-area td { padding: 2.5px 2px !important; border: 1.5px solid #000000 !important; }
+                .section-print-area h3 { font-size: 1rem !important; }
             }
-
-            .section-pdf-export { 
-                background: #ffffff !important; 
-                padding: 10px !important; 
-                border: none !important; 
-            }
-            .section-pdf-export .no-print { 
-                display: none !important; 
-            }
+            .section-pdf-export { background: #ffffff !important; padding: 10px !important; border: none !important; }
+            .section-pdf-export .no-print { display: none !important; }
         `;
         document.head.appendChild(styleEl);
     }
@@ -696,7 +608,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         if (!cardTarget) return;
 
         if (typeof html2pdf === "undefined") {
-            alert("PDF export library is missing or still loading. Please check if html2pdf.bundle.min.js is included in your HTML file.");
+            alert("PDF export library is missing or still loading.");
             return;
         }
 
@@ -727,8 +639,8 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 15px;";
         
         gradeHeaderBox.innerHTML = `
-            <h2 style="color: #ffffff; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
-                ${gradeName} <span style="color: #38bdf8; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
+            <h2 style="color: #0369a1; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
+                ${gradeName} <span style="color: #0284c7; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
             </h2>
         `;
         mainWrapper.appendChild(gradeHeaderBox);
@@ -786,26 +698,21 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                         </td>
                 `;
 
-                // Fixed Recess Row (Corrected Colspan: daySlots.length + 1)
                 if (time === "09:00-10:00") {
                     tableHTML += `
                         <td colspan="${daySlots.length}" style="padding: 8px; background: #fef08a; color: #854d0e; font-weight: 800; border: 2px solid #000000; letter-spacing: 2px; font-size: 0.85rem;">
                             RECESS / MORNING BREAK
                         </td>
                     `;
-                }
-                // Fixed Lunch Row (Corrected Colspan: daySlots.length + 1)
-                else if (time === "12:00-01:00") {
+                } else if (time === "12:00-01:00") {
                     tableHTML += `
                         <td colspan="${daySlots.length}" style="padding: 8px; background: #fed7aa; color: #9a3412; font-weight: 800; border: 2px solid #000000; letter-spacing: 2px; font-size: 0.85rem;">
                             LUNCH BREAK / SHIFT TRANSITION
                         </td>
                     `;
-                }
-                // Regular Academic Class Rows
-                else {
+                } else {
                     daySlots.forEach(day => {
-                        const slotData = secObj.timetable[day][time];
+                        const slotData = secObj.timetable[day] ? secObj.timetable[day][time] : null;
 
                         if (slotData) {
                             const cellBgColor = getSubjectColor(slotData.subject);
@@ -839,15 +746,20 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
     });
 }
 
-// Global Event Listeners & Auto-Restore
+// Global Event Listeners & Trigger Binding
 document.addEventListener("DOMContentLoaded", () => {
-    // Target action buttons safely
-    const generateBtn = document.getElementById("btn-generate-schedule") || document.getElementById("generate-btn");
-    if (generateBtn) {
-        generateBtn.addEventListener("click", () => processSystemTimetable());
+    const initBtn = document.getElementById("btn-generate-schedule") || 
+                    document.getElementById("generate-btn") ||
+                    document.querySelector(".btn-primary") ||
+                    document.querySelector("button");
+
+    if (initBtn) {
+        initBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            processSystemTimetable();
+        });
     }
 
-    // Auto-load cached timetable if available or generate on load
     const cachedData = localStorage.getItem("cached_generated_schedule");
     if (cachedData) {
         try {
@@ -856,6 +768,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             document.querySelector('.dashboard-card-panel') || 
                             document.querySelector('.main-content') ||
                             document.body;
+                            
             renderMasterSectionScheduleDashboard(
                 container, 
                 parsed.masterSectionSchedules, 
@@ -865,10 +778,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 parsed.normalizedTeachers
             );
         } catch (e) {
-            console.error("Failed to parse cached schedule:", e);
             processSystemTimetable();
         }
-    } else {
-        processSystemTimetable();
     }
 });
