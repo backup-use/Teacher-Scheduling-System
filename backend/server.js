@@ -145,7 +145,7 @@ async function initAdmin() {
 // ── Main Server Router ──
 
 const server = http.createServer(async (req, res) => {
-  const parsedUrl = url.parse(req.url, true);
+  const parsedUrl = url.parse(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = parsedUrl.pathname;
 
   if (req.method === "OPTIONS") {
