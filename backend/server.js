@@ -3,7 +3,7 @@ const url = require("url");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { db } = require("./db");
+const db  = require("./db");
 
 const PORT = process.env.PORT || 3000;
 

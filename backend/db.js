@@ -140,6 +140,9 @@ async function initDatabase() {
 initDatabase();
 
 module.exports = {
+  db: {
+    query: (text, params) => pool.query(text, params),
+  },
   query: (text, params) => pool.query(text, params),
   pool,
   testConnection,
