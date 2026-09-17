@@ -66,6 +66,19 @@ function safeJsonParse(input, fallback = []) {
   }
 }
 
+function sanitizeTime(timeStr) {
+  if (!timeStr || typeof timeStr !== "string" || timeStr.trim() === "") return "08:00";
+  let t = timeStr.trim().toLowerCase();
+  let isPM = t.includes("pm");
+  let isAM = t.includes("am");
+  let nums = t.replace(/[^0-9:]/g, "").split(":");
+  let h = parseInt(nums[0], 10) || 8;
+  let m = nums[1] ? parseInt(nums[1], 10) : 0;
+  if (isPM && h !== 12) h += 12;
+  if (isAM && h === 12) h = 0;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 function serveFile(res, filePath) {
   const ext = path.extname(filePath).toLowerCase();
   const mimeTypes = {
@@ -88,12 +101,10 @@ function serveFile(res, filePath) {
   });
 }
 
-// Dummy email sender (mock implementation)
 function sendCredentialsEmail(email, name, username, password, details) {
   console.log(`📧 [MOCK EMAIL] Sent to ${email} for ${name} (User: ${username})`);
 }
 
-// Dummy schedule generator helper
 async function generateSchedule(teacher) {
   const days = safeJsonParse(teacher.work_days || teacher.workDays, ["Monday", "Wednesday", "Friday"]);
   const subjects = safeJsonParse(teacher.subjects, ["General Subject"]);
@@ -115,7 +126,6 @@ async function generateSchedule(teacher) {
   return slots;
 }
 
-// Initialize default admin account if missing
 async function initAdmin() {
   try {
     const { rows } = await db.query("SELECT id FROM users WHERE username = $1", ["admin"]);
@@ -138,7 +148,6 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
 
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
@@ -150,7 +159,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── API Routes ──
   if (pathname.startsWith("/api/")) {
-    
+
     // Auth: Login
     if (pathname === "/api/auth/login" && req.method === "POST") {
       try {
@@ -181,7 +190,7 @@ const server = http.createServer(async (req, res) => {
         };
         const token = Buffer.from(JSON.stringify(tokenPayload)).toString("base64");
 
-        return send(res, 200, { token, user });
+        return send(res, 200, { token, user, role: user.role, name: user.name, teacherId: user.teacher_id });
       } catch (err) {
         return send(res, 500, { error: err.message });
       }
@@ -192,6 +201,33 @@ const server = http.createServer(async (req, res) => {
       const auth = getAuth(req);
       if (!auth || auth.role !== "admin") {
         return send(res, 403, { error: "Forbidden: Admin privileges required." });
+      }
+
+      // POST /api/admin/generate-schedule
+      if (pathname === "/api/admin/generate-schedule" && req.method === "POST") {
+        try {
+          const { rows: teachers } = await db.query("SELECT * FROM teachers");
+          const generatedSchedules = [];
+
+          for (const teacher of teachers) {
+            const slots = await generateSchedule(teacher);
+            const teacherIdStr = String(teacher.id);
+
+            await db.query(
+              `INSERT INTO schedules (teacher_id, slots, generated_at) 
+               VALUES ($1, $2, NOW()) 
+               ON CONFLICT (teacher_id) DO UPDATE SET slots = EXCLUDED.slots, generated_at = NOW()`,
+              [teacherIdStr, JSON.stringify(slots)]
+            );
+
+            generatedSchedules.push({ teacherId: teacher.id, teacherName: `${teacher.first_name} ${teacher.last_name}`, slots });
+          }
+
+          return send(res, 200, { success: true, message: "Timetable generated successfully.", schedules: generatedSchedules });
+        } catch (err) {
+          console.error("❌ Schedule Generation Error:", err);
+          return send(res, 500, { error: err.message });
+        }
       }
 
       // GET /api/admin/subjects
@@ -205,7 +241,6 @@ const server = http.createServer(async (req, res) => {
           }));
           return send(res, 200, normalized);
         } catch (err) {
-          console.error("❌ Error fetching subjects:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -217,38 +252,17 @@ const server = http.createServer(async (req, res) => {
           const name = (body.name || body.subjectName || "").trim();
           const gradeLevel = (body.gradeLevel || body.grade_level || "").trim();
 
-          if (!name) {
-            return send(res, 400, { error: "Subject Name is required." });
-          }
+          if (!name) return send(res, 400, { error: "Subject Name is required." });
 
-          const existing = await db.query(
-            "SELECT id FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1)",
-            [name]
-          );
+          const existing = await db.query("SELECT id FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1)", [name]);
+          if (existing.rows.length > 0) return send(res, 400, { error: "This subject already exists." });
 
-          if (existing.rows.length > 0) {
-            return send(res, 400, { error: "This subject already exists." });
-          }
-
-          const resInsert = await db.query(
-            "INSERT INTO subjects (name, grade_level) VALUES ($1, $2) RETURNING *",
-            [name, gradeLevel]
-          );
-
+          const resInsert = await db.query("INSERT INTO subjects (name, grade_level) VALUES ($1, $2) RETURNING *", [name, gradeLevel]);
           const { rows } = await db.query("SELECT * FROM subjects ORDER BY id DESC");
-          const normalized = rows.map((s) => ({
-            id: s.id,
-            name: s.name || "",
-            gradeLevel: s.grade_level || "",
-          }));
+          const normalized = rows.map((s) => ({ id: s.id, name: s.name || "", gradeLevel: s.grade_level || "" }));
 
-          return send(res, 201, {
-            success: true,
-            subject: resInsert.rows[0],
-            subjects: normalized,
-          });
+          return send(res, 201, { success: true, subject: resInsert.rows[0], subjects: normalized });
         } catch (err) {
-          console.error("❌ Subject creation failure:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -261,7 +275,6 @@ const server = http.createServer(async (req, res) => {
           if (result.rowCount === 0) return send(res, 404, { error: "Subject not found." });
           return send(res, 200, { success: true });
         } catch (err) {
-          console.error("❌ Subject deletion failure:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -270,22 +283,14 @@ const server = http.createServer(async (req, res) => {
       if (pathname === "/api/admin/sections" && req.method === "GET") {
         try {
           const queryText = `
-            SELECT
-              s.id,
-              s.name,
-              s.students,
-              s.grade_level AS "gradeLevel",
-              s.room_id AS "roomId",
-              r.name AS "roomName",
-              r.capacity AS "roomCapacity"
+            SELECT s.id, s.name, s.students, s.grade_level AS "gradeLevel",
+                   s.room_id AS "roomId", r.name AS "roomName", r.capacity AS "roomCapacity"
             FROM sections s
             LEFT JOIN rooms r ON CAST(s.room_id AS VARCHAR) = CAST(r.id AS VARCHAR)
-            ORDER BY s.name ASC
-          `;
+            ORDER BY s.name ASC`;
           const { rows } = await db.query(queryText);
           return send(res, 200, rows);
         } catch (err) {
-          console.error("❌ Error fetching sections:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -299,40 +304,21 @@ const server = http.createServer(async (req, res) => {
           const roomIdRaw = body.assignedRoom || body.room_id || body.roomId || null;
           const students = body.students !== undefined ? parseInt(body.students, 10) : 0;
 
-          if (!sectionName) {
-            return send(res, 400, { error: "Section Name is required." });
-          }
-
+          if (!sectionName) return send(res, 400, { error: "Section Name is required." });
           const roomId = roomIdRaw && !isNaN(parseInt(roomIdRaw, 10)) ? parseInt(roomIdRaw, 10) : null;
 
-          const existing = await db.query(
-            "SELECT id FROM sections WHERE LOWER(TRIM(name)) = LOWER($1)",
-            [sectionName]
-          );
-          if (existing.rows.length > 0) {
-            return send(res, 400, { error: "This section already exists." });
-          }
+          const existing = await db.query("SELECT id FROM sections WHERE LOWER(TRIM(name)) = LOWER($1)", [sectionName]);
+          if (existing.rows.length > 0) return send(res, 400, { error: "This section already exists." });
 
-          await db.query(
-            "INSERT INTO sections (name, students, grade_level, room_id) VALUES ($1, $2, $3, $4)",
-            [sectionName, students, gradeLevel, roomId]
-          );
-
+          await db.query("INSERT INTO sections (name, students, grade_level, room_id) VALUES ($1, $2, $3, $4)", [sectionName, students, gradeLevel, roomId]);
           const { rows } = await db.query(`
-            SELECT
-              s.id,
-              s.name,
-              s.students,
-              s.grade_level AS "gradeLevel",
-              s.room_id AS "roomId",
-              r.name AS "roomName"
+            SELECT s.id, s.name, s.students, s.grade_level AS "gradeLevel",
+                   s.room_id AS "roomId", r.name AS "roomName"
             FROM sections s
             LEFT JOIN rooms r ON CAST(s.room_id AS VARCHAR) = CAST(r.id AS VARCHAR)
-            ORDER BY s.name ASC
-          `);
+            ORDER BY s.name ASC`);
           return send(res, 201, rows);
         } catch (err) {
-          console.error("❌ Error inserting section:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -353,11 +339,7 @@ const server = http.createServer(async (req, res) => {
       if (pathname === "/api/admin/rooms" && req.method === "GET") {
         try {
           const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
-          const normalized = rows.map((r) => ({
-            id: r.id,
-            name: r.name || r.room_name || "",
-            capacity: r.capacity || r.max_capacity || 0,
-          }));
+          const normalized = rows.map((r) => ({ id: r.id, name: r.name || r.room_name || "", capacity: r.capacity || r.max_capacity || 0 }));
           return send(res, 200, normalized);
         } catch (err) {
           return send(res, 500, { error: err.message });
@@ -371,39 +353,18 @@ const server = http.createServer(async (req, res) => {
           const roomName = (body.name || body.roomName || "").trim();
           const capacity = body.capacity !== undefined ? parseInt(body.capacity, 10) : parseInt(body.maxCapacity, 10);
 
-          if (!roomName || isNaN(capacity)) {
-            return send(res, 400, { error: "Valid Room Name and Capacity are required." });
-          }
+          if (!roomName || isNaN(capacity)) return send(res, 400, { error: "Valid Room Name and Capacity are required." });
 
-          const existing = await db.query(
-            "SELECT id FROM rooms WHERE LOWER(TRIM(name)) = LOWER($1)",
-            [roomName]
-          );
+          const existing = await db.query("SELECT id FROM rooms WHERE LOWER(TRIM(name)) = LOWER($1)", [roomName]);
+          if (existing.rows.length > 0) return send(res, 400, { error: "This room already exists." });
 
-          if (existing.rows.length > 0) {
-            return send(res, 400, { error: "This room already exists." });
-          }
-
-          const resInsert = await db.query(
-            "INSERT INTO rooms (name, capacity) VALUES ($1, $2) RETURNING *",
-            [roomName, capacity]
-          );
-
+          const resInsert = await db.query("INSERT INTO rooms (name, capacity) VALUES ($1, $2) RETURNING *", [roomName, capacity]);
           const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
-          const normalized = rows.map((r) => ({
-            id: r.id,
-            name: r.name || "",
-            capacity: r.capacity || 0,
-          }));
+          const normalized = rows.map((r) => ({ id: r.id, name: r.name || "", capacity: r.capacity || 0 }));
 
-          return send(res, 201, {
-            success: true,
-            room: resInsert.rows[0],
-            rooms: normalized,
-          });
+          return send(res, 201, { success: true, room: resInsert.rows[0], rooms: normalized });
         } catch (err) {
-          console.error("❌ Room registration failure:", err);
-          return send(res, 500, { error: "Database failure: " + err.message });
+          return send(res, 500, { error: err.message });
         }
       }
 
@@ -415,12 +376,11 @@ const server = http.createServer(async (req, res) => {
           if (result.rowCount === 0) return send(res, 404, { error: "Room not found." });
           return send(res, 200, { success: true });
         } catch (err) {
-          console.error("❌ Room deletion failure:", err);
           return send(res, 500, { error: err.message });
         }
       }
 
-      // GET /api/admin/teachers (ALL TEACHERS)
+      // GET /api/admin/teachers
       if (pathname === "/api/admin/teachers" && req.method === "GET") {
         try {
           const { rows } = await db.query("SELECT * FROM teachers ORDER BY id ASC");
@@ -431,10 +391,8 @@ const server = http.createServer(async (req, res) => {
             workDays: safeJsonParse(teacher.work_days, []),
             availability: safeJsonParse(teacher.availability, []),
           }));
-
           return send(res, 200, formattedTeachers);
         } catch (err) {
-          console.error("❌ Error fetching teachers:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -458,15 +416,13 @@ const server = http.createServer(async (req, res) => {
             startTime: teacher.start_time,
             endTime: teacher.end_time,
           };
-
           return send(res, 200, formattedTeacher);
         } catch (err) {
-          console.error("❌ Error fetching teacher details:", err);
           return send(res, 500, { error: err.message });
         }
       }
 
-      // POST /api/admin/teachers (CREATE TEACHER)
+      // POST /api/admin/teachers
       if (pathname === "/api/admin/teachers" && req.method === "POST") {
         try {
           const body = await parseBody(req);
@@ -474,24 +430,18 @@ const server = http.createServer(async (req, res) => {
           const lastName = (body.lastName || "").trim();
           const email = (body.email || "").trim().toLowerCase();
 
-          if (!firstName || !lastName) {
-            return send(res, 400, { error: "First name and last name are required." });
-          }
+          if (!firstName || !lastName) return send(res, 400, { error: "First name and last name are required." });
 
           const nameCheck = await db.query(
             `SELECT id FROM teachers WHERE LOWER(TRIM(first_name)) = LOWER($1) AND LOWER(TRIM(last_name)) = LOWER($2)`,
             [firstName, lastName]
           );
-          if (nameCheck.rows.length > 0) {
-            return send(res, 400, { error: `Teacher "${firstName} ${lastName}" is already registered!` });
-          }
+          if (nameCheck.rows.length > 0) return send(res, 400, { error: `Teacher "${firstName} ${lastName}" is already registered!` });
 
           let baseUsername = (firstName.toLowerCase() + "." + lastName.toLowerCase()).replace(/\s+/g, "");
           let username = baseUsername;
           const existingUser = await db.query("SELECT id FROM users WHERE username = $1", [username]);
-          if (existingUser.rows.length > 0) {
-            username = `${baseUsername}${Math.floor(100 + Math.random() * 900)}`;
-          }
+          if (existingUser.rows.length > 0) username = `${baseUsername}${Math.floor(100 + Math.random() * 900)}`;
 
           const password = "teacher" + Math.floor(1000 + Math.random() * 9000);
           const employeeId = "EMP-" + Math.floor(1000 + Math.random() * 9000);
@@ -500,19 +450,6 @@ const server = http.createServer(async (req, res) => {
           const subjectsJSON = JSON.stringify(rawSubjects);
           const workDaysJSON = JSON.stringify(Array.isArray(body.workDays) ? body.workDays : []);
           const targetGrade = body.targetGrade || body.target_grade || "";
-
-          function sanitizeTime(timeStr) {
-            if (!timeStr || timeStr.trim() === "") return "08:00";
-            let t = timeStr.trim().toLowerCase();
-            let isPM = t.includes("pm");
-            let isAM = t.includes("am");
-            let nums = t.replace(/[^0-9:]/g, "").split(":");
-            let h = parseInt(nums[0], 10);
-            let m = nums[1] ? parseInt(nums[1], 10) : 0;
-            if (isPM && h !== 12) h += 12;
-            if (isAM && h === 12) h = 0;
-            return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-          }
 
           let availabilityArray = safeJsonParse(body.availability, []);
           const formattedAvailability = availabilityArray.map((item) => ({
@@ -551,11 +488,7 @@ const server = http.createServer(async (req, res) => {
           );
 
           const slots = await generateSchedule(newTeacher);
-
-          await db.query(
-            "INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())",
-            [teacherIdStr, JSON.stringify(slots)]
-          );
+          await db.query("INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())", [teacherIdStr, JSON.stringify(slots)]);
 
           if (email && email.includes("@")) {
             sendCredentialsEmail(email, `${firstName} ${lastName}`, username, password, {
@@ -573,12 +506,11 @@ const server = http.createServer(async (req, res) => {
             schedule: { teacherId: newTeacher.id, slots },
           });
         } catch (err) {
-          console.error("❌ Teacher registration error:", err);
-          return send(res, 500, { error: err.message, details: err.stack });
+          return send(res, 500, { error: err.message });
         }
       }
 
-      // PUT /api/admin/teachers/:id (UPDATE TEACHER)
+      // PUT /api/admin/teachers/:id
       if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "PUT") {
         try {
           const id = pathname.split("/").pop();
@@ -592,8 +524,8 @@ const server = http.createServer(async (req, res) => {
           const lastName = (body.lastName || body.last_name || existing.last_name || "").trim();
           const email = (body.email || existing.email || "").trim().toLowerCase();
           const targetGrade = body.targetGrade || body.target_grade || existing.target_grade || "";
-          const startTime = body.startTime || body.start_time || existing.start_time || "08:00";
-          const endTime = body.endTime || body.end_time || existing.end_time || "16:00";
+          const startTime = sanitizeTime(body.startTime || body.start_time || existing.start_time);
+          const endTime = sanitizeTime(body.endTime || body.end_time || existing.end_time);
 
           const rawSubjects = body.subjects !== undefined ? body.subjects : safeJsonParse(existing.subjects, []);
           const subjectsJSON = JSON.stringify(Array.isArray(rawSubjects) ? rawSubjects : [rawSubjects].filter(Boolean));
@@ -602,7 +534,10 @@ const server = http.createServer(async (req, res) => {
           const workDaysJSON = JSON.stringify(Array.isArray(rawWorkDays) ? rawWorkDays : []);
 
           const rawAvailability = body.availability !== undefined ? body.availability : safeJsonParse(existing.availability, []);
-          const availabilityJSON = JSON.stringify(Array.isArray(rawAvailability) ? rawAvailability : []);
+          const formattedAvailability = Array.isArray(rawAvailability)
+            ? rawAvailability.map((item) => ({ day: item.day || "Monday", from: sanitizeTime(item.from), to: sanitizeTime(item.to) }))
+            : [];
+          const availabilityJSON = JSON.stringify(formattedAvailability);
 
           await db.query(
             `UPDATE teachers
@@ -611,6 +546,8 @@ const server = http.createServer(async (req, res) => {
              WHERE id = $10`,
             [firstName, lastName, email, subjectsJSON, targetGrade, workDaysJSON, startTime, endTime, availabilityJSON, id]
           );
+
+          await db.query(`UPDATE users SET name = $1, email = $2 WHERE teacher_id = $3`, [`${firstName} ${lastName}`, email, String(id)]);
 
           const updatedResult = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
           const updatedTeacher = updatedResult.rows[0];
@@ -622,16 +559,15 @@ const server = http.createServer(async (req, res) => {
             availability: safeJsonParse(updatedTeacher.availability, []),
           });
 
-          await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
-          await db.query("INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())", [String(id), JSON.stringify(newSlots)]);
+          await db.query(
+            `INSERT INTO schedules (teacher_id, slots, generated_at) 
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (teacher_id) DO UPDATE SET slots = EXCLUDED.slots, generated_at = NOW()`,
+            [String(id), JSON.stringify(newSlots)]
+          );
 
-          return send(res, 200, {
-            success: true,
-            teacher: updatedTeacher,
-            schedule: { teacherId: id, slots: newSlots },
-          });
+          return send(res, 200, { success: true, teacher: updatedTeacher, schedule: { teacherId: id, slots: newSlots } });
         } catch (err) {
-          console.error("❌ Error updating teacher:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -666,8 +602,9 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // POST /api/admin/schedules/save-bulk
+      // POST /api/admin/schedules/save-bulk (Transaction Safe)
       if (pathname === "/api/admin/schedules/save-bulk" && req.method === "POST") {
+        const client = await db.connect();
         try {
           const body = await parseBody(req);
           const compiledSchedules = body.schedules;
@@ -676,12 +613,14 @@ const server = http.createServer(async (req, res) => {
             return send(res, 400, { error: "Malformed schedule payload matrix." });
           }
 
-          await db.query("DELETE FROM schedules");
-          const { rows: teachers } = await db.query("SELECT * FROM teachers");
+          await client.query("BEGIN");
+          await client.query("DELETE FROM schedules");
+
+          const { rows: teachers } = await client.query("SELECT id, first_name, last_name FROM teachers");
 
           for (const [fullName, scheduleObj] of Object.entries(compiledSchedules)) {
             const foundTeacher = teachers.find(
-              (t) => `${t.first_name} ${t.last_name}` === fullName || `${t.firstName} ${t.lastName}` === fullName
+              (t) => `${t.first_name} ${t.last_name}`.trim().toLowerCase() === fullName.trim().toLowerCase()
             );
 
             if (foundTeacher && scheduleObj && Array.isArray(scheduleObj.slots)) {
@@ -696,19 +635,20 @@ const server = http.createServer(async (req, res) => {
                 status: "scheduled",
               }));
 
-              await db.query(
+              await client.query(
                 "INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())",
                 [String(foundTeacher.id), JSON.stringify(parsedSlots)]
               );
             }
           }
 
-          return send(res, 200, {
-            success: true,
-            message: "Master timetable saved directly to PostgreSQL!",
-          });
+          await client.query("COMMIT");
+          return send(res, 200, { success: true, message: "Master timetable saved directly to PostgreSQL!" });
         } catch (err) {
+          await client.query("ROLLBACK");
           return send(res, 500, { error: err.message });
+        } finally {
+          client.release();
         }
       }
 
@@ -721,9 +661,10 @@ const server = http.createServer(async (req, res) => {
           if (rows.length === 0) return send(res, 404, { error: "Teacher not found" });
 
           const newSlots = await generateSchedule(rows[0]);
-          await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
           await db.query(
-            `INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())`,
+            `INSERT INTO schedules (teacher_id, slots, generated_at) 
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (teacher_id) DO UPDATE SET slots = EXCLUDED.slots, generated_at = NOW()`,
             [String(id), JSON.stringify(newSlots)]
           );
 
@@ -734,37 +675,34 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // ── Global Timetable Endpoint for Teacher Dashboards ──
+    // ── Global Timetable Endpoint ──
     if (pathname === "/api/timetable" && req.method === "GET") {
       try {
         const auth = getAuth(req);
         if (!auth) return send(res, 401, { error: "Unauthorized access token." });
 
-        const flattenedOutputMatrix = [];
-        const { rows: schedules } = await db.query("SELECT * FROM schedules");
-        const { rows: teachers } = await db.query("SELECT * FROM teachers");
+        const queryText = `
+          SELECT s.slots, t.first_name, t.last_name 
+          FROM schedules s
+          LEFT JOIN teachers t ON String(t.id) = String(s.teacher_id)
+        `;
+        const { rows } = await db.query(queryText);
 
-        schedules.forEach((scheduleSet) => {
-          const structuralTeacher = teachers.find((t) => String(t.id) === String(scheduleSet.teacher_id));
-          const instructorName = structuralTeacher
-            ? `${structuralTeacher.first_name || structuralTeacher.firstName} ${structuralTeacher.last_name || structuralTeacher.lastName}`
-            : "Unknown Instructor";
+        const flattenedOutputMatrix = rows.flatMap((row) => {
+          const instructorName = row.first_name ? `${row.first_name} ${row.last_name}` : "Unknown Instructor";
+          const slots = safeJsonParse(row.slots, []);
 
-          const slots = safeJsonParse(scheduleSet.slots, []);
-
-          if (Array.isArray(slots)) {
-            slots.forEach((slot) => {
-              flattenedOutputMatrix.push({
+          return Array.isArray(slots)
+            ? slots.map((slot) => ({
                 id: slot.id,
                 instructor: instructorName,
                 subject: slot.subject,
                 section: slot.section,
                 room: slot.room,
                 day: slot.day,
-                timeSlot: `${slot.startTime} to ${slot.endTime}`.replace(" - ", " to "),
-              });
-            });
-          }
+                timeSlot: `${slot.startTime} to ${slot.endTime}`,
+              }))
+            : [];
         });
 
         return send(res, 200, flattenedOutputMatrix);
@@ -773,7 +711,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // ── Teacher-only routes ──
+    // ── Teacher-Only Routes ──
     if (pathname.startsWith("/api/teacher/")) {
       const auth = getAuth(req);
 
@@ -784,24 +722,16 @@ const server = http.createServer(async (req, res) => {
           const { rows: userRows } = await db.query("SELECT teacher_id FROM users WHERE id = $1", [auth.id]);
           const targetTeacherId = userRows[0]?.teacher_id;
 
-          if (!targetTeacherId) {
-            return send(res, 404, { error: "No teacher profile associated with this user." });
-          }
+          if (!targetTeacherId) return send(res, 404, { error: "No teacher profile associated with this user." });
 
           const { rows: teacherRows } = await db.query("SELECT * FROM teachers WHERE id = $1", [targetTeacherId]);
           const { rows: schedRows } = await db.query("SELECT * FROM schedules WHERE teacher_id = $1", [String(targetTeacherId)]);
 
           const scheduleObj = schedRows[0]
-            ? {
-                ...schedRows[0],
-                slots: safeJsonParse(schedRows[0].slots, []),
-              }
+            ? { ...schedRows[0], slots: safeJsonParse(schedRows[0].slots, []) }
             : null;
 
-          return send(res, 200, {
-            schedule: scheduleObj,
-            teacher: teacherRows[0] || null,
-          });
+          return send(res, 200, { schedule: scheduleObj, teacher: teacherRows[0] || null });
         } catch (err) {
           return send(res, 500, { error: err.message });
         }
@@ -835,11 +765,10 @@ server.listen(PORT, "0.0.0.0", async () => {
   console.log(`🔐 Admin login: admin / admin123`);
 });
 
-// Test connection on server start
 db.query("SELECT NOW()", (err, res) => {
   if (err) {
-    console.error("❌ Supabase Connection Failed:", err.message);
+    console.error("❌ PostgreSQL Connection Failed:", err.message);
   } else {
-    console.log("✅ Successfully connected to Supabase PostgreSQL at:", res.rows[0].now);
+    console.log("✅ Successfully connected to PostgreSQL at:", res.rows[0].now);
   }
 });
