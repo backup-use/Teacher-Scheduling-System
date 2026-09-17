@@ -2,9 +2,8 @@
  * Advanced Master Schedule Generator - Makiling Integrated School (MIS) Edition
  * - Full Unfiltered Time Slots (06:00 AM - 06:00 PM)
  * - Automatic RECESS & LUNCH BREAK Row Injections
- * - Strict Grade-Level Matching Constraint with Fallbacks
- * - Flexible Subject & Alias Matching Logic
- * - Suppresses Empty Tables for Sections without Active Schedules
+ * - Grade-Level Matching & Subject Alias Logic
+ * - PDF Export & Direct Print Controls
  */
 
 // Helper: Safely parses array inputs from string/JSON formats
@@ -49,7 +48,6 @@ function sanitizeSubjectName(str) {
     if (!str) return "";
     let clean = str.toLowerCase().replace(/[^a-z0-9]/g, '');
     
-    // Alias mapping for common subject naming variations
     if (clean.includes('values') || clean.includes('esp') || clean.includes('edukasyon')) {
         return 'valueseducation';
     }
@@ -63,6 +61,17 @@ function sanitizeSubjectName(str) {
         return 'tle';
     }
     return clean;
+}
+
+// Helper: Sanitizes text for HTML rendering
+function escapeHTML(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 // High-contrast light palette for subject background colors
@@ -79,6 +88,12 @@ function getSubjectColor(subjectName) {
     }
     const index = Math.abs(hash) % subjectColorPalette.length;
     return subjectColorPalette[index];
+}
+
+// Helper: Standardizes teacher names for matching
+function sanitizeTeacherKey(name) {
+    if (!name) return "";
+    return name.toString().trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 // ==========================================
@@ -124,9 +139,19 @@ async function processSystemTimetable() {
             fetch(`${baseOrigin}/api/admin/sections`, { headers })
         ]);
 
-        if (!teachersResponse.ok || !subjectsResponse.ok || !roomsResponse.ok || !sectionsResponse.ok) {
-            throw new Error(`API Synchronization Failed with Status: ${teachersResponse.status}`);
+        // --- FIXED RESPONSE VALIDATION LOGIC ---
+        const apiCalls = [
+            { name: 'teachers', res: teachersResponse },
+            { name: 'subjects', res: subjectsResponse },
+            { name: 'rooms', res: roomsResponse },
+            { name: 'sections', res: sectionsResponse }
+        ];
+
+        const failedCall = apiCalls.find(call => !call.res.ok);
+        if (failedCall) {
+            throw new Error(`Endpoint /api/admin/${failedCall.name} failed with Status: ${failedCall.res.status}`);
         }
+        // ----------------------------------------
 
         const rawTeachersData = await teachersResponse.json();
         const rawSubjectsData = await subjectsResponse.json();
@@ -156,16 +181,14 @@ async function processSystemTimetable() {
         }
 
         const daySlots = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
-        
-        // MAKILING INTEGRATED SCHOOL (MIS) COMPLETE TIME SLOTS (06:00 AM to 06:00 PM)
         const timeSlots = [
             "06:00-07:00",
             "07:00-08:00",
             "08:00-09:00",
-            "09:00-10:00", // Fixed Recess Slot
+            "09:00-10:00", 
             "10:00-11:00",
             "11:00-12:00",
-            "12:00-01:00", // Fixed Lunch / Shift Transition Slot
+            "12:00-01:00", 
             "01:00-02:00",
             "02:00-03:00",
             "03:00-04:00",
@@ -191,7 +214,6 @@ async function processSystemTimetable() {
             };
         });
 
-        // SCHEDULING MATRIX LOGIC
         const teacherConflictMatrix = {}; 
         const teacherDailyHoursTracker = {}; 
         const roomConflictMatrix = {};    
@@ -222,20 +244,17 @@ async function processSystemTimetable() {
             }
 
             for (const day of daySlots) {
-                let activeSlots = timeSlots;
+                for (let timeIndex = 0; timeIndex < timeSlots.length; timeIndex++) {
+                    const currentTime = timeSlots[timeIndex];
 
-                for (let timeIndex = 0; timeIndex < activeSlots.length; timeIndex++) {
-                    const currentTime = activeSlots[timeIndex];
-
-                    // Skip fixed break periods from academic subject assignment
                     if (currentTime === "09:00-10:00" || currentTime === "12:00-01:00") {
                         continue;
                     }
 
                     for (const subjectName of sectionSubjects) {
                         const cleanSubjectName = typeof subjectName === 'string' ? subjectName.trim() : subjectName.name.trim();
-
                         const dailySubjectKey = `${section.name}-${day}-${cleanSubjectName.toLowerCase()}`;
+
                         if (subjectPerDayTracker[dailySubjectKey]) continue;
 
                         let teacherToUse = normalizedTeachers.find(t => {
@@ -250,7 +269,6 @@ async function processSystemTimetable() {
                             const matchesGrade = !t.targetGradeNum || t.targetGradeNum === sectionGradeNum;
                             const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
                             const teacherTimeKey = `${t.fullName}-${day}-${currentTime}`;
-                            
                             const dailyHoursKey = `${t.fullName}-${day}`;
                             const currentDailyHours = teacherDailyHoursTracker[dailyHoursKey] || 0;
 
@@ -282,48 +300,15 @@ async function processSystemTimetable() {
             }
         }
 
-        // SYSTEM AUDIT LOGIC
         const gradeAuditMap = {};
-
         savedSections.forEach(sec => {
             const normG = normalizeGradeLevelName(sec.grade_level || sec.target_grade || sec.gradeLevel);
             const gNum = extractGradeNumber(normG);
             
             if (!gradeAuditMap[normG]) {
                 const assignedTeachersCount = normalizedTeachers.filter(t => !t.targetGradeNum || t.targetGradeNum === gNum).length;
-                gradeAuditMap[normG] = { 
-                    missingSubjects: [], 
-                    teacherCount: assignedTeachersCount 
-                };
+                gradeAuditMap[normG] = { missingSubjects: [], teacherCount: assignedTeachersCount };
             }
-        });
-
-        Object.values(masterSectionSchedules).forEach(secObj => {
-            const gName = secObj.gradeLevel;
-            const gNum = extractGradeNumber(gName);
-
-            let requiredSubjs = safeParseArray(secObj.details.subjects || secObj.details.subject_list);
-            if (requiredSubjs.length === 0) {
-                requiredSubjs = normalizedSubjects
-                    .filter(s => extractGradeNumber(s.gradeLevel) === gNum)
-                    .map(s => typeof s === 'string' ? s : s.name);
-            }
-
-            const scheduledSubjs = new Set();
-            Object.values(secObj.timetable).forEach(dayObj => {
-                Object.values(dayObj).forEach(slot => {
-                    if (slot && slot.subject) scheduledSubjs.add(sanitizeSubjectName(slot.subject));
-                });
-            });
-
-            requiredSubjs.forEach(req => {
-                const cleanReq = typeof req === 'string' ? req.trim() : req.name.trim();
-                if (!scheduledSubjs.has(sanitizeSubjectName(cleanReq))) {
-                    if (gradeAuditMap[gName] && !gradeAuditMap[gName].missingSubjects.includes(cleanReq)) {
-                        gradeAuditMap[gName].missingSubjects.push(cleanReq);
-                    }
-                }
-            });
         });
 
         const systemAuditSummary = {
@@ -353,47 +338,15 @@ async function processSystemTimetable() {
         `;
     }
 }
-// ==========================================
-// UTILITY & HELPER FUNCTIONS
-// ==========================================
-
-// Fallback subject color resolver to prevent execution crashes
-function getSubjectColor(subjectName) {
-    if (typeof window.getSubjectColor === "function" && window.getSubjectColor !== getSubjectColor) {
-        return window.getSubjectColor(subjectName);
-    }
-    const colorMap = {
-        "Mathematics": "#e0f2fe",
-        "English": "#fef9c3",
-        "Science": "#dcfce7",
-        "Filipino": "#ffe4e6",
-        "Araling Panlipunan": "#f3e8ff",
-        "Values Education": "#f1f5f9",
-        "ESP": "#f1f5f9",
-        "MAPEH": "#ffedd5",
-        "TLE": "#ccfbf1"
-    };
-    return colorMap[subjectName] || "#f8fafc";
-}
-
-// Helper to sanitize/normalize teacher names for standard lookup keys
-function sanitizeTeacherKey(name) {
-    if (!name) return "";
-    return name.toString().trim().toLowerCase().replace(/\s+/g, ' ');
-}
 
 // ==========================================
-// PART 2: DASHBOARD RENDERING & DOM EVENT BINDING
+// PART 2: DASHBOARD RENDERING & UI EXPORTS
 // ==========================================
 
 function renderMasterSectionScheduleDashboard(container, masterSectionSchedules, auditSummary, daySlots, timeSlots, normalizedTeachers) {
     container.innerHTML = "";
 
-    // -----------------------------------------------------------
-    // 1. EXTRACT AND SAVE INDIVIDUAL TEACHER SCHEDULES FOR TEACHER PORTAL
-    // -----------------------------------------------------------
     const teacherSchedulesMap = {};
-
     Object.values(masterSectionSchedules).forEach(secObj => {
         const sectionName = secObj.details.name;
         const gradeLevel = secObj.gradeLevel;
@@ -404,12 +357,8 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                     const rawTeacher = slotData.teacher.trim();
                     const normalizedKey = sanitizeTeacherKey(rawTeacher);
 
-                    // 1. Store under normalized key for case-insensitive lookup in my-schedule.js
                     if (!teacherSchedulesMap[normalizedKey]) {
-                        teacherSchedulesMap[normalizedKey] = {
-                            teacherName: rawTeacher, // Keep original formatted display name
-                            days: {}
-                        };
+                        teacherSchedulesMap[normalizedKey] = { teacherName: rawTeacher, days: {} };
                     }
                     if (!teacherSchedulesMap[normalizedKey].days[day]) {
                         teacherSchedulesMap[normalizedKey].days[day] = {};
@@ -421,108 +370,29 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                         gradeLevel: gradeLevel,
                         room: slotData.room || "N/A"
                     };
-
-                    // 2. Also preserve direct raw name key for backwards compatibility
-                    if (!teacherSchedulesMap[rawTeacher]) {
-                        teacherSchedulesMap[rawTeacher] = {};
-                    }
-                    if (!teacherSchedulesMap[rawTeacher][day]) {
-                        teacherSchedulesMap[rawTeacher][day] = {};
-                    }
-                    teacherSchedulesMap[rawTeacher][day][time] = {
-                        subject: slotData.subject,
-                        section: sectionName,
-                        gradeLevel: gradeLevel,
-                        room: slotData.room || "N/A"
-                    };
                 }
             });
         });
     });
 
-    // Save individual teacher schedules to localStorage so the Teacher Portal can read it
     localStorage.setItem("cached_teacher_schedules", JSON.stringify(teacherSchedulesMap));
-    // Save master section schedule for global availability
     localStorage.setItem("global_master_schedule", JSON.stringify(masterSectionSchedules));
 
-
-    // -----------------------------------------------------------
-    // 2. STYLESHEET INJECTION FOR PRINT / PDF FIT
-    // -----------------------------------------------------------
     if (!document.getElementById("printable-schedule-css")) {
         const styleEl = document.createElement("style");
         styleEl.id = "printable-schedule-css";
         styleEl.innerHTML = `
             @media print {
-                * {
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-                
-                @page {
-                    size: landscape;
-                    margin: 6mm;
-                }
-
-                html, body {
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    background: #ffffff !important;
-                    width: 100% !important;
-                    height: auto !important;
-                }
-
-                body * {
-                    visibility: hidden;
-                }
-
-                .section-print-area, .section-print-area * {
-                    visibility: visible;
-                }
-
-                .section-print-area {
-                    position: absolute !important;
-                    left: 0 !important;
-                    right: 0 !important;
-                    top: 0 !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    margin: 0 auto !important;
-                    padding: 0 !important;
-                    box-sizing: border-box !important;
-                }
-
-                .no-print {
-                    display: none !important;
-                }
-
-                .section-print-area table {
-                    width: 100% !important;
-                    font-size: 0.70rem !important;
-                    border-collapse: collapse !important;
-                    page-break-inside: avoid !important;
-                    margin: 0 auto !important;
-                }
-
-                .section-print-area th, 
-                .section-print-area td {
-                    padding: 2.5px 2px !important;
-                    border: 1.5px solid #000000 !important;
-                }
-
-                .section-print-area h3 {
-                    font-size: 1rem !important;
-                }
+                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                @page { size: landscape; margin: 6mm; }
+                html, body { margin: 0 !important; padding: 0 !important; background: #ffffff !important; }
+                body * { visibility: hidden; }
+                .section-print-area, .section-print-area * { visibility: visible; }
+                .section-print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; }
+                .no-print { display: none !important; }
             }
-
-            .section-pdf-export { 
-                background: #ffffff !important; 
-                padding: 10px !important; 
-                border: none !important; 
-            }
-            .section-pdf-export .no-print { 
-                display: none !important; 
-            }
+            .section-pdf-export { background: #ffffff !important; padding: 10px !important; }
+            .section-pdf-export .no-print { display: none !important; }
         `;
         document.head.appendChild(styleEl);
     }
@@ -531,161 +401,9 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
     mainWrapper.style.marginTop = "20px";
     container.appendChild(mainWrapper);
 
-    let totalMissingSubjectsCount = 0;
-    Object.values(auditSummary.gradeAuditMap).forEach(g => {
-        totalMissingSubjectsCount += g.missingSubjects.length;
-    });
-
-    const summaryCard = document.createElement("div");
-    summaryCard.className = "no-print";
-    summaryCard.style.cssText = "background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);";
-
-    const statusColor = totalMissingSubjectsCount === 0 ? "#16a34a" : "#dc2626";
-
-    let auditHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 16px;">
-            <h3 style="color: #0f172a; margin: 0; font-size: 1.1rem; font-weight: 700;">
-                Makiling Integrated School - Resource & Capacity Audit
-            </h3>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <span style="background: ${statusColor}15; color: ${statusColor}; font-size: 0.82rem; font-weight: bold; padding: 5px 14px; border-radius: 20px; border: 1px solid ${statusColor}44;">
-                    ${totalMissingSubjectsCount === 0 ? "All Grade Levels Fully Scheduled" : `${totalMissingSubjectsCount} Unassigned Subject Class(es)`}
-                </span>
-                ${totalMissingSubjectsCount > 0 ? `
-                    <button id="toggle-audit-btn" onclick="toggleAuditView()" style="background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: bold;">
-                        View Scheduling Shortages
-                    </button>
-                ` : ''}
-            </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 10px;">
-            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #0284c7;">
-                <div style="color: #64748b; font-size: 0.75rem; font-weight: 600;">Total Sections</div>
-                <div style="color: #0f172a; font-size: 1.2rem; font-weight: 700;">${auditSummary.totalSections} Sections</div>
-            </div>
-            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #0284c7;">
-                <div style="color: #64748b; font-size: 0.75rem; font-weight: 600;">Total Active Teachers</div>
-                <div style="color: #0f172a; font-size: 1.2rem; font-weight: 700;">${auditSummary.totalTeachers} Teachers</div>
-            </div>
-            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #0284c7;">
-                <div style="color: #64748b; font-size: 0.75rem; font-weight: 600;">Available Rooms</div>
-                <div style="color: #0f172a; font-size: 1.2rem; font-weight: 700;">${auditSummary.totalRooms} Rooms</div>
-            </div>
-        </div>
-
-        <div id="grade-level-audit-details" style="display: ${totalMissingSubjectsCount > 0 ? 'block' : 'none'}; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
-            <div style="font-weight: bold; color: #dc2626; margin-bottom: 12px; font-size: 0.9rem;">
-                Schedule Generation Issues & Unassigned Subjects:
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-    `;
-
-    let activeShortageCardCount = 0;
-
-    Object.keys(auditSummary.gradeAuditMap)
-        .sort((a, b) => {
-            const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
-            const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
-            return numA - numB;
-        })
-        .forEach(grade => {
-            const item = auditSummary.gradeAuditMap[grade];
-
-            if (item.missingSubjects.length > 0 || item.teacherCount === 0) {
-                activeShortageCardCount++;
-                auditHTML += `
-                    <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 12px 16px; border-radius: 6px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span style="color: #991b1b; font-weight: bold; font-size: 0.95rem;">
-                                ${grade} <span style="color: #dc2626; font-size: 0.8rem; font-weight: 600;">(${item.teacherCount} Teachers Assigned for this Grade)</span>
-                            </span>
-                            <a href="Addteacher.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
-                                + Assign Teacher
-                            </a>    
-                        </div>
-                        <div style="font-size: 0.82rem; color: #7f1d1d; margin-bottom: 6px;">
-                            ${item.teacherCount === 0 ? "⚠️ Cannot generate timetable: No instructors assigned to teach this Grade Level." : "⚠️ The following required subjects could not be scheduled due to teacher shortage:"}
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
-                            ${item.missingSubjects.map(subj => `
-                                <span style="background: #ffffff; color: #dc2626; border: 1px solid #fca5a5; padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 600;">
-                                    ${subj}
-                                </span>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-        });
-
-    if (activeShortageCardCount === 0) {
-        auditHTML += `
-            <div style="color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">
-                No schedule shortages detected. All sections have been fully scheduled.
-            </div>
-        `;
-    }
-
-    auditHTML += `
-            </div>
-        </div>
-    `;
-
-    summaryCard.innerHTML = auditHTML;
-    mainWrapper.appendChild(summaryCard);
-
-    window.toggleAuditView = function() {
-        const detailsDiv = document.getElementById("grade-level-audit-details");
-        const btn = document.getElementById("toggle-audit-btn");
-        if (detailsDiv.style.display === "none") {
-            detailsDiv.style.display = "block";
-            btn.innerHTML = "Hide Shortages";
-        } else {
-            detailsDiv.style.display = "none";
-            btn.innerHTML = "View Scheduling Shortages";
-        }
-    };
-
-    const gradeGroupedSections = {};
-    let totalGeneratedTablesCount = 0;
-
-    Object.values(masterSectionSchedules).forEach(secObj => {
-        let hasAtLeastOneSlot = false;
-        Object.values(secObj.timetable).forEach(dayObj => {
-            if (Object.keys(dayObj).length > 0) {
-                hasAtLeastOneSlot = true;
-            }
-        });
-
-        if (hasAtLeastOneSlot) {
-            const gName = secObj.gradeLevel;
-            if (!gradeGroupedSections[gName]) {
-                gradeGroupedSections[gName] = [];
-            }
-            gradeGroupedSections[gName].push(secObj);
-            totalGeneratedTablesCount++;
-        }
-    });
-
-    const sortedGradeKeys = Object.keys(gradeGroupedSections).sort((a, b) => {
-        const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
-        const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
-        return numA - numB;
-    });
-
-    if (totalGeneratedTablesCount === 0) {
-        const emptyAlert = document.createElement("div");
-        emptyAlert.style.cssText = "text-align: center; color: #dc2626; background: #fef2f2; padding: 30px; border-radius: 8px; border: 1px solid #fecaca; font-weight: bold;";
-        emptyAlert.innerHTML = "No timetables could be rendered. Please assign teachers to the respective Grade Levels in Teacher Management to generate schedules.";
-        mainWrapper.appendChild(emptyAlert);
-        return;
-    }
-
     window.printSectionSchedule = function(cardId) {
         const cardTarget = document.getElementById(cardId);
         if (!cardTarget) return;
-
         document.querySelectorAll('.section-print-area').forEach(el => el.classList.remove('section-print-area'));
         cardTarget.classList.add('section-print-area');
         window.print();
@@ -696,7 +414,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         if (!cardTarget) return;
 
         if (typeof html2pdf === "undefined") {
-            alert("PDF export library is missing or still loading. Please check if html2pdf.bundle.min.js is included in your HTML file.");
+            alert("PDF library is missing or loading. Ensure html2pdf.bundle.min.js is included.");
             return;
         }
 
@@ -719,6 +437,21 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         });
     };
 
+    const gradeGroupedSections = {};
+    Object.values(masterSectionSchedules).forEach(secObj => {
+        const gName = secObj.gradeLevel;
+        if (!gradeGroupedSections[gName]) {
+            gradeGroupedSections[gName] = [];
+        }
+        gradeGroupedSections[gName].push(secObj);
+    });
+
+    const sortedGradeKeys = Object.keys(gradeGroupedSections).sort((a, b) => {
+        const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
+        const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
+        return numA - numB;
+    });
+
     sortedGradeKeys.forEach(gradeName => {
         const sectionsList = gradeGroupedSections[gradeName];
 
@@ -727,8 +460,8 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 15px;";
         
         gradeHeaderBox.innerHTML = `
-            <h2 style="color: #ffffff; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
-                ${gradeName} <span style="color: #38bdf8; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
+            <h2 style="color: #0f172a; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
+                ${escapeHTML(gradeName)} <span style="color: #0284c7; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
             </h2>
         `;
         mainWrapper.appendChild(gradeHeaderBox);
@@ -750,7 +483,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <div>
                         <h3 style="color: #000000; margin: 0; font-size: 1.15rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
-                            SECTION: <span style="color: #000000;">${secName}</span>
+                            SECTION: <span style="color: #000000;">${escapeHTML(secName)}</span>
                         </h3>
                         <div style="color: #475569; font-size: 0.75rem; font-weight: 600; margin-top: 2px;">
                             Generated on: ${generatedTimestamp}
@@ -760,7 +493,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                         <button onclick="printSectionSchedule('${uniqueCardId}')" style="background: #000000; color: #ffffff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem;">
                             Print
                         </button>
-                        <button onclick="downloadSectionPDF('${uniqueCardId}', '${secName}')" style="background: #0284c7; color: #ffffff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem;">
+                        <button onclick="downloadSectionPDF('${uniqueCardId}', '${escapeHTML(secName)}')" style="background: #0284c7; color: #ffffff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.8rem;">
                             Download PDF
                         </button>
                     </div>
@@ -786,7 +519,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                         </td>
                 `;
 
-                // Fixed Recess Row (Corrected Colspan: daySlots.length + 1)
                 if (time === "09:00-10:00") {
                     tableHTML += `
                         <td colspan="${daySlots.length}" style="padding: 8px; background: #fef08a; color: #854d0e; font-weight: 800; border: 2px solid #000000; letter-spacing: 2px; font-size: 0.85rem;">
@@ -794,7 +526,6 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                         </td>
                     `;
                 }
-                // Fixed Lunch Row (Corrected Colspan: daySlots.length + 1)
                 else if (time === "12:00-01:00") {
                     tableHTML += `
                         <td colspan="${daySlots.length}" style="padding: 8px; background: #fed7aa; color: #9a3412; font-weight: 800; border: 2px solid #000000; letter-spacing: 2px; font-size: 0.85rem;">
@@ -802,22 +533,21 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                         </td>
                     `;
                 }
-                // Regular Academic Class Rows
                 else {
                     daySlots.forEach(day => {
-                        const slotData = secObj.timetable[day][time];
+                        const slotData = secObj.timetable[day]?.[time];
 
                         if (slotData) {
                             const cellBgColor = getSubjectColor(slotData.subject);
                             tableHTML += `
                                 <td style="padding: 6px; border: 2px solid #000000; background: ${cellBgColor}; color: #000000; vertical-align: middle; font-weight: 700;">
                                     <div style="font-size: 0.9rem; font-weight: 800; line-height: 1.2;">
-                                        ${slotData.subject}
+                                        ${escapeHTML(slotData.subject)}
                                     </div>
                                     <div style="font-size: 0.78rem; font-weight: 600; margin-top: 3px;">
-                                        ${slotData.teacher}
+                                        ${escapeHTML(slotData.teacher)}
                                     </div>
-                                    ${slotData.room ? `<div style="font-size: 0.72rem; font-weight: 500; opacity: 0.9;">(${slotData.room})</div>` : ''}
+                                    ${slotData.room ? `<div style="font-size: 0.72rem; font-weight: 500; opacity: 0.9;">(${escapeHTML(slotData.room)})</div>` : ''}
                                 </td>
                             `;
                         } else {
@@ -839,15 +569,16 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
     });
 }
 
-// Global Event Listeners & Auto-Restore
+// ==========================================
+// AUTO-INITIALIZATION & LISTENERS
+// ==========================================
+
 document.addEventListener("DOMContentLoaded", () => {
-    // Target action buttons safely
     const generateBtn = document.getElementById("btn-generate-schedule") || document.getElementById("generate-btn");
     if (generateBtn) {
         generateBtn.addEventListener("click", () => processSystemTimetable());
     }
 
-    // Auto-load cached timetable if available or generate on load
     const cachedData = localStorage.getItem("cached_generated_schedule");
     if (cachedData) {
         try {
