@@ -69,10 +69,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-  // UPDATED: Tokenized Fuzzy Name Matching
+  // Tokenized Fuzzy Name Matching
   function matchTeacherName(nameA, nameB) {
     if (!nameA || !nameB) return false;
-    
+
     const cleanA = nameA.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
     const cleanB = nameB.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
 
@@ -86,15 +86,23 @@ document.addEventListener("DOMContentLoaded", () => {
     return tokensA.some(token => tokensB.includes(token));
   }
 
-  // UPDATED: Standardize time formatting across formats (AM/PM, leading zeros)
+  // UPDATED: Standardize time formatting without stripping leading zeroes
   function normalizeTimeSlot(str) {
     if (!str) return "";
-    return str
+    let clean = str
       .toLowerCase()
       .replace(/am|pm/g, "")
       .replace(/\s+/g, "")
-      .replace(/to/g, "-")
-      .replace(/(^|-)0+/g, "$1"); // Strips leading zeroes for precise key alignment
+      .replace(/to/g, "-");
+
+    // Re-pad single digits if needed (e.g. "6:00-7:00" -> "06:00-07:00")
+    const parts = clean.split("-");
+    if (parts.length === 2) {
+      const start = parts[0].padStart(5, "0");
+      const end = parts[1].padStart(5, "0");
+      return `${start}-${end}`;
+    }
+    return clean;
   }
 
   // Dynamic Style Injection
@@ -102,187 +110,182 @@ document.addEventListener("DOMContentLoaded", () => {
     const adminStyles = document.createElement("style");
     adminStyles.id = "admin-tight-layout-rules";
     adminStyles.innerHTML = `
-            body, .main-content, .dashboard-container, main {
-                background-color: #0b0f19 !important;
-                color: #ffffff !important;
-                padding: 15px 20px !important;
-                margin: 0 !important;
-            }
+      body, .main-content, .dashboard-container, main {
+          background-color: #0b0f19 !important;
+          color: #ffffff !important;
+          padding: 15px 20px !important;
+          margin: 0 !important;
+      }
 
-            .header-container, .page-header, header {
-                margin-bottom: 12px !important;
-                padding: 0 !important;
-            }
+      .header-container, .page-header, header, .timetable-controls {
+          margin-bottom: 12px !important;
+          padding: 0 !important;
+      }
 
-            #instructor-title, h1, h2, h3 {
-                color: #ffffff !important;
-                font-weight: 800 !important;
-                margin-top: 0 !important;
-                margin-bottom: 4px !important;
-            }
+      #instructor-title, h1, h2, h3 {
+          color: #ffffff !important;
+          font-weight: 800 !important;
+          margin-top: 0 !important;
+          margin-bottom: 4px !important;
+      }
 
-            p, .subtitle, .text-muted {
-                color: #94a3b8 !important;
-                margin-top: 0 !important;
-                margin-bottom: 12px !important;
-            }
+      p, .subtitle, .text-muted {
+          color: #94a3b8 !important;
+          margin-top: 0 !important;
+          margin-bottom: 12px !important;
+      }
 
-            .timetable-card, .card, .dashboard-card-panel {
-                background-color: #0f172a !important;
-                border: 1px solid #1e293b !important;
-                border-radius: 6px !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                overflow: hidden !important;
-            }
+      .timetable-wrapper, .card, .dashboard-card-panel {
+          background-color: #0f172a !important;
+          border: 1px solid #1e293b !important;
+          border-radius: 6px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+          width: 100% !important;
+      }
 
-            #timetable-container {
-                padding: 0 !important;
-                margin: 0 !important;
-                width: 100% !important;
-            }
+      .timetable-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          font-family: Arial, sans-serif !important;
+          border: 2px solid #000000 !important;
+          background-color: #ffffff !important;
+          margin: 0 !important;
+      }
 
-            #timetable-container table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                font-family: Arial, sans-serif !important;
-                border: 2px solid #000000 !important;
-                background-color: #ffffff !important;
-                margin: 0 !important;
-            }
+      .timetable-table th {
+          background-color: #ffffff !important;
+          color: #000000 !important;
+          text-transform: uppercase !important;
+          font-size: 0.88rem !important;
+          font-weight: 800 !important;
+          padding: 8px 4px !important;
+          letter-spacing: 0.5px !important;
+          border: 2px solid #000000 !important;
+      }
 
-            #timetable-container table th {
-                background-color: #ffffff !important;
-                color: #000000 !important;
-                text-transform: uppercase !important;
-                font-size: 0.88rem !important;
-                font-weight: 800 !important;
-                padding: 8px 4px !important;
-                letter-spacing: 0.5px !important;
-                border: 2px solid #000000 !important;
-            }
+      .timetable-table td {
+          border: 2px solid #000000 !important;
+          padding: 4px !important; 
+          height: 52px !important; 
+          vertical-align: middle !important;
+          text-align: center !important;
+          box-sizing: border-box !important;
+          background-color: #ffffff;
+      }
 
-            #timetable-container table td {
-                border: 2px solid #000000 !important;
-                padding: 4px !important; 
-                height: 52px !important; 
-                vertical-align: middle !important;
-                text-align: center !important;
-                box-sizing: border-box !important;
-                background-color: #ffffff;
-            }
+      .time-cell {
+          font-weight: 800 !important;
+          color: #000000 !important;
+          font-size: 0.82rem !important;
+          background-color: #ffffff !important;
+          width: 110px !important;
+          border: 2px solid #000000 !important;
+      }
 
-            .time-cell {
-                font-weight: 800 !important;
-                color: #000000 !important;
-                font-size: 0.82rem !important;
-                background-color: #ffffff !important;
-                width: 110px !important;
-                border: 2px solid #000000 !important;
-            }
+      .recess-row {
+          background-color: #fef08a !important;
+          color: #854d0e !important;
+          font-weight: 800 !important;
+          letter-spacing: 1.5px !important;
+          font-size: 0.85rem !important;
+          border: 2px solid #000000 !important;
+          padding: 6px !important;
+      }
 
-            .recess-row {
-                background-color: #fef08a !important;
-                color: #854d0e !important;
-                font-weight: 800 !important;
-                letter-spacing: 1.5px !important;
-                font-size: 0.85rem !important;
-                border: 2px solid #000000 !important;
-                padding: 6px !important;
-            }
+      .lunch-row {
+          background-color: #fed7aa !important;
+          color: #9a3412 !important;
+          font-weight: 800 !important;
+          letter-spacing: 1.5px !important;
+          font-size: 0.85rem !important;
+          border: 2px solid #000000 !important;
+          padding: 6px !important;
+      }
 
-            .lunch-row {
-                background-color: #fed7aa !important;
-                color: #9a3412 !important;
-                font-weight: 800 !important;
-                letter-spacing: 1.5px !important;
-                font-size: 0.85rem !important;
-                border: 2px solid #000000 !important;
-                padding: 6px !important;
-            }
+      .vacant-cell-fill {
+          height: 100% !important;
+          width: 100% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          position: relative !important;
+      }
 
-            .vacant-cell-fill {
-                height: 100% !important;
-                width: 100% !important;
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                justify-content: center !important;
-                position: relative !important;
-            }
+      .vacant-text {
+          display: none !important;
+      }
 
-            .vacant-text {
-                display: none !important;
-            }
+      .add-note-btn {
+          position: absolute !important;
+          bottom: 2px !important;
+          right: 2px !important;
+          width: 18px !important;
+          height: 18px !important;
+          border-radius: 3px !important;
+          background: #000000 !important; 
+          border: none !important;
+          color: #ffffff !important;      
+          font-size: 0.7rem !important;
+          cursor: pointer !important;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+      }
 
-            .add-note-btn {
-                position: absolute !important;
-                bottom: 2px !important;
-                right: 2px !important;
-                width: 18px !important;
-                height: 18px !important;
-                border-radius: 3px !important;
-                background: #000000 !important; 
-                border: none !important;
-                color: #ffffff !important;      
-                font-size: 0.7rem !important;
-                cursor: pointer !important;
-                opacity: 0;
-                transition: opacity 0.2s ease;
-            }
+      td:hover .add-note-btn { opacity: 1 !important; }
 
-            td:hover .add-note-btn { opacity: 1 !important; }
+      .saved-cell-note {
+          font-size: 0.75rem !important;
+          color: #000000 !important;
+          font-style: italic !important;
+          font-weight: 700 !important;
+      }
 
-            .saved-cell-note {
-                font-size: 0.75rem !important;
-                color: #000000 !important;
-                font-style: italic !important;
-                font-weight: 700 !important;
-            }
-
-            @media print {
-                body, .main-content, .timetable-card {
-                    background-color: #ffffff !important;
-                    color: #000000 !important;
-                    padding: 0 !important;
-                }
-                header, nav, .sidebar, .sidebar-wrapper, .nav-container, 
-                button, .btn, .print-actions, #btn-logout, .add-note-btn, 
-                .vacant-modal-overlay {
-                    display: none !important;
-                }
-                @page {
-                    size: letter landscape;
-                    margin: 8mm;
-                }
-                #timetable-container table {
-                    width: 100% !important;
-                    border: 2px solid #000000 !important;
-                }
-                #timetable-container table th, 
-                #timetable-container table td {
-                    border: 2px solid #000000 !important;
-                }
-            }
-        `;
+      @media print {
+          body, .main-content, .timetable-wrapper {
+              background-color: #ffffff !important;
+              color: #000000 !important;
+              padding: 0 !important;
+          }
+          header, nav, .sidebar, .sidebar-wrapper, .nav-container, 
+          button, .btn, .print-actions, #btn-logout, .add-note-btn, 
+          .vacant-modal-overlay {
+              display: none !important;
+          }
+          @page {
+              size: letter landscape;
+              margin: 8mm;
+          }
+          .timetable-table {
+              width: 100% !important;
+              border: 2px solid #000000 !important;
+          }
+          .timetable-table th, 
+          .timetable-table td {
+              border: 2px solid #000000 !important;
+          }
+      }
+    `;
     document.head.appendChild(adminStyles);
   }
 
   // Modal Injection for vacant notes
   if (!document.getElementById("vacant-note-modal")) {
     const modalHTML = `
-            <div id="vacant-note-modal" class="vacant-modal-overlay">
-                <div class="vacant-modal-content">
-                    <h3>Personal Task / Memo</h3>
-                    <p class="modal-subtitle">What are your plans during this vacant period?</p>
-                    <textarea id="modal-note-textarea" placeholder="Example: Checking papers, lesson preparation, break time..."></textarea>
-                    <div class="modal-actions-row">
-                        <button id="modal-cancel-btn">Cancel</button>
-                        <button id="modal-save-btn">Save Note</button>
-                    </div>
-                </div>
-            </div>
-        `;
+      <div id="vacant-note-modal" class="vacant-modal-overlay">
+          <div class="vacant-modal-content">
+              <h3>Personal Task / Memo</h3>
+              <p class="modal-subtitle">What are your plans during this vacant period?</p>
+              <textarea id="modal-note-textarea" placeholder="Example: Checking papers, lesson preparation, break time..."></textarea>
+              <div class="modal-actions-row">
+                  <button id="modal-cancel-btn">Cancel</button>
+                  <button id="modal-save-btn">Save Note</button>
+              </div>
+          </div>
+      </div>
+    `;
     document.body.insertAdjacentHTML("beforeend", modalHTML);
   }
 
@@ -333,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let myClassesMap = {};
     let loadedFromApi = false;
 
-    // 1. Attempt API fetch with parameter appended to URL
+    // 1. Attempt API fetch
     try {
       const response = await fetch(`/api/teacher/schedule?userName=${encodeURIComponent(userName)}`, {
         method: "GET",
@@ -343,51 +346,45 @@ document.addEventListener("DOMContentLoaded", () => {
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Server endpoint error with status ${response.status}`);
-      }
+      if (response.ok) {
+        const data = await response.json();
+        const slots = Array.isArray(data)
+          ? data
+          : data.slots || data.schedule || [];
 
-      const data = await response.json();
-      const slots = Array.isArray(data)
-        ? data
-        : data.slots || data.schedule || [];
+        if (Array.isArray(slots) && slots.length > 0) {
+          loadedFromApi = true;
+          slots.forEach((slot) => {
+            const teacherInSlot =
+              slot.instructor || slot.teacher || slot.teacherName || userName;
 
-      if (Array.isArray(slots) && slots.length > 0) {
-        loadedFromApi = true;
-        slots.forEach((slot) => {
-          const teacherInSlot =
-            slot.instructor || slot.teacher || slot.teacherName || userName;
-          if (matchTeacherName(teacherInSlot, userName)) {
-            const day = slot.day;
-            const rawTime = slot.timeSlot || slot.time || "";
-            const timeSlot = normalizeTimeSlot(rawTime);
+            if (matchTeacherName(teacherInSlot, userName)) {
+              const day = slot.day;
+              const rawTime = slot.timeSlot || slot.time || "";
+              const timeSlot = normalizeTimeSlot(rawTime);
 
-            if (!myClassesMap[day]) myClassesMap[day] = {};
-            myClassesMap[day][timeSlot] = {
-              subject: slot.subject,
-              section: slot.section || "Grade 7",
-              room: slot.room || "10",
-            };
-          }
-        });
+              if (!myClassesMap[day]) myClassesMap[day] = {};
+              myClassesMap[day][timeSlot] = {
+                subject: slot.subject,
+                section: slot.section || "Grade 7",
+                room: slot.room || "10",
+              };
+            }
+          });
+        }
       }
     } catch (e) {
-      console.warn(
-        "API request failed. Falling back to LocalStorage:",
-        e.message,
-      );
+      console.warn("API request failed. Falling back to LocalStorage:", e.message);
     }
 
-    // 2. Fallback: Parse generated data from LocalStorage
+    // 2. LocalStorage Fallbacks
     if (!loadedFromApi) {
-      const cachedTeacherMapStr = localStorage.getItem(
-        "cached_teacher_schedules",
-      );
+      const cachedTeacherMapStr = localStorage.getItem("cached_teacher_schedules");
       if (cachedTeacherMapStr) {
         try {
           const teacherMap = JSON.parse(cachedTeacherMapStr);
           const matchedKey = Object.keys(teacherMap).find((k) =>
-            matchTeacherName(k, userName),
+            matchTeacherName(k, userName)
           );
 
           if (matchedKey && teacherMap[matchedKey]) {
@@ -406,7 +403,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      // Fallback to master section schedules
       if (Object.keys(myClassesMap).length === 0) {
         const masterScheduleKeys = [
           "global_master_schedule",
@@ -424,7 +420,7 @@ document.addEventListener("DOMContentLoaded", () => {
               masterData = parsed.masterSectionSchedules || parsed;
               break;
             } catch (err) {
-              // Continue searching next key on error
+              // Search next key
             }
           }
         }
@@ -457,34 +453,28 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // 3. Render the Grid Matrix
+    // 3. Render Grid Matrix
     standardTimeSlots.forEach((timeSlot) => {
       const tr = document.createElement("tr");
 
-      // Time Slot Label Column
       const timeCell = document.createElement("td");
       timeCell.className = "time-cell";
       timeCell.textContent = timeSlot;
       tr.appendChild(timeCell);
 
-      // Recess Row
       if (timeSlot === "09:00-10:00") {
         const breakTd = document.createElement("td");
         breakTd.colSpan = targetDays.length;
         breakTd.className = "recess-row";
         breakTd.textContent = "RECESS / MORNING BREAK";
         tr.appendChild(breakTd);
-      }
-      // Lunch Row
-      else if (timeSlot === "12:00-01:00") {
+      } else if (timeSlot === "12:00-01:00") {
         const breakTd = document.createElement("td");
         breakTd.colSpan = targetDays.length;
         breakTd.className = "lunch-row";
         breakTd.textContent = "LUNCH BREAK / SHIFT TRANSITION";
         tr.appendChild(breakTd);
-      }
-      // Academic Class Slot
-      else {
+      } else {
         targetDays.forEach((day) => {
           const td = document.createElement("td");
           const normalizedCurrentSlot = normalizeTimeSlot(timeSlot);
@@ -498,15 +488,15 @@ document.addEventListener("DOMContentLoaded", () => {
             td.style.color = "#000000";
 
             td.innerHTML = `
-                <div style="font-size: 0.88rem; font-weight: 800; line-height: 1.2; text-transform: uppercase;">
-                    ${escapeHTML(slotData.subject)}
-                </div>
-                <div style="font-size: 0.76rem; font-weight: 600; margin-top: 2px; color: #334155;">
-                    ${escapeHTML(slotData.section || "")}
-                </div>
-                <div style="font-size: 0.72rem; font-weight: 500; color: #475569;">
-                    (room ${escapeHTML(slotData.room || "N/A")})
-                </div>
+              <div style="font-size: 0.88rem; font-weight: 800; line-height: 1.2; text-transform: uppercase;">
+                  ${escapeHTML(slotData.subject)}
+              </div>
+              <div style="font-size: 0.76rem; font-weight: 600; margin-top: 2px; color: #334155;">
+                  ${escapeHTML(slotData.section || "")}
+              </div>
+              <div style="font-size: 0.72rem; font-weight: 500; color: #475569;">
+                  (room ${escapeHTML(slotData.room || "N/A")})
+              </div>
             `;
           } else {
             const storageKey = `note_${userName}_${day}_${timeSlot}`;
@@ -517,10 +507,10 @@ document.addEventListener("DOMContentLoaded", () => {
               : `<span class="vacant-text">-- Vacant --</span>`;
 
             td.innerHTML = `
-                <div class="vacant-cell-fill">
-                    ${cellMarkup}
-                    <button class="add-note-btn" title="Add Memo Note">+</button>
-                </div>
+              <div class="vacant-cell-fill">
+                  ${cellMarkup}
+                  <button class="add-note-btn" title="Add Memo Note">+</button>
+              </div>
             `;
 
             const noteBtn = td.querySelector(".add-note-btn");
