@@ -149,6 +149,17 @@ async function fetchExistingTeachers() {
     }
 }
 
+/**
+ * Extract the grade digit (7-12) from any grade string.
+ * Handles: "Grade 8", "grade 8", "Junior High School - Grade 8", "8", "grade8", etc.
+ * Returns NaN if no digit found.
+ */
+function extractGradeDigit(value) {
+    if (value === null || value === undefined) return NaN;
+    const match = String(value).match(/\d+/);
+    return match ? parseInt(match[0], 10) : NaN;
+}
+
 // --- Subject Dynamic Grade Filtering Logic ---
 async function fetchCatalogSubjects() {
     const listContainer = document.getElementById('subject-checkbox-list');
@@ -158,9 +169,43 @@ async function fetchCatalogSubjects() {
         const res = await fetch('/api/admin/subjects', {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
-        rawPartitions = await res.json();
+        const data = await res.json();
 
-        // Default to loading all subjects into catalog until grade is selected
+        // Server returns a FLAT array: [{ id, name, gradeLevel }, ...]
+        // (Or possibly { subjects: [...] } — handle both.)
+        let rawList = [];
+        if (Array.isArray(data)) {
+            rawList = data;
+        } else if (data && Array.isArray(data.subjects)) {
+            rawList = data.subjects;
+        } else if (data && typeof data === 'object') {
+            // Legacy partitioned shape: { junior: [], grade11: [], grade12: [] }
+            rawList = [
+                ...(data.junior || []),
+                ...(data.grade11 || []),
+                ...(data.grade12 || [])
+            ];
+        }
+
+        // Partition the flat list by grade digit
+        rawPartitions = { junior: [], grade11: [], grade12: [] };
+
+        rawList.forEach(sub => {
+            const gradeStr = sub.gradeLevel || sub.grade_level || '';
+            const num = extractGradeDigit(gradeStr);
+
+            if ([7, 8, 9, 10].includes(num)) rawPartitions.junior.push(sub);
+            else if (num === 11) rawPartitions.grade11.push(sub);
+            else if (num === 12) rawPartitions.grade12.push(sub);
+        });
+
+        console.log('📚 Loaded subjects:', rawList.length, 'partitioned:', {
+            junior: rawPartitions.junior.length,
+            grade11: rawPartitions.grade11.length,
+            grade12: rawPartitions.grade12.length,
+        });
+
+        // Default view: show all subjects until a grade is selected
         updateCatalogByGrade('');
 
     } catch (err) {
@@ -181,20 +226,32 @@ function handleGradeLevelChange(e) {
     updateCatalogByGrade(selectedGrade);
 
     // Show top toast feedback
-    showTopToast(`Subjects filtered for ${selectedGrade}`, 'success');
+    if (selectedGrade) {
+        showTopToast(`Subjects filtered for ${selectedGrade}`, 'success');
+    }
 }
 
 function updateCatalogByGrade(grade) {
     let rawList = [];
 
-    if (['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'].includes(grade)) {
-        rawList = rawPartitions.junior || [];
-    } else if (grade === 'Grade 11') {
-        rawList = rawPartitions.grade11 || [];
-    } else if (grade === 'Grade 12') {
-        rawList = rawPartitions.grade12 || [];
+    if (grade) {
+        // Extract digit from the selected grade
+        // "Grade 8" → 8 ; "Junior High School - Grade 8" → 8 ; "8" → 8
+        const selectedNum = extractGradeDigit(grade);
+
+        // Combine all partitions, then filter to EXACT digit match
+        const allSubjects = [
+            ...(rawPartitions.junior || []),
+            ...(rawPartitions.grade11 || []),
+            ...(rawPartitions.grade12 || [])
+        ];
+
+        rawList = allSubjects.filter(sub => {
+            const subGrade = sub.gradeLevel || sub.grade_level || '';
+            return extractGradeDigit(subGrade) === selectedNum;
+        });
     } else {
-        // Fallback: Combine all subjects if no grade is selected yet
+        // No grade selected yet — show everything
         rawList = [
             ...(rawPartitions.junior || []),
             ...(rawPartitions.grade11 || []),
@@ -202,7 +259,7 @@ function updateCatalogByGrade(grade) {
         ];
     }
 
-    // Deduplicate array by subject name
+    // Deduplicate array by subject name (case-insensitive)
     const uniqueMap = new Map();
     rawList.forEach(s => {
         if (s && s.name) {
@@ -224,7 +281,7 @@ function setupSubjectCombobox() {
 
     const openMenu = () => {
         menu.style.display = 'block';
-        renderSubjectList(catalogSubjects); 
+        renderSubjectList(catalogSubjects);
     };
 
     const closeMenu = () => {
@@ -286,7 +343,7 @@ function renderSubjectList(list) {
 
 function filterSubjectList(query) {
     const lastTerm = query.split(',').pop().trim().toLowerCase();
-    
+
     if (!lastTerm) {
         renderSubjectList(catalogSubjects);
         return;
@@ -389,7 +446,7 @@ async function handleFormSubmit(e) {
         workDays: selectedDays,
         startTime: startTime,
         endTime: endTime,
-        availability: availability 
+        availability: availability
     };
 
     try {
@@ -413,7 +470,7 @@ async function handleFormSubmit(e) {
 
         if (res.ok) {
             showTopToast(`Teacher ${teacherData.firstName} ${teacherData.lastName} registered successfully!`, 'success');
-            
+
             // Clear form inputs
             document.getElementById('teacher-form').reset();
             selectedSubjectsArray = [];
@@ -422,7 +479,7 @@ async function handleFormSubmit(e) {
 
             fetchCatalogSubjects();
             fetchExistingTeachers();
-            
+
             if (result.credentials) {
                 showCredentialsModal(result.credentials);
                 renderCreatedCredentials(result.credentials);
@@ -496,7 +553,7 @@ function renderCreatedCredentials(credentials) {
         credCard.style.marginTop = '1.5rem';
         credCard.style.border = '1px solid #00d2ff';
         credCard.style.background = 'rgba(0, 210, 255, 0.05)';
-        
+
         const formCard = document.querySelector('.card.glass');
         if (formCard && formCard.parentNode) {
             formCard.parentNode.insertBefore(credCard, formCard.nextSibling);
@@ -547,7 +604,7 @@ async function triggerAutoSchedule() {
 
 function renderMasterTable(schedule) {
     const container = document.getElementById('generation-results');
-    
+
     if (!schedule || schedule.length === 0) {
         container.innerHTML = `<p style="color: #ff5f5f;">No data available to display.</p>`;
         return;

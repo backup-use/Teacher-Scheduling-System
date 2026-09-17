@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- 1. LOGOUT TOAST TOKENS & UTILITIES ---
     const urlParams = new URLSearchParams(window.location.search);
-    
+
     if (urlParams.get('logout') === 'success') {
         const toast = document.getElementById('logout-toast');
         if (toast) {
@@ -48,18 +48,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (response.ok) {
+                    // Server returns: { token, user: { id, username, role, name, teacher_id } }
+                    const user = data.user || {};
+
                     localStorage.setItem('token', data.token);
-                    localStorage.setItem('userRole', data.role);
-                    localStorage.setItem('userName', data.name);
-                    
-                    if (data.teacherId) {
-                        localStorage.setItem('teacherId', data.teacherId);
+                    localStorage.setItem('userRole', user.role || '');
+                    localStorage.setItem('userName', user.name || '');
+                    localStorage.setItem('userId', user.id || '');
+
+                    if (user.teacher_id) {
+                        localStorage.setItem('teacherId', user.teacher_id);
+                    } else {
+                        localStorage.removeItem('teacherId');
                     }
 
-                    if (data.role === 'admin') {
+                    // Route user based on role
+                    if (user.role === 'admin') {
                         window.location.href = '/admin/pages/Addteacher.html';
-                    } else if (data.role === 'teacher') {
-                        window.location.href = '/teacher/pages/index.html'; 
+                    } else if (user.role === 'teacher') {
+                        window.location.href = '/teacher/pages/index.html';
+                    } else {
+                        console.error('Login succeeded but role is unrecognized:', user.role);
+                        if (errorMsg) {
+                            errorMsg.textContent = 'Login succeeded but your account role is unrecognized.';
+                            errorMsg.classList.remove('hidden');
+                        } else {
+                            alert('Login succeeded but your account role is unrecognized.');
+                        }
                     }
                 } else {
                     if (errorMsg) {
@@ -81,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const forgotBtn = document.getElementById('forgot-pw-btn');
     const closeBtn = document.getElementById('close-modal-btn');
     const sendBtn = document.getElementById('send-reset-btn');
-    
+
     const resetEmailInput = document.getElementById('reset-email-input');
     const missingEmailSection = document.getElementById('missingEmailSection');
     const resetTempEmail = document.getElementById('resetTempEmail');

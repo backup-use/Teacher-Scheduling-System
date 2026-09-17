@@ -69,6 +69,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
+  // ── NEW HELPER: normalize day to Title Case ──
+  // Handles "MONDAY", "monday", "Monday", "  monday  " → all become "Monday"
+  function normalizeDay(raw) {
+    if (!raw) return "";
+    const s = String(raw).trim();
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  }
+
   // Tokenized Fuzzy Name Matching
   function matchTeacherName(nameA, nameB) {
     if (!nameA || !nameB) return false;
@@ -348,9 +356,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (response.ok) {
         const data = await response.json();
-        const slots = Array.isArray(data)
-          ? data
-          : data.slots || data.schedule || [];
+
+        // Handle the server's response shape:
+        //   { schedule: { slots: [...] }, teacher: {...} }
+        //   OR { slots: [...] }
+        //   OR [ {...}, {...} ]
+        let slots = [];
+
+        if (Array.isArray(data)) {
+          slots = data;
+        } else if (Array.isArray(data.slots)) {
+          slots = data.slots;
+        } else if (data.schedule && Array.isArray(data.schedule.slots)) {
+          slots = data.schedule.slots;
+        } else if (data.schedule && data.schedule.slots && typeof data.schedule.slots === "object") {
+          slots = Object.values(data.schedule.slots);
+        }
 
         if (Array.isArray(slots) && slots.length > 0) {
           loadedFromApi = true;
@@ -359,8 +380,14 @@ document.addEventListener("DOMContentLoaded", () => {
               slot.instructor || slot.teacher || slot.teacherName || userName;
 
             if (matchTeacherName(teacherInSlot, userName)) {
-              const day = slot.day;
-              const rawTime = slot.timeSlot || slot.time || "";
+              // ── FIXED: normalize day to Title Case so it matches targetDays ──
+              const day = normalizeDay(slot.day);
+
+              const rawTime =
+                slot.timeSlot ||
+                slot.time ||
+                (slot.startTime && slot.endTime ? `${slot.startTime} - ${slot.endTime}` : "");
+
               const timeSlot = normalizeTimeSlot(rawTime);
 
               if (!myClassesMap[day]) myClassesMap[day] = {};
@@ -392,9 +419,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const rawDays = teacherData.days ? teacherData.days : teacherData;
 
             Object.entries(rawDays).forEach(([day, times]) => {
-              if (!myClassesMap[day]) myClassesMap[day] = {};
+              const normDay = normalizeDay(day);
+              if (!myClassesMap[normDay]) myClassesMap[normDay] = {};
               Object.entries(times).forEach(([tSlot, details]) => {
-                myClassesMap[day][normalizeTimeSlot(tSlot)] = details;
+                myClassesMap[normDay][normalizeTimeSlot(tSlot)] = details;
               });
             });
           }
@@ -433,14 +461,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const timetable = secObj.timetable || {};
 
             Object.entries(timetable).forEach(([day, times]) => {
+              const normDay = normalizeDay(day);
               Object.entries(times).forEach(([time, slotData]) => {
                 if (
                   slotData &&
                   slotData.teacher &&
                   matchTeacherName(slotData.teacher, userName)
                 ) {
-                  if (!myClassesMap[day]) myClassesMap[day] = {};
-                  myClassesMap[day][normalizeTimeSlot(time)] = {
+                  if (!myClassesMap[normDay]) myClassesMap[normDay] = {};
+                  myClassesMap[normDay][normalizeTimeSlot(time)] = {
                     subject: slotData.subject,
                     section: sectionName,
                     room: slotData.room || "10",
@@ -478,8 +507,18 @@ document.addEventListener("DOMContentLoaded", () => {
         targetDays.forEach((day) => {
           const td = document.createElement("td");
           const normalizedCurrentSlot = normalizeTimeSlot(timeSlot);
-          const slotData = myClassesMap[day]
-            ? myClassesMap[day][normalizedCurrentSlot]
+
+          // Case-insensitive lookup so "MONDAY"/"Monday" both match
+          let resolvedDayKey = day;
+          if (!myClassesMap[day]) {
+            const found = Object.keys(myClassesMap).find(
+              (k) => k.toLowerCase() === day.toLowerCase()
+            );
+            if (found) resolvedDayKey = found;
+          }
+
+          const slotData = myClassesMap[resolvedDayKey]
+            ? myClassesMap[resolvedDayKey][normalizedCurrentSlot]
             : null;
 
           if (slotData) {

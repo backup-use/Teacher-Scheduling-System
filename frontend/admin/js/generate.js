@@ -34,7 +34,7 @@ function normalizeGradeLevelName(str) {
     if (!str) return "General";
     const cleanStr = str.toString().trim();
     const match = cleanStr.match(/\d+/);
-    
+
     if (match) {
         const num = parseInt(match[0], 10);
         if (num >= 7 && num <= 10) return `Junior High School - Grade ${num}`;
@@ -48,7 +48,7 @@ function normalizeGradeLevelName(str) {
 function sanitizeSubjectName(str) {
     if (!str) return "";
     let clean = str.toLowerCase().replace(/[^a-z0-9]/g, '');
-    
+
     if (clean.includes('values') || clean.includes('esp') || clean.includes('edukasyon')) {
         return 'valueseducation';
     }
@@ -66,7 +66,7 @@ function sanitizeSubjectName(str) {
 
 // High-contrast light palette for subject background colors
 const subjectColorPalette = [
-    '#e0f2fe', '#dcfce7', '#fef3c7', '#f3e8ff', '#ffe4e6', 
+    '#e0f2fe', '#dcfce7', '#fef3c7', '#f3e8ff', '#ffe4e6',
     '#ccfbf1', '#ffedd5', '#fae8ff', '#e0e7ff', '#fce7f3'
 ];
 
@@ -88,9 +88,9 @@ function sanitizeTeacherKey(name) {
 
 // Helper: Secure token extraction across localStorage and sessionStorage
 function getAuthToken() {
-    return localStorage.getItem('token') || 
-           localStorage.getItem('jwt') || 
-           localStorage.getItem('authToken') || 
+    return localStorage.getItem('token') ||
+           localStorage.getItem('jwt') ||
+           localStorage.getItem('authToken') ||
            localStorage.getItem('accessToken') ||
            sessionStorage.getItem('token') ||
            sessionStorage.getItem('jwt') ||
@@ -104,12 +104,12 @@ function getAuthToken() {
 
 async function processSystemTimetable() {
     console.log("Executing Makiling Integrated School Master Schedule Generation...");
-   
-    let container = document.getElementById("timetable-matrix-output-body") || 
-                    document.querySelector('.dashboard-card-panel') || 
+
+    let container = document.getElementById("timetable-matrix-output-body") ||
+                    document.querySelector('.dashboard-card-panel') ||
                     document.querySelector('.main-content') ||
                     document.body;
-   
+
     container.innerHTML = `
         <div id="engine-processing-status" style="text-align: center; color: #1e293b; font-weight: bold; padding: 40px; font-size: 1.1rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; margin-top: 20px;">
             Generating MIS Master Schedules (AM/PM Shifts, Recess & Lunch Blocks)...
@@ -128,9 +128,9 @@ async function processSystemTimetable() {
     }
 
     try {
-        const headers = { 
-            'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`, 
-            'Content-Type': 'application/json' 
+        const headers = {
+            'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+            'Content-Type': 'application/json'
         };
         const baseOrigin = window.location.origin;
 
@@ -176,8 +176,8 @@ async function processSystemTimetable() {
 
         const daySlots = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
         const timeSlots = [
-            "06:00-07:00", "07:00-08:00", "08:00-09:00", "09:00-10:00", 
-            "10:00-11:00", "11:00-12:00", "12:00-01:00", "01:00-02:00", 
+            "06:00-07:00", "07:00-08:00", "08:00-09:00", "09:00-10:00",
+            "10:00-11:00", "11:00-12:00", "12:00-01:00", "01:00-02:00",
             "02:00-03:00", "03:00-04:00", "04:00-05:00", "05:00-06:00"
         ];
 
@@ -200,17 +200,17 @@ async function processSystemTimetable() {
         });
 
         // SCHEDULING MATRIX LOGIC
-        const teacherConflictMatrix = {}; 
-        const teacherDailyHoursTracker = {}; 
-        const roomConflictMatrix = {};    
-        const subjectPerDayTracker = {};  
-        const masterSectionSchedules = {}; 
+        const teacherConflictMatrix = {};
+        const teacherDailyHoursTracker = {};
+        const roomConflictMatrix = {};
+        const subjectPerDayTracker = {};
+        const masterSectionSchedules = {};
 
         savedSections.forEach(sec => {
             masterSectionSchedules[sec.name] = {
                 details: sec,
                 gradeLevel: normalizeGradeLevelName(sec.grade_level || sec.target_grade || sec.gradeLevel || "Grade 7"),
-                timetable: {} 
+                timetable: {}
             };
             daySlots.forEach(d => {
                 masterSectionSchedules[sec.name].timetable[d] = {};
@@ -222,7 +222,7 @@ async function processSystemTimetable() {
             const sectionGradeNum = extractGradeNumber(sectionGrade);
 
             let sectionSubjects = safeParseArray(section.subjects || section.subject_list);
-            
+
             if (sectionSubjects.length === 0) {
                 sectionSubjects = normalizedSubjects
                     .filter(s => extractGradeNumber(s.gradeLevel) === sectionGradeNum)
@@ -249,15 +249,15 @@ async function processSystemTimetable() {
                             const conductsSubject = t.subjects.some(s => {
                                 const sanitizedTeacherSubj = sanitizeSubjectName(s);
                                 const sanitizedSecSubj = sanitizeSubjectName(cleanSubjectName);
-                                return sanitizedTeacherSubj === sanitizedSecSubj || 
-                                       sanitizedTeacherSubj.includes(sanitizedSecSubj) || 
+                                return sanitizedTeacherSubj === sanitizedSecSubj ||
+                                       sanitizedTeacherSubj.includes(sanitizedSecSubj) ||
                                        sanitizedSecSubj.includes(sanitizedTeacherSubj);
                             });
 
                             const matchesGrade = !t.targetGradeNum || t.targetGradeNum === sectionGradeNum;
                             const worksThisDay = t.workDays.some(d => d.toLowerCase().trim() === day.toLowerCase().trim());
                             const teacherTimeKey = `${t.fullName}-${day}-${currentTime}`;
-                            
+
                             const dailyHoursKey = `${t.fullName}-${day}`;
                             const currentDailyHours = teacherDailyHoursTracker[dailyHoursKey] || 0;
 
@@ -283,7 +283,7 @@ async function processSystemTimetable() {
                             room: availableRoom
                         };
 
-                        break; 
+                        break;
                     }
                 }
             }
@@ -295,12 +295,12 @@ async function processSystemTimetable() {
         savedSections.forEach(sec => {
             const normG = normalizeGradeLevelName(sec.grade_level || sec.target_grade || sec.gradeLevel);
             const gNum = extractGradeNumber(normG);
-            
+
             if (!gradeAuditMap[normG]) {
                 const assignedTeachersCount = normalizedTeachers.filter(t => !t.targetGradeNum || t.targetGradeNum === gNum).length;
-                gradeAuditMap[normG] = { 
-                    missingSubjects: [], 
-                    teacherCount: assignedTeachersCount 
+                gradeAuditMap[normG] = {
+                    missingSubjects: [],
+                    teacherCount: assignedTeachersCount
                 };
             }
         });
@@ -350,6 +350,32 @@ async function processSystemTimetable() {
         localStorage.setItem("cached_generated_schedule", JSON.stringify(scheduleCachePayload));
 
         renderMasterSectionScheduleDashboard(container, masterSectionSchedules, systemAuditSummary, daySlots, timeSlots, normalizedTeachers);
+
+        // ── Persist the freshly-generated master schedule to DB ──
+        // (Only runs after a fresh generation, NOT on every page render.)
+        try {
+            if (token && token !== "null" && token !== "undefined") {
+                const saveRes = await fetch(`${baseOrigin}/api/admin/schedules/save-master`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": token.startsWith("Bearer ") ? token : `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ masterSectionSchedules })
+                });
+                const saveData = await saveRes.json().catch(() => ({}));
+                if (saveRes.ok) {
+                    console.log(`✅ Master schedule saved to DB:`, saveData);
+                    if (Array.isArray(saveData.unmatchedTeachers) && saveData.unmatchedTeachers.length > 0) {
+                        console.warn(`⚠️  Teachers in master not matched to DB records:`, saveData.unmatchedTeachers);
+                    }
+                } else {
+                    console.warn("⚠️  Failed to save master schedule to DB:", saveData);
+                }
+            }
+        } catch (err) {
+            console.error("Error saving master schedule to DB:", err);
+        }
 
     } catch (err) {
         console.error("Critical matrix application failure:", err);
@@ -416,6 +442,9 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
 
     localStorage.setItem("cached_teacher_schedules", JSON.stringify(teacherSchedulesMap));
     localStorage.setItem("global_master_schedule", JSON.stringify(masterSectionSchedules));
+
+    // NOTE: DB save moved to processSystemTimetable() so it only runs on
+    // fresh generation. Rendering cached data should NOT trigger a DB write.
 
     if (!document.getElementById("printable-schedule-css")) {
         const styleEl = document.createElement("style");
@@ -514,7 +543,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
                             </span>
                             <a href="Addteacher.html" style="background: #ef4444; color: #ffffff; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
                                 + Assign Teacher
-                            </a>    
+                            </a>
                         </div>
                         <div style="font-size: 0.82rem; color: #7f1d1d; margin-bottom: 6px;">
                             ${item.teacherCount === 0 ? "⚠️ Cannot generate timetable: No instructors assigned to teach this Grade Level." : "⚠️ The following required subjects could not be scheduled due to teacher shortage:"}
@@ -637,7 +666,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         const gradeHeaderBox = document.createElement("div");
         gradeHeaderBox.className = "no-print";
         gradeHeaderBox.style.cssText = "margin-top: 30px; margin-bottom: 15px;";
-        
+
         gradeHeaderBox.innerHTML = `
             <h2 style="color: #0369a1; font-size: 1.35rem; font-weight: 800; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">
                 ${gradeName} <span style="color: #0284c7; font-size: 0.95rem; font-weight: 600;">(${sectionsList.length} Scheduled Sections)</span>
@@ -648,7 +677,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
         sectionsList.forEach((secObj, secIdx) => {
             const secName = secObj.details.name;
             const uniqueCardId = `schedule-card-${gradeName.replace(/[^a-zA-Z0-9]/g, '')}-${secIdx}`;
-            
+
             const generatedTimestamp = new Date().toLocaleString('en-US', {
                 dateStyle: 'medium',
                 timeStyle: 'short'
@@ -748,7 +777,7 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
 
 // Global Event Listeners & Trigger Binding
 document.addEventListener("DOMContentLoaded", () => {
-    const initBtn = document.getElementById("btn-generate-schedule") || 
+    const initBtn = document.getElementById("btn-generate-schedule") ||
                     document.getElementById("generate-btn") ||
                     document.querySelector(".btn-primary") ||
                     document.querySelector("button");
@@ -764,17 +793,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cachedData) {
         try {
             const parsed = JSON.parse(cachedData);
-            let container = document.getElementById("timetable-matrix-output-body") || 
-                            document.querySelector('.dashboard-card-panel') || 
+            let container = document.getElementById("timetable-matrix-output-body") ||
+                            document.querySelector('.dashboard-card-panel') ||
                             document.querySelector('.main-content') ||
                             document.body;
-                            
+
             renderMasterSectionScheduleDashboard(
-                container, 
-                parsed.masterSectionSchedules, 
-                parsed.auditSummary, 
-                parsed.daySlots, 
-                parsed.timeSlots, 
+                container,
+                parsed.masterSectionSchedules,
+                parsed.auditSummary,
+                parsed.daySlots,
+                parsed.timeSlots,
                 parsed.normalizedTeachers
             );
         } catch (e) {
