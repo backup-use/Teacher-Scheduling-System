@@ -463,9 +463,9 @@ async function generateJHSMaster(payload) {
 // ── Main Server Router ──
 
 const server = http.createServer(async (req, res) => {
-  const parsedUrl = url.parse(req.url, true);
+  const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
   const pathname = parsedUrl.pathname;
-  const query = parsedUrl.query;
+  const query = Object.fromEntries(parsedUrl.searchParams);
 
   if (req.method === "OPTIONS") {
     res.writeHead(204, {

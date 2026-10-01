@@ -1,97 +1,297 @@
+/* ═══════════════════════════════════════════════════════
+   ROOT & BASE
+   ═══════════════════════════════════════════════════════ */
 :root {
     --glass-bg: rgba(23, 23, 33, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.08);
     --accent-glow: rgba(124, 77, 255, 0.3);
     --input-bg: rgba(0, 0, 0, 0.25);
     --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --cyan: #00bcd4;
+    
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 72px;
+    --sidebar-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
 }
 
 body {
-    background: radial-gradient(circle at top left, #1b2735, #090a0f);
+    background: radial-gradient(circle at top left, #1b2735 0%, #090a0f 100%);
     color: #ffffff;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     margin: 0;
     display: flex;
-    height: 100vh;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* Glass Sidebar */
+/* ═══════════════════════════════════════════════════════
+   1. SIDEBAR (may collapse toggle)
+   ═══════════════════════════════════════════════════════ */
 .sidebar {
-    width: 280px;
+    width: var(--sidebar-width);
     background: var(--glass-bg);
-    backdrop-filter: blur(15px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-right: 1px solid var(--glass-border);
-    padding: 2rem 1.2rem; /* Bahagyang binawasan ang padding para lumuwang ang button tracks inside */
-    box-sizing: border-box; /* Pinipigilan nitong lumampas ang laman sa labas ng 280px perimeter */
+    padding: 1.75rem 1.1rem;
     display: flex;
     flex-direction: column;
     height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
     z-index: 1000;
+    box-sizing: border-box;
+    transition: width var(--sidebar-transition), padding var(--sidebar-transition);
+    overflow-x: hidden;
 }
 
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+    padding: 1.75rem 0.5rem;
+}
+
+.sidebar.collapsed .nav-label {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.sidebar.collapsed .logo {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    pointer-events: none;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0;
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 14px 0;
+}
+
+.sidebar.collapsed .nav-icon {
+    margin-right: 0;
+}
+
+/* ═══ Sidebar Top Row ═══ */
+.sidebar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0 0.25rem;
+    gap: 12px;
+    height: 32px;
+}
+
+.sidebar .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    line-height: 1;
+    max-width: 200px;
+    padding-top: 3px;
+    transition: opacity var(--sidebar-transition), 
+                max-width var(--sidebar-transition),
+                padding var(--sidebar-transition);
+}
+
+.sidebar .logo svg {
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.4));
+}
+
+.sidebar-toggle {
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 188, 212, 0.1);
+    border: 1px solid rgba(0, 188, 212, 0.25);
+    border-radius: 6px;
+    color: var(--cyan);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+    font-family: inherit;
+    line-height: 1;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(0, 188, 212, 0.2);
+    transform: scale(1.08);
+}
+
+.sidebar-toggle:active {
+    transform: scale(0.95);
+}
+
+.sidebar.collapsed .sidebar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0 0.25rem;
+    gap: 12px;
+    height: 32px;
+}
+
+/* ═══ Nav Links ═══ */
 .nav-links-wrapper {
     display: flex;
     flex-direction: column;
     width: 100%;
+    gap: 4px;
 }
 
 .nav-item {
     display: flex;
     align-items: center;
-    width: 100%; /* Kakainin ang eksaktong natitirang espasyo sa loob ng sidebar padding framework */
-    padding: 14px 18px;
-    margin: 6px 0;
-    border-radius: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
     color: #a0a0c0;
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: background 0.2s ease, color 0.2s ease, 
+                padding var(--sidebar-transition);
     background: transparent;
     border: 1px solid transparent;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    font-weight: 500;
     cursor: pointer;
     text-align: left;
-    box-sizing: border-box; /* Tinitiyak na hindi luluwang ang lapad kahit may hover padding transformations */
+    font-family: inherit;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.nav-icon {
+    font-size: 1.05rem;
+    margin-right: 12px;
+    flex-shrink: 0;
+    transition: margin var(--sidebar-transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    text-align: center;
+}
+
+.nav-label {
+    transition: opacity var(--sidebar-transition), 
+                max-width var(--sidebar-transition);
+    opacity: 1;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .nav-item.active {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: var(--glass-border);
-    color: white;
-    box-shadow: 0 0 15px var(--accent-glow);
+    background: rgba(0, 188, 212, 0.08);
+    border-color: rgba(0, 188, 212, 0.2);
+    color: var(--cyan);
+    box-shadow: 0 0 12px rgba(0, 188, 212, 0.15);
 }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     color: #ffffff;
-    padding-left: 22px; /* Banayad na slide movement nang hindi sumisira sa alignment boundaries */
+    padding-left: 20px;
+}
+
+.sidebar.collapsed .nav-item:hover {
+    padding-left: 0;
 }
 
 .logout-btn {
-    margin-top: auto; /* Awtomatikong ipapako sa pinaka-ilalim ng display panel bounding matrix */
+    margin-top: auto !important;
     color: #ff5f5f !important;
-    background: transparent;
-    border: 1px solid transparent;
-    border-top: 1px solid var(--glass-border) !important; /* Divider lines */
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-top: 1px solid var(--glass-border) !important;
     padding-top: 18px !important;
-    border-radius: 0 0 12px 12px;
+    border-radius: 0 0 12px 12px !important;
 }
 
 .logout-btn:hover {
     background: rgba(255, 95, 95, 0.1) !important;
     color: #ff8585 !important;
-    padding-left: 22px !important;
+    padding-left: 20px !important;
 }
 
-/* Main Content Glass Cards */
+.sidebar.collapsed .logout-btn:hover {
+    padding-left: 0 !important;
+}
+
+/* ═══ Expand Button ═══ */
+.sidebar-expand-btn {
+    position: fixed;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00bcd4, #0891b2);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    color: #000;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0, 188, 212, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.sidebar-expand-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar-expand-btn:hover {
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 24px rgba(0, 188, 212, 0.6);
+}
+
+/* ═══ Main Content ═══ */
 .main-content {
     flex: 1;
+    margin-left: var(--sidebar-width);
     padding: 3rem;
-    padding-top: 0px;
+    padding-top: 2rem;
     overflow-y: auto;
-   
+    transition: margin-left var(--sidebar-transition);
+    will-change: margin-left;
 }
-/* Tanggalin ang default margin ng mismong pamagat sa loob ng main-content */
 
+.main-content.sidebar-collapsed {
+    margin-left: var(--sidebar-collapsed-width) !important;
+}
+
+/* ═══ Card ═══ */
 .card {
     background: var(--glass-bg);
     backdrop-filter: blur(20px);
@@ -101,7 +301,7 @@ body {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* Professional Inputs */
+/* ═══ Form Grid ═══ */
 .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -135,10 +335,10 @@ input:focus {
     outline: none;
 }
 
-/* Gradient Action Button */
+/* ═══ Buttons ═══ */
 .btn-generate {
     width: 100%;
-    background: var(--primary-gradient);
+    background: #00d2ff;
     border: none;
     padding: 18px;
     border-radius: 15px;
@@ -147,39 +347,123 @@ input:focus {
     font-size: 1rem;
     cursor: pointer;
     margin-top: 2rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-generate:hover {
+    background: #00f2fe;
     transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(79, 172, 254, 0.4);
+    box-shadow: 0 10px 25px rgba(0, 210, 255, 0.4);
 }
 
-/* Base Button Style */
-.btn-generate {
-    width: 100%;
-    background: #00d2ff; /* Your bright cyan color */
-    border: none;
-    padding: 18px;
-    border-radius: 15px;
-    color: #000;
-    font-weight: 700;
-    font-size: 1rem;
-    cursor: pointer;
-    margin-top: 2rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
-}
-
-/* Hover Effect - This triggers when the cursor moves over the button */
-.btn-generate:hover {
-    background: #00f2fe; /* Slightly brighter blue on hover */
-    transform: translateY(-3px); /* Lift the button up slightly */
-    box-shadow: 0 10px 25px rgba(0, 210, 255, 0.4); /* Glow effect */
-}
-
-/* Active Effect - This triggers when the button is clicked */
 .btn-generate:active {
-    transform: translateY(-1px); /* Push down slightly when clicked */
+    transform: translateY(-1px);
     box-shadow: 0 5px 10px rgba(0, 210, 255, 0.3);
 }
 
+/* ═══ Expand Button ═══ */
+.sidebar-expand-btn {
+    position: fixed;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00bcd4, #0891b2);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    color: #000;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0, 188, 212, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.sidebar-expand-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar-expand-btn:hover {
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 24px rgba(0, 188, 212, 0.6);
+}
+
+/* ═══ Mobile Responsive ═══ */
+@media (max-width: 700px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+        padding: 1rem;
+    }
+    
+    .sidebar.collapsed {
+        width: 100%;
+        padding: 1rem;
+    }
+    
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .logo {
+        opacity: 1;
+        max-width: none;
+        display: inline;
+        pointer-events: auto;
+        padding-top: 3px;
+    }
+    
+    .sidebar-toggle,
+    .sidebar-expand-btn {
+        display: none;
+    }
+    
+    .sidebar.collapsed .sidebar-top {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .sidebar.collapsed .nav-item {
+        justify-content: flex-start;
+        padding: 8px 12px;
+    }
+    
+    .sidebar.collapsed .nav-icon {
+        margin-right: 8px;
+    }
+    
+    .nav-links-wrapper {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .nav-item {
+        width: auto;
+        flex: 1 1 auto;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        margin: 0;
+    }
+    
+    .logout-btn {
+        margin-top: 8px !important;
+        border-top: none !important;
+        border-radius: 8px !important;
+        padding-top: 8px !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: 1.5rem 1rem;
+    }
+}

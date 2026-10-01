@@ -1,38 +1,304 @@
-/* ==========================================================================
-   Base Configuration Workspace Layouts
-   ========================================================================== */
+/* ═══════════════════════════════════════════════════════
+   ROOT & BASE
+   ═══════════════════════════════════════════════════════ */
 :root {
     --glass-bg: rgba(23, 23, 33, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.08);
     --accent-glow: rgba(124, 77, 255, 0.3);
     --input-bg: rgba(0, 0, 0, 0.25);
     --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --cyan: #00bcd4;
+    
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 72px;
+    --sidebar-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-/* Siguraduhing Dark Mode ang buong page background */
+
+* {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
     background-color: #0b0c10 !important;
     color: #c5c6c7;
     display: flex;
+    min-height: 100vh;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ═══════════════════════════════════════════════════════
+   1. SIDEBAR (may collapse toggle)
+   ═══════════════════════════════════════════════════════ */
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid var(--glass-border);
+    padding: 1.75rem 1.1rem;
+    display: flex;
+    flex-direction: column;
     height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    box-sizing: border-box;
+    transition: width var(--sidebar-transition), padding var(--sidebar-transition);
+    overflow-x: hidden;
+}
+
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+    padding: 1.75rem 0.5rem;
+}
+
+.sidebar.collapsed .nav-label {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.sidebar.collapsed .logo {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    pointer-events: none;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0;
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 14px 0;
+}
+
+.sidebar.collapsed .nav-icon {
+    margin-right: 0;
+}
+
+/* ═══ Sidebar Top Row ═══ */
+.sidebar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0 0.25rem;
+    gap: 12px;
+    height: 32px;
+}
+
+.sidebar .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    line-height: 1;
+    max-width: 200px;
+    padding-top: 3px;
+    transition: opacity var(--sidebar-transition), 
+                max-width var(--sidebar-transition),
+                padding var(--sidebar-transition);
+}
+
+.sidebar .logo svg {
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.4));
+}
+
+.sidebar-toggle {
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 188, 212, 0.1);
+    border: 1px solid rgba(0, 188, 212, 0.25);
+    border-radius: 6px;
+    color: var(--cyan);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+    font-family: inherit;
+    line-height: 1;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(0, 188, 212, 0.2);
+    transform: scale(1.08);
+}
+
+.sidebar-toggle:active {
+    transform: scale(0.95);
+}
+
+.sidebar.collapsed .sidebar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0 0.25rem;
+    gap: 12px;
+    height: 32px;
+}
+
+/* ═══ Nav Links ═══ */
+.nav-links-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 4px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    color: #a0a0c0;
+    text-decoration: none;
+    transition: background 0.2s ease, color 0.2s ease, 
+                padding var(--sidebar-transition);
+    background: transparent;
+    border: 1px solid transparent;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    box-sizing: border-box;
+    white-space: nowrap;
     overflow: hidden;
 }
 
-/* Siguraduhing Dark Gradient din ang main workspace panel */
-main, .main-content {
-    flex-grow: 1;
-    padding: 3rem;
-    background: linear-gradient(135deg, #0b0c10 0%, #12171f 100%) !important;
-    height: 100vh;
-    overflow-y: auto;
-    box-sizing: border-box;
+.nav-icon {
+    font-size: 1.05rem;
+    margin-right: 12px;
+    flex-shrink: 0;
+    transition: margin var(--sidebar-transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    text-align: center;
 }
 
-/* Gawing puti ang malalaking Headings/Labels na nawawala sa white background */
+.nav-label {
+    transition: opacity var(--sidebar-transition), 
+                max-width var(--sidebar-transition);
+    opacity: 1;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.nav-item.active {
+    background: rgba(0, 188, 212, 0.08);
+    border-color: rgba(0, 188, 212, 0.2);
+    color: var(--cyan);
+    box-shadow: 0 0 12px rgba(0, 188, 212, 0.15);
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    padding-left: 20px;
+}
+
+.sidebar.collapsed .nav-item:hover {
+    padding-left: 0;
+}
+
+.logout-btn {
+    margin-top: auto !important;
+    color: #ff5f5f !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-top: 1px solid var(--glass-border) !important;
+    padding-top: 18px !important;
+    border-radius: 0 0 12px 12px !important;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 95, 95, 0.1) !important;
+    color: #ff8585 !important;
+    padding-left: 20px !important;
+}
+
+.sidebar.collapsed .logout-btn:hover {
+    padding-left: 0 !important;
+}
+
+/* ═══ Expand Button ═══ */
+.sidebar-expand-btn {
+    position: fixed;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00bcd4, #0891b2);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    color: #000;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0, 188, 212, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.sidebar-expand-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar-expand-btn:hover {
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 24px rgba(0, 188, 212, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════
+   2. MAIN CONTENT
+   ═══════════════════════════════════════════════════════ */
+main, .main-content {
+    flex-grow: 1;
+    margin-left: var(--sidebar-width);
+    padding: 3rem;
+    background: linear-gradient(135deg, #0b0c10 0%, #12171f 100%) !important;
+    min-height: 100vh;
+    overflow-y: auto;
+    transition: margin-left var(--sidebar-transition);
+    will-change: margin-left;
+}
+
+.main-content.sidebar-collapsed {
+    margin-left: var(--sidebar-collapsed-width) !important;
+}
+
 h1, h2, h3, label {
     color: #ffffff !important;
 }
 
+/* ═══ Subject Workspace Grid ═══ */
 .subject-workspace-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -73,6 +339,7 @@ h1, h2, h3, label {
     font-size: 0.95rem;
     text-transform: uppercase;
     transition: all 0.2s ease;
+    font-family: inherit;
 }
 
 .btn-add-subject:hover {
@@ -80,11 +347,7 @@ h1, h2, h3, label {
     box-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
 }
 
-/* ==========================================================================
-   Active Academic Sections Display Components
-   ========================================================================== */
-
-/* Outer Scroll Panel Wrapper Box Container Frame */
+/* ═══ Subject Display Box ═══ */
 .subject-display-box {
     background-color: #0d161d;
     border: 1px solid #1a2d3a;
@@ -99,11 +362,11 @@ h1, h2, h3, label {
     box-sizing: border-box;
 }
 
-/* Dynamic Individual Section Row Item Card */
+/* ═══ Section Card Items ═══ */
 .section-card-item {
     display: flex !important;
     align-items: center !important;
-    justify-content: space-between !important; /* Pushes text to the left, trash to the right */
+    justify-content: space-between !important;
     width: 100% !important;
     padding: 14px 20px !important;
     background: #162530;
@@ -112,23 +375,21 @@ h1, h2, h3, label {
     box-sizing: border-box;
 }
 
-/* Left Side Content Text Alignment Cluster Grouping */
 .section-details-meta {
     display: flex;
     align-items: center;
     gap: 15px;
-    flex-grow: 1;                 /* Allows container to occupy full available text area widths */
-    padding-right: 15px;          /* Safe spacing margin gap buffer preceding the trash layout element */
+    flex-grow: 1;
+    padding-right: 15px;
 }
 
-/* Configured Text Display Layer Label Rules */
 .section-title-text {
     color: #ffffff;
     font-size: 0.95rem;
     font-weight: bold;
-    white-space: nowrap;          /* Forces full text to parse cleanly on a single text line path */
-    overflow: visible;            /* Disables the layout boundaries from masking long text */
-    text-overflow: clip;          /* Permanently deletes trailing ellipsis dots block clipping */
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .section-count-badge {
@@ -140,18 +401,14 @@ h1, h2, h3, label {
     white-space: nowrap;
 }
 
-/* ==========================================================================
-   Clean Transparent Action Row Buttons
-   ========================================================================== */
-
 .btn-delete-row-action {
-    background: transparent !important;   /* Strips native browser color panels */
-    border: none !important;               /* Drops default focus border boxes */
+    background: transparent !important;
+    border: none !important;
     outline: none !important;
     box-shadow: none !important;
-    padding: 4px !important;                 
+    padding: 4px !important;
     margin: 0 !important;
-    color: #ef4444;                        
+    color: #ef4444;
     cursor: pointer;
     font-size: 1.1rem;
     display: inline-flex;
@@ -161,79 +418,10 @@ h1, h2, h3, label {
 }
 
 .btn-delete-row-action:hover {
-    transform: scale(1.2);                 /* Micro-interaction hover scaling zoom pop */
+    transform: scale(1.2);
 }
 
-/* Glass Sidebar */
-.sidebar {
-    width: 280px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(15px);
-    border-right: 1px solid var(--glass-border);
-    padding: 2rem 1.2rem; /* Bahagyang binawasan ang padding para lumuwang ang button tracks inside */
-    box-sizing: border-box; /* Pinipigilan nitong lumampas ang laman sa labas ng 280px perimeter */
-    
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    
-    
-    z-index: 1000;
-}
-
-.nav-links-wrapper {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-}
-
-.nav-item {
-    display: flex;
-    align-items: center;
-    width: 100%; /* Kakainin ang eksaktong natitirang espasyo sa loob ng sidebar padding framework */
-    padding: 14px 18px;
-    margin: 6px 0;
-    border-radius: 12px;
-    color: #a0a0c0;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    background: transparent;
-    border: 1px solid transparent;
-    font-size: 0.95rem;
-    cursor: pointer;
-    text-align: left;
-    box-sizing: border-box; /* Tinitiyak na hindi luluwang ang lapad kahit may hover padding transformations */
-}
-
-.nav-item.active {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: var(--glass-border);
-    color: white;
-    box-shadow: 0 0 15px var(--accent-glow);
-}
-
-.nav-item:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-    padding-left: 22px; /* Banayad na slide movement nang hindi sumisira sa alignment boundaries */
-}
-
-.logout-btn {
-    margin-top: auto; /* Awtomatikong ipapako sa pinaka-ilalim ng display panel bounding matrix */
-    color: #ff5f5f !important;
-    background: transparent;
-    border: 1px solid transparent;
-    border-top: 1px solid var(--glass-border) !important; /* Divider lines */
-    padding-top: 18px !important;
-    border-radius: 0 0 12px 12px;
-}
-
-.logout-btn:hover {
-    background: rgba(255, 95, 95, 0.1) !important;
-    color: #ff8585 !important;
-    padding-left: 22px !important;
-}
-
+/* ═══ Toast ═══ */
 .toast-popup {
     display: none;
     position: fixed;
@@ -255,4 +443,85 @@ h1, h2, h3, label {
     display: block;
     opacity: 1;
     transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════════════════
+   3. MOBILE RESPONSIVE
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 700px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+        padding: 1rem;
+    }
+    
+    .sidebar.collapsed {
+        width: 100%;
+        padding: 1rem;
+    }
+    
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .logo {
+        opacity: 1;
+        max-width: none;
+        display: inline;
+        pointer-events: auto;
+        padding-top: 3px;
+    }
+    
+    .sidebar-toggle,
+    .sidebar-expand-btn {
+        display: none;
+    }
+    
+    .sidebar.collapsed .sidebar-top {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .sidebar.collapsed .nav-item {
+        justify-content: flex-start;
+        padding: 8px 12px;
+    }
+    
+    .sidebar.collapsed .nav-icon {
+        margin-right: 8px;
+    }
+    
+    .nav-links-wrapper {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .nav-item {
+        width: auto;
+        flex: 1 1 auto;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        margin: 0;
+    }
+    
+    .logout-btn {
+        margin-top: 8px !important;
+        border-top: none !important;
+        border-radius: 8px !important;
+        padding-top: 8px !important;
+    }
+    
+    main, .main-content {
+        margin-left: 0 !important;
+        padding: 1.5rem 1rem;
+    }
+    
+    .workspace-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .subject-workspace-grid {
+        grid-template-columns: 1fr !important;
+    }
 }

@@ -4,55 +4,126 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lectura | View Rooms</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
     <link rel="stylesheet" href="../css/rooms-view.css">
-
 </head>
 <body>
-        <aside class="sidebar">
-            <div class="logo" style="margin-bottom: 3rem; font-size: 1.4rem; font-weight: bold;">
-            Lectura
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar" id="app-sidebar">
+        <div class="sidebar-top">
+            <div class="logo" style="margin-bottom: 2.5rem; display: flex; align-items: center; gap: 12px; font-size: 1.4rem; font-weight: 700; color: #ffffff;">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.4));">
+                    <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
+                    <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
+                    <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
+                </svg>
+                <span>Lectura<span style="color: #00D2FF;">.</span></span>
+            </div>
+            <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
+                <span class="toggle-icon">◀</span>
+            </button>
         </div>
+
         <nav class="nav-links-wrapper">
-            <button onclick="window.location.href='index.html'" class="nav-item " id="btn-teachers">📊 Dashboard Home</button>
-            <button onclick="window.location.href='my-schedule.html'" class="nav-item " id="btn-subjects">📅 My Timetable</button>
-            <button onclick="window.location.href='rooms-view.html'" class="nav-item active" id="btn-database">🏫 View Rooms</button>
-            <button onclick="window.location.href='cohorts-view.html'" class="nav-item" id="btn-rooms">👥 My Cohorts</button>
-        </nav>        
-            <a href="../../shared/logout.html" class="nav-item logout-btn">
-                🚪 Logout
-            </a>
-        
-        </aside>
+            <button onclick="window.location.href='index.html'" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Dashboard Home</span>
+            </button>
+            <button onclick="window.location.href='my-schedule.html'" class="nav-item">
+                <span class="nav-icon">📅</span>
+                <span class="nav-label">My Timetable</span>
+            </button>
+            <button onclick="window.location.href='rooms-view.html'" class="nav-item active">
+                <span class="nav-icon">🏫</span>
+                <span class="nav-label">View Rooms</span>
+            </button>
+            <button onclick="window.location.href='student-view.html'" class="nav-item">
+                <span class="nav-icon">👥</span>
+                <span class="nav-label">Student List</span>
+            </button>
+        </nav>
 
-        <main class="main-content">
-            
-            <div class="rooms-header">
-                <h1>🏫 School Rooms Directory</h1>
-                <p style="color: #aaa; font-size: 0.9rem;">View available campus spaces, capacities, and designations.</p>
-            </div>
+        <a href="../../shared/logout.html" class="nav-item logout-btn">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-label">Logout</span>
+        </a>
+    </aside>
 
-            <div class="search-bar-container">
-                <input type="text" id="room-search" class="search-input" placeholder="🔍 Search room name or type...">
-            </div>
+    <!-- Expand button (lalabas kapag collapsed) -->
+    <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
+        <span>▶</span>
+    </button>
 
-            <div class="card-glass" style="padding: 0;">
-                <table class="rooms-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 40%;">Room Name / Number</th>
-                            <th style="width: 30%;">Room Type / Building</th>
-                            <th style="width: 30%;">Seating Capacity</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rooms-rows">
-                        <tr>
-                            <td colspan="3" style="text-align: center; color: #aaa; padding: 2rem;">Loading facilities directory...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="main-content" id="main-content">
+        <div class="rooms-header">
+            <h1>🏫 School Rooms Directory</h1>
+            <p style="color: #aaa; font-size: 0.9rem;">View available campus spaces, capacities, and designations.</p>
+        </div>
 
-        </main>
+        <div class="search-bar-container">
+            <input type="text" id="room-search" class="search-input" placeholder="🔍 Search room name or type...">
+        </div>
+
+        <div class="card-glass" style="padding: 0;">
+            <table class="rooms-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Room Name / Number</th>
+                        <th style="width: 30%;">Room Type / Building</th>
+                        <th style="width: 30%;">Seating Capacity</th>
+                    </tr>
+                </thead>
+                <tbody id="rooms-rows">
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #aaa; padding: 2rem;">Loading facilities directory...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- ═══ Sidebar Toggle Script ═══ -->
+    <script>
+        (function initSidebarToggle() {
+            const sidebar = document.getElementById('app-sidebar');
+            const mainContent = document.getElementById('main-content');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            const expandBtn = document.getElementById('sidebar-expand-btn');
+
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('sidebar-collapsed');
+                expandBtn.classList.add('visible');
+                const icon = toggleBtn.querySelector('.toggle-icon');
+                if (icon) icon.textContent = '▶';
+            }
+
+            let isAnimating = false;
+
+            function toggleSidebar() {
+                if (isAnimating) return;
+                isAnimating = true;
+
+                requestAnimationFrame(() => {
+                    const nowCollapsed = sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('sidebar-collapsed', nowCollapsed);
+                    expandBtn.classList.toggle('visible', nowCollapsed);
+                    localStorage.setItem('sidebar-collapsed', nowCollapsed);
+
+                    const icon = toggleBtn.querySelector('.toggle-icon');
+                    if (icon) icon.textContent = nowCollapsed ? '▶' : '◀';
+
+                    setTimeout(() => { isAnimating = false; }, 350);
+                });
+            }
+
+            toggleBtn.addEventListener('click', toggleSidebar);
+            expandBtn.addEventListener('click', toggleSidebar);
+        })();
+    </script>
+
     <script src="../js/rooms-view.js"></script>
 </body>
 </html>

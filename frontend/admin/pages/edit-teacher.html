@@ -3,84 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Teacher</title>
-    <!-- Linked to your external CSS file -->
+    <title>Edit Teacher | Lectura</title>
     <link rel="stylesheet" href="../css/edit-teacher.css">
 </head>
 <body>
-
-<div class="form-card">
-    <h2>✏️ Edit Teacher Profile</h2>
-
-    <form id="editTeacherForm">
-        <div class="form-row">
-            <div class="form-group">
-                <label for="firstName">First Name</label>
-                <input type="text" id="firstName" placeholder="First Name" required>
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar" id="app-sidebar">
+        <div class="sidebar-top">
+            <div class="logo">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
+                    <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
+                    <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
+                </svg>
+                <span>Lectura<span style="color: #00D2FF;">.</span></span>
             </div>
-            <div class="form-group">
-                <label for="lastName">Last Name</label>
-                <input type="text" id="lastName" placeholder="Last Name" required>
-            </div>
+            <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
+                <span class="toggle-icon">◀</span>
+            </button>
         </div>
 
-        <div class="form-group style-group">
-            <label for="email">Email Address</label>
-            <input type="email" id="email" placeholder="email@domain.com" required>
-        </div>
+        <nav class="nav-links-wrapper">
+            <button onclick="window.location.href='Addteacher.html'" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Teachers</span>
+            </button>
+            <button onclick="window.location.href='teacher-list.html'" class="nav-item active">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">Teacher List</span>
+            </button>
+            <button onclick="window.location.href='subject.html'" class="nav-item">
+                <span class="nav-icon">📚</span>
+                <span class="nav-label">Manage Subjects</span>
+            </button>
+            <button onclick="window.location.href='rooms.html'" class="nav-item">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">Rooms</span>
+            </button>
+            <button onclick="window.location.href='sections.html'" class="nav-item">
+                <span class="nav-icon">📅</span>
+                <span class="nav-label">Sections</span>
+            </button>
+            <button onclick="window.location.href='generate.html'" class="nav-item">
+                <span class="nav-icon">⚡</span>
+                <span class="nav-label">Generate Timetable</span>
+            </button>
+        </nav>
 
-        <div class="form-group style-group">
-            <label for="subjects">Subjects (Comma Separated)</label>
-            <input type="text" id="subjects" placeholder="e.g. Mathematics, Physics, English">
-            <span class="info-note">Separate multiple subjects with commas</span>
-        </div>
+        <a href="../../shared/logout.html" class="nav-item logout-btn">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-label">Logout</span>
+        </a>
+    </aside>
 
-        <div class="form-group style-group-large">
-            <label for="targetGrade">Target Grade / Level</label>
-            <input type="text" id="targetGrade" placeholder="e.g. Grade 10, High School">
-        </div>
+    <!-- Expand button -->
+    <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
+        <span>▶</span>
+    </button>
 
-        <!-- AVAILABILITY SECTION -->
-        <div class="availability-section">
-            <span class="section-title">Availability & Work Schedule</span>
-            
-            <label>Work Days</label>
-            <div class="days-container">
-                <label class="day-label"><input type="checkbox" value="Monday" class="day-checkbox"> Mon</label>
-                <label class="day-label"><input type="checkbox" value="Tuesday" class="day-checkbox"> Tue</label>
-                <label class="day-label"><input type="checkbox" value="Wednesday" class="day-checkbox"> Wed</label>
-                <label class="day-label"><input type="checkbox" value="Thursday" class="day-checkbox"> Thu</label>
-                <label class="day-label"><input type="checkbox" value="Friday" class="day-checkbox"> Fri</label>
-                <label class="day-label"><input type="checkbox" value="Saturday" class="day-checkbox"> Sat</label>
-                <label class="day-label"><input type="checkbox" value="Sunday" class="day-checkbox"> Sun</label>
-            </div>
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="main-content" id="main-content">
+        <div class="form-card">
+            <h2>✏️ Edit Teacher Profile</h2>
 
-            <div class="form-row align-center">
-                <div class="form-group">
-                    <label for="startTime">Start Time</label>
-                    <select id="startTime" class="time-select">
-                        <!-- Populated by JS -->
-                    </select>
+            <form id="editTeacherForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" placeholder="First Name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Last Name</label>
+                        <input type="text" id="lastName" placeholder="Last Name" required>
+                    </div>
                 </div>
 
-                <span class="time-separator">to</span>
-
-                <div class="form-group">
-                    <label for="endTime">End Time</label>
-                    <select id="endTime" class="time-select">
-                        <!-- Populated by JS -->
-                    </select>
+                <div class="form-group style-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="email@domain.com" required>
                 </div>
-            </div>
-        </div>
 
-        <div class="btn-container">
-            <a href="teacher-list.html" class="btn-cancel">Cancel</a>
-            <button type="submit" class="btn-save">Save Changes</button>
-        </div>
-    </form>
-</div>
+                <div class="form-group style-group">
+                    <label for="subjects">Subjects (Comma Separated)</label>
+                    <input type="text" id="subjects" placeholder="e.g. Mathematics, Physics, English">
+                    <span class="info-note">Separate multiple subjects with commas</span>
+                </div>
 
-<script src="../js/edit-teacher.js"></script>
+                <div class="form-group style-group-large">
+                    <label for="targetGrade">Target Grade / Level</label>
+                    <input type="text" id="targetGrade" placeholder="e.g. Grade 10, High School">
+                </div>
+
+                <!-- AVAILABILITY SECTION -->
+                <div class="availability-section">
+                    <span class="section-title">Availability & Work Schedule</span>
+                    
+                    <label>Work Days</label>
+                    <div class="days-container">
+                        <label class="day-label"><input type="checkbox" value="Monday" class="day-checkbox"> Mon</label>
+                        <label class="day-label"><input type="checkbox" value="Tuesday" class="day-checkbox"> Tue</label>
+                        <label class="day-label"><input type="checkbox" value="Wednesday" class="day-checkbox"> Wed</label>
+                        <label class="day-label"><input type="checkbox" value="Thursday" class="day-checkbox"> Thu</label>
+                        <label class="day-label"><input type="checkbox" value="Friday" class="day-checkbox"> Fri</label>
+                        <label class="day-label"><input type="checkbox" value="Saturday" class="day-checkbox"> Sat</label>
+                        <label class="day-label"><input type="checkbox" value="Sunday" class="day-checkbox"> Sun</label>
+                    </div>
+
+                    <div class="form-row align-center">
+                        <div class="form-group">
+                            <label for="startTime">Start Time</label>
+                            <select id="startTime" class="time-select">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+
+                        <span class="time-separator">to</span>
+
+                        <div class="form-group">
+                            <label for="endTime">End Time</label>
+                            <select id="endTime" class="time-select">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-container">
+                    <a href="teacher-list.html" class="btn-cancel">Cancel</a>
+                    <button type="submit" class="btn-save">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- ═══ Sidebar Toggle Script ═══ -->
+    <script>
+        (function initSidebarToggle() {
+            const sidebar = document.getElementById('app-sidebar');
+            const mainContent = document.getElementById('main-content');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            const expandBtn = document.getElementById('sidebar-expand-btn');
+
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('sidebar-collapsed');
+                expandBtn.classList.add('visible');
+                const icon = toggleBtn.querySelector('.toggle-icon');
+                if (icon) icon.textContent = '▶';
+            }
+
+            let isAnimating = false;
+
+            function toggleSidebar() {
+                if (isAnimating) return;
+                isAnimating = true;
+
+                requestAnimationFrame(() => {
+                    const nowCollapsed = sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('sidebar-collapsed', nowCollapsed);
+                    expandBtn.classList.toggle('visible', nowCollapsed);
+                    localStorage.setItem('sidebar-collapsed', nowCollapsed);
+
+                    const icon = toggleBtn.querySelector('.toggle-icon');
+                    if (icon) icon.textContent = nowCollapsed ? '▶' : '◀';
+
+                    setTimeout(() => { isAnimating = false; }, 350);
+                });
+            }
+
+            toggleBtn.addEventListener('click', toggleSidebar);
+            expandBtn.addEventListener('click', toggleSidebar);
+        })();
+    </script>
+
+    <script src="../js/edit-teacher.js"></script>
 </body>
 </html>

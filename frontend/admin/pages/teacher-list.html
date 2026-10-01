@@ -7,63 +7,157 @@
     <link rel="stylesheet" href="../css/teacher-list.css">
 </head>
 <body>
-    
-        <aside class="sidebar">
-            <div class="logo" style="margin-bottom: 2.5rem; display: flex; align-items: center; gap: 12px; font-size: 1.4rem; font-weight: 700; color: #ffffff;">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.4));">
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar" id="app-sidebar">
+        <div class="sidebar-top">
+            <div class="logo">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
                     <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
                     <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
                 </svg>
                 <span>Lectura<span style="color: #00D2FF;">.</span></span>
             </div>
-            
-            <nav class="nav-links-wrapper">
-                <button onclick="window.location.href='Addteacher.html'" class="nav-item " id="btn-teachers">👤 Teachers</button>
-                <button onclick="window.location.href='teacher-list.html'" class="nav-item active" id="btn-database">📋 Teacher List</button>
-                <button onclick="window.location.href='subject.html'" class="nav-item" id="btn-subjects">📚 Manage Subjects</button>
-                <button onclick="window.location.href='rooms.html'" class="nav-item" id="btn-rooms">🏠 Rooms</button>
-                <button onclick="window.location.href='sections.html'" class="nav-item" id="btn-schedule">📅 Sections</button>
-                <button onclick="window.location.href='generate.html'" class="nav-item" id="btn-generate">⚡ Generate Timetable</button>
-            </nav>
+            <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
+                <span class="toggle-icon">◀</span>
+            </button>
+        </div>
 
-            <a href="../../shared/logout.html" class="nav-item logout-btn">
-                🚪 Logout
-            </a>
-        </aside>
+        <nav class="nav-links-wrapper">
+            <button onclick="window.location.href='Addteacher.html'" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Teachers</span>
+            </button>
+            <button onclick="window.location.href='teacher-list.html'" class="nav-item active">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">Teacher List</span>
+            </button>
+            <button onclick="window.location.href='subject.html'" class="nav-item">
+                <span class="nav-icon">📚</span>
+                <span class="nav-label">Manage Subjects</span>
+            </button>
+            <button onclick="window.location.href='rooms.html'" class="nav-item">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">Rooms</span>
+            </button>
+            <button onclick="window.location.href='sections.html'" class="nav-item">
+                <span class="nav-icon">📅</span>
+                <span class="nav-label">Sections</span>
+            </button>
+            <button onclick="window.location.href='generate.html'" class="nav-item">
+                <span class="nav-icon">⚡</span>
+                <span class="nav-label">Generate Timetable</span>
+            </button>
+        </nav>
 
-        <main class="main-content">
-            <header class="page-header">
-                <div>
-                    <h1>Teacher Database</h1>
-                    <p>Monitor faculty workload and availability settings.</p>
+        <a href="../../shared/logout.html" class="nav-item logout-btn">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-label">Logout</span>
+        </a>
+    </aside>
 
-                    <button onclick="loadTeacherData()" class="btn-refresh-glass" style="margin-bottom: 1rem;">
-                        <span>🔄</span> Refresh Database
-                    </button>
+    <!-- Expand button -->
+    <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
+        <span>▶</span>
+    </button>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <div>
+                <h1>Teacher Database</h1>
+                <p>Monitor faculty workload and availability settings. Hide retired or inactive teachers instead of deleting them.</p>
+            </div>
+        </header>
+
+        <!-- ═══ CONTROLS ROW ═══ -->
+        <div class="controls-row">
+            <div class="tab-group">
+                <button id="tab-active" class="tab-btn active" onclick="switchTab('active')">
+                    👥 Active Teachers <span id="active-count-badge" class="tab-badge">0</span>
+                </button>
+                <button id="tab-hidden" class="tab-btn" onclick="switchTab('hidden')">
+                    🙈 Hidden Teachers <span id="hidden-count-badge" class="tab-badge hidden-badge">0</span>
+                </button>
+            </div>
+
+            <div class="search-refresh-group">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input 
+                        type="text" 
+                        id="teacher-search" 
+                        placeholder="Search by name, email, or subject..." 
+                        oninput="filterTeachers()"
+                    />
                 </div>
-            </header>
+                <button onclick="loadTeacherData()" class="btn-refresh-glass" title="Refresh Database">
+                    <span>🔄</span> Refresh
+                </button>
+            </div>
+        </div>
 
-            <section class="card glass">
-                <div class="table-wrapper">
-                    <table class="teacher-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 20%;">Teacher Name</th>
-                                <th style="width: 20%;">Email Address</th>
-                                <th style="width: 15%;">Subjects</th>
-                                <th style="width: 15%;">Target Grade</th>
-                                <th style="width: 15%;">Work Days</th>
-                                <th style="width: 10%;">Shift</th>
-                                <th style="width: 5%; text-align: center;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teacher-table-body">
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </main>
+        <section class="card glass">
+            <div class="table-wrapper">
+                <table class="teacher-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Teacher Name</th>
+                            <th style="width: 20%;">Email Address</th>
+                            <th style="width: 15%;">Subjects</th>
+                            <th style="width: 15%;">Target Grade</th>
+                            <th style="width: 15%;">Work Days</th>
+                            <th style="width: 10%;">Shift</th>
+                            <th style="width: 5%; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teacher-table-body">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- ═══ Sidebar Toggle Script ═══ -->
+    <script>
+        (function initSidebarToggle() {
+            const sidebar = document.getElementById('app-sidebar');
+            const mainContent = document.getElementById('main-content');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            const expandBtn = document.getElementById('sidebar-expand-btn');
+
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('sidebar-collapsed');
+                expandBtn.classList.add('visible');
+                const icon = toggleBtn.querySelector('.toggle-icon');
+                if (icon) icon.textContent = '▶';
+            }
+
+            let isAnimating = false;
+
+            function toggleSidebar() {
+                if (isAnimating) return;
+                isAnimating = true;
+
+                requestAnimationFrame(() => {
+                    const nowCollapsed = sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('sidebar-collapsed', nowCollapsed);
+                    expandBtn.classList.toggle('visible', nowCollapsed);
+                    localStorage.setItem('sidebar-collapsed', nowCollapsed);
+
+                    const icon = toggleBtn.querySelector('.toggle-icon');
+                    if (icon) icon.textContent = nowCollapsed ? '▶' : '◀';
+
+                    setTimeout(() => { isAnimating = false; }, 350);
+                });
+            }
+
+            toggleBtn.addEventListener('click', toggleSidebar);
+            expandBtn.addEventListener('click', toggleSidebar);
+        })();
+    </script>
 
     <script src="../js/teacher-list.js"></script>
 </body>

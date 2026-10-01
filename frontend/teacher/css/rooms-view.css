@@ -1,96 +1,288 @@
-
-        :root {
+/* ═══════════════════════════════════════════════════════
+   ROOT & BASE
+   ═══════════════════════════════════════════════════════ */
+:root {
     --glass-bg: rgba(23, 23, 33, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.08);
     --accent-glow: rgba(124, 77, 255, 0.3);
     --input-bg: rgba(0, 0, 0, 0.25);
     --primary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --cyan: #00bcd4;
+    
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 72px;
+    --sidebar-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
 }
 
 body {
     background: radial-gradient(circle at top left, #1b2735, #090a0f);
-    color: #ffffff;
-    font-family: 'Segoe UI', sans-serif;
+    color: var(--text-primary);
     margin: 0;
     display: flex;
-    height: 100vh;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* Glass Sidebar */
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR (may collapse toggle)
+   ═══════════════════════════════════════════════════════ */
+:root {
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 70px;
+    --sidebar-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .sidebar {
-    width: 280px;
+    width: var(--sidebar-width);
     background: var(--glass-bg);
-    backdrop-filter: blur(15px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-right: 1px solid var(--glass-border);
-    padding: 2rem 1.2rem; /* Bahagyang binawasan ang padding para lumuwang ang button tracks inside */
-    box-sizing: border-box; /* Pinipigilan nitong lumampas ang laman sa labas ng 280px perimeter */
-    
+    padding: 1.75rem 1.1rem;
     display: flex;
     flex-direction: column;
     height: 100vh;
-    
-    
+    position: fixed;
+    left: 0;
+    top: 0;
     z-index: 1000;
+    box-sizing: border-box;
+    transition: width var(--sidebar-transition), padding var(--sidebar-transition);
+    overflow-x: hidden;
+}
+
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+    padding: 1.75rem 0.5rem;
+}
+
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .logo {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 14px 0;
+}
+
+.sidebar.collapsed .nav-icon {
+    margin-right: 0;
+}
+
+/* ═══ Sidebar Top Row — Perfect Alignment ═══ */
+.sidebar-top {
+    display: flex;
+    align-items: center;              /* ⬅️ ITO — hindi baseline */
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0 0.25rem;
+    gap: 12px;
+    height: 32px;                     /* ⬅️ Fixed height para pantay */
+}
+
+.sidebar .logo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    line-height: 1;
+    transition: opacity var(--sidebar-transition), 
+                max-width var(--sidebar-transition);
+    max-width: 200px;
+    padding-top: 30px;
+}
+
+.sidebar-toggle {
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 188, 212, 0.1);
+    border: 1px solid rgba(0, 188, 212, 0.25);
+    border-radius: 6px;
+    color: #00bcd4;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+    font-family: inherit;
+    line-height: 1;
+    margin-top: 0;                    /* ⬅️ WALANG margin */
+}
+
+.sidebar-toggle:hover {
+    background: rgba(0, 188, 212, 0.2);
+    transform: scale(1.08);
+}
+
+.sidebar-toggle:active {
+    transform: scale(0.95);
+}
+
+.sidebar.collapsed .sidebar-top {
+    display: flex;
+    align-items: center;              /* ⬅️ ITO — hindi baseline */
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0 0.25rem;
+    gap: 12px;
+    height: 32px;                     /* ⬅️ Fixed height para pantay */
 }
 
 .nav-links-wrapper {
     display: flex;
     flex-direction: column;
     width: 100%;
+    gap: 4px;
 }
 
 .nav-item {
     display: flex;
     align-items: center;
-    width: 100%; /* Kakainin ang eksaktong natitirang espasyo sa loob ng sidebar padding framework */
-    padding: 14px 18px;
-    margin: 6px 0;
-    border-radius: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
     color: #a0a0c0;
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     background: transparent;
     border: 1px solid transparent;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    font-weight: 500;
     cursor: pointer;
     text-align: left;
-     /* Tinitiyak na hindi luluwang ang lapad kahit may hover padding transformations */
+    font-family: inherit;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.nav-icon {
+    font-size: 1.05rem;
+    margin-right: 12px;
+    flex-shrink: 0;
+    transition: margin var(--sidebar-transition);
+}
+
+.nav-label {
+    transition: opacity var(--sidebar-transition), 
+                max-width var(--sidebar-transition);
+    opacity: 1;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .nav-item.active {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: var(--glass-border);
-    color: white;
-    box-shadow: 0 0 15px var(--accent-glow);
+    background: rgba(0, 188, 212, 0.08);
+    border-color: rgba(0, 188, 212, 0.2);
+    color: var(--cyan);
+    box-shadow: 0 0 12px rgba(0, 188, 212, 0.15);
 }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     color: #ffffff;
-    padding-left: 22px; /* Banayad na slide movement nang hindi sumisira sa alignment boundaries */
+    padding-left: 20px;
+}
+
+.sidebar.collapsed .nav-item:hover {
+    padding-left: 0;
 }
 
 .logout-btn {
-    margin-top: auto; /* Awtomatikong ipapako sa pinaka-ilalim ng display panel bounding matrix */
+    margin-top: auto !important;
     color: #ff5f5f !important;
-    background: transparent;
-    border: 1px solid transparent;
-    border-top: 1px solid var(--glass-border) !important; /* Divider lines */
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-top: 1px solid var(--glass-border) !important;
     padding-top: 18px !important;
-    border-radius: 0 0 12px 12px;
+    border-radius: 0 0 12px 12px !important;
 }
 
 .logout-btn:hover {
     background: rgba(255, 95, 95, 0.1) !important;
     color: #ff8585 !important;
-    padding-left: 22px !important;
+    padding-left: 20px !important;
 }
 
-/* Main Content Glass Cards */
+.sidebar.collapsed .logout-btn:hover {
+    padding-left: 0 !important;
+}
+
+/* ─── Main Content adjustment ─── */
+.main-content {
+    transition: margin-left var(--sidebar-transition);
+    margin-left: var(--sidebar-width);
+}
+
+.main-content.sidebar-collapsed {
+    margin-left: var(--sidebar-collapsed-width) !important;
+}
+
+/* ─── Expand Button ─── */
+.sidebar-expand-btn {
+    position: fixed;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00bcd4, #0891b2);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    color: #000;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0, 188, 212, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.sidebar-expand-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar-expand-btn:hover {
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 24px rgba(0, 188, 212, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════
+   2. MAIN CONTENT
+   ═══════════════════════════════════════════════════════ */
 .main-content {
     flex: 1;
-    padding: 3rem;
+    margin-left: var(--sidebar-width);
+    padding: 2.5rem 3rem;
     overflow-y: auto;
+    min-height: 100vh;
+    max-width: 1400px;
+    transition: margin-left var(--sidebar-transition);
+    will-change: margin-left;
+}
+
+.main-content.sidebar-collapsed {
+    margin-left: var(--sidebar-collapsed-width) !important;
 }
 
 .card {
@@ -102,52 +294,178 @@ body {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-        .rooms-header {
-            margin-bottom: 2rem;
-        }
-        .search-bar-container {
-            margin-bottom: 1.5rem;
-            display: flex;
-            gap: 1rem;
-        }
-        .search-input {
-            flex: 1;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(15, 23, 42, 0.6);
-            color: #fff;
-            font-size: 0.95rem;
-        }
-        .search-input:focus {
-            outline: none;
-            border-color: #00bcd4;
-        }
-        .rooms-table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-            color: #fff;
-        }
-        .rooms-table th, .rooms-table td {
-            padding: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .rooms-table th {
-            background: rgba(15, 23, 42, 0.8);
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
-            color: #00bcd4;
-        }
-        .rooms-table tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-        .capacity-badge {
-            background: rgba(0, 188, 212, 0.15);
-            color: #00bcd4;
-            padding: 0.25rem 0.6rem;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 0.85rem;
-        }
+/* ═══════════════════════════════════════════════════════
+   3. ROOMS PAGE SPECIFIC
+   ═══════════════════════════════════════════════════════ */
+.rooms-header {
+    margin-bottom: 2rem;
+}
+
+.rooms-header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.3px;
+}
+
+.search-bar-container {
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.search-input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6);
+    color: #fff;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #00bcd4;
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.15);
+}
+
+.search-input::placeholder {
+    color: #94a3b8;
+}
+
+.card-glass {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    overflow: hidden;
+}
+
+.rooms-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    color: #fff;
+}
+
+.rooms-table th,
+.rooms-table td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rooms-table th {
+    background: rgba(15, 23, 42, 0.8);
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    color: #00bcd4;
+    font-weight: 700;
+}
+
+.rooms-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.capacity-badge {
+    background: rgba(0, 188, 212, 0.15);
+    color: #00bcd4;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+
+/* ═══════════════════════════════════════════════════════
+   4. MOBILE RESPONSIVE
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+    .main-content {
+        padding: 2rem;
+    }
+}
+
+@media (max-width: 700px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+        padding: 1rem;
+    }
+    
+    .sidebar.collapsed {
+        width: 100%;
+        padding: 1rem;
+    }
+    
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .logo {
+        opacity: 1;
+        width: auto;
+        display: inline;
+        pointer-events: auto;
+    }
+    
+    .sidebar-toggle,
+    .sidebar-expand-btn {
+        display: none;
+    }
+    
+    .sidebar.collapsed .sidebar-top {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .sidebar.collapsed .nav-item {
+        justify-content: flex-start;
+        padding: 8px 12px;
+    }
+    
+    .sidebar.collapsed .nav-icon {
+        margin-right: 8px;
+    }
+    
+    .nav-links-wrapper {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 0;
+    }
+    
+    .nav-item {
+        width: auto;
+        flex: 1 1 auto;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        margin: 0;
+    }
+    
+    .logout-btn {
+        margin-top: 8px !important;
+        border-top: none !important;
+        border-radius: 8px !important;
+        padding-top: 8px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: 1.5rem 1rem;
+    }
+    
+    .rooms-header h1 {
+        font-size: 1.3rem;
+    }
+    
+    .rooms-table th,
+    .rooms-table td {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.85rem;
+    }
+}

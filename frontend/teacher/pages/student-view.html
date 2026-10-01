@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura | Teacher Dashboard</title>
+    <title>Lectura | Student List</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
-    <link rel="stylesheet" href="../css/index.css">
+    <link rel="stylesheet" href="../css/student-view.css">
 </head>
 <body>
     <!-- ═══ SIDEBAR ═══ -->
@@ -25,7 +25,7 @@
         </div>
 
         <nav class="nav-links-wrapper">
-            <button onclick="window.location.href='index.html'" class="nav-item active">
+            <button onclick="window.location.href='index.html'" class="nav-item">
                 <span class="nav-icon">📊</span>
                 <span class="nav-label">Dashboard Home</span>
             </button>
@@ -37,7 +37,7 @@
                 <span class="nav-icon">🏫</span>
                 <span class="nav-label">View Rooms</span>
             </button>
-            <button onclick="window.location.href='student-view.html'" class="nav-item">
+            <button onclick="window.location.href='student-view.html'" class="nav-item active">
                 <span class="nav-icon">👥</span>
                 <span class="nav-label">Student List</span>
             </button>
@@ -56,62 +56,52 @@
 
     <!-- ═══ MAIN CONTENT ═══ -->
     <main class="main-content" id="main-content">
-        <!-- ═══ COMPACT WELCOME HEADER ═══ -->
-        <div class="welcome-header">
-            <div class="welcome-text-block">
-                <h1 id="welcome-text">Welcome back, Instructor!</h1>
-                <p class="welcome-subtitle">Here's your teaching overview for today.</p>
+        <div class="page-header">
+            <div class="page-header-text">
+                <h1>👥 Student List</h1>
+                <p>Manage students in each section you teach.</p>
             </div>
-            <div class="welcome-badge" id="welcome-badge">
-                <span class="badge-dot"></span>
-                <span id="badge-text">Loading...</span>
-            </div>
+            <button class="btn-primary" id="btn-add-student">
+                ➕ Add Student
+            </button>
         </div>
 
-        <!-- ═══ TODAY'S SCHEDULE CARD ═══ -->
-        <div class="today-schedule-card" id="today-schedule-card">
-            <div class="today-header">
-                <div class="today-header-left">
-                    <span class="today-icon">📅</span>
-                    <h2 id="today-title">Today's Schedule</h2>
-                </div>
-                <span class="today-date" id="today-date">Loading...</span>
-            </div>
-            <div class="today-body" id="today-body">
-                <div class="today-loading">
-                    <div class="loading-spinner"></div>
-                    <p>Loading your schedule...</p>
-                </div>
+        <div id="sections-container" class="sections-grid">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Loading your sections...</p>
             </div>
         </div>
-
-        <!-- ═══ STATS GRID ═══ -->
-        <div class="dashboard-grid">
-            <div class="stat-card">
-                <div class="stat-icon">📚</div>
-                <div class="stat-label">Assigned Classes</div>
-                <div id="stat-slots" class="stat-number">--</div>
-                <div class="stat-subtext">Periods this week</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">🎯</div>
-                <div class="stat-label">Handled Competencies</div>
-                <div id="stat-subjects" class="stat-number">--</div>
-                <div class="stat-subtext">Registered subjects</div>
-            </div>
-        </div>
-
-        <!-- ═══ QUICK SUMMARY ═══ -->
-        <section class="card-glass">
-            <div class="card-header-row">
-                <h3>📋 Overview Summary</h3>
-                <span class="card-tag">Live</span>
-            </div>
-            <div id="quick-summary-box">
-                <p style="color: #94a3b8;">Loading your profile details...</p>
-            </div>
-        </section>
     </main>
+
+    <!-- ═══ Add Student Modal ═══ -->
+    <div class="modal-overlay" id="add-student-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>➕ Add New Student</h2>
+                <button class="modal-close" id="btn-close-add-modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <label for="add-student-name">Student Full Name *</label>
+                <input type="text" id="add-student-name" placeholder="e.g. Juan Dela Cruz" required>
+
+                <label for="add-student-section">Section *</label>
+                <select id="add-student-section" required>
+                    <option value="">-- Select Section --</option>
+                </select>
+
+                <label for="add-student-id">Student ID (Optional)</label>
+                <input type="text" id="add-student-id" placeholder="e.g. 2024-001">
+
+                <label for="add-student-notes">Notes (Optional)</label>
+                <textarea id="add-student-notes" placeholder="Additional details..." rows="3"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="btn-cancel-add">Cancel</button>
+                <button class="btn-primary" id="btn-confirm-add">Add Student</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ═══ Sidebar Toggle Script ═══ -->
     <script>
@@ -126,16 +116,27 @@
                 sidebar.classList.add('collapsed');
                 mainContent.classList.add('sidebar-collapsed');
                 expandBtn.classList.add('visible');
+                const icon = toggleBtn.querySelector('.toggle-icon');
+                if (icon) icon.textContent = '▶';
             }
 
-            function toggleSidebar() {
-                const nowCollapsed = sidebar.classList.toggle('collapsed');
-                mainContent.classList.toggle('sidebar-collapsed', nowCollapsed);
-                expandBtn.classList.toggle('visible', nowCollapsed);
-                localStorage.setItem('sidebar-collapsed', nowCollapsed);
+            let isAnimating = false;
 
-                const icon = toggleBtn.querySelector('.toggle-icon');
-                if (icon) icon.textContent = nowCollapsed ? '▶' : '◀';
+            function toggleSidebar() {
+                if (isAnimating) return;
+                isAnimating = true;
+
+                requestAnimationFrame(() => {
+                    const nowCollapsed = sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('sidebar-collapsed', nowCollapsed);
+                    expandBtn.classList.toggle('visible', nowCollapsed);
+                    localStorage.setItem('sidebar-collapsed', nowCollapsed);
+
+                    const icon = toggleBtn.querySelector('.toggle-icon');
+                    if (icon) icon.textContent = nowCollapsed ? '▶' : '◀';
+
+                    setTimeout(() => { isAnimating = false; }, 350);
+                });
             }
 
             toggleBtn.addEventListener('click', toggleSidebar);
@@ -143,6 +144,6 @@
         })();
     </script>
 
-    <script src="../js/dashboard-home.js"></script>
+    <script src="../js/student-view.js"></script>
 </body>
 </html>
