@@ -115,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const adminStyles = document.createElement("style");
     adminStyles.id = "admin-tight-layout-rules";
     adminStyles.innerHTML = `
-      #instructor-title { color: #ffffff !important; }
+      #instructor-title { color: #0c2f6b !important; }
       .subtitle, p { color: #94a3b8 !important; }
       .break-row { background: #f8fafc !important; }
       .vacant-cell-fill {

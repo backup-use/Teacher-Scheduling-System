@@ -2,6 +2,7 @@
    MAKILING INTEGRATED SCHOOL — OFFICIAL BRAND COLORS
    Primary: FOREST GREEN (from shield + laurel leaves)
    Accents: Gold, Sky Blue, Red (from logo details)
+   Theme: HYBRID — Dark sidebar + Light content area
    ═══════════════════════════════════════════════════════ */
 :root {
     /* ═══ GLASS EFFECT (Green-tinted) ═══ */
@@ -45,7 +46,7 @@ body {
         radial-gradient(circle at bottom left, rgba(2, 132, 199, 0.1) 0%, transparent 45%),
         #090a0f;
     color: #ffffff;
-    font-family: var(--font-body);
+    font-family: var(--font-body, 'Inter', sans-serif);
     margin: 0;
     display: flex;
     min-height: 100vh;
@@ -53,7 +54,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   1. SIDEBAR (may collapse toggle)
+   1. SIDEBAR (stays dark — for navigation contrast)
    ═══════════════════════════════════════════════════════ */
 .sidebar {
     width: var(--sidebar-width);
@@ -125,12 +126,9 @@ body {
     max-width: 200px;
     height: 100%;
     padding-top: 0;
-    transition: opacity var(--sidebar-transition), 
-                max-width var(--sidebar-transition),
-                padding var(--sidebar-transition);
+    /* ✅ FIX: Only max-width transition — no opacity to prevent blink */
+    transition: max-width var(--sidebar-transition);
 }
-
-
 
 .sidebar .logo img {
     flex-shrink: 0;
@@ -324,79 +322,131 @@ body {
     box-shadow: 0 6px 24px rgba(34, 197, 94, 0.6);
 }
 
-/* ═══ Main Content ═══ */
+/* ═══ Main Content Titles ═══ */
 .main-content h1,
 .content-header h1 {
-    font-family: var(--font-title);
+    font-family: var(--font-title, 'Cinzel', serif);
     font-weight: 700;
     letter-spacing: 0.01em;
 }
 
-/* ═══ SECTION TITLES ═══ */
 .main-content h2,
 .main-content h3,
 .form-section-title {
-    font-family: var(--font-section);
+    font-family: var(--font-section, 'Cinzel', serif);
     font-weight: 600;
     letter-spacing: 0.01em;
 }
 
+/* ═══════════════════════════════════════════════════════
+   2. MAIN CONTENT — LIGHT INSTITUTIONAL THEME
+   ═══════════════════════════════════════════════════════ */
 .main-content {
     flex: 1;
-    margin-left: 260px;           /* ⬅️ Hardcoded fallback */
-    padding: 3.5rem 3rem 3rem 3rem;
+    margin-left: 260px;
+    padding: 1rem 3rem 3rem 3rem;
     overflow-y: auto;
     overflow-x: hidden;
     transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
     min-width: 0;
     width: auto;
-}
-
-/* ✅ Kapag naka-collapse ang sidebar */
-.main-content.sidebar-collapsed {
-    margin-left: 72px !important;  /* ⬅️ Hardcoded fallback */
-}
-
-/* ═══ Card ═══ */
-.card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(34, 197, 94, 0.15);
-    border-radius: 24px;
-    padding: 2.5rem;
-    box-shadow: 
-        0 25px 50px -12px rgba(0, 0, 0, 0.5),
-        inset 0 1px 0 rgba(34, 197, 94, 0.1),
-        inset 0 0 60px rgba(34, 197, 94, 0.03);
+    /* ✅ LIGHT BACKGROUND */
+    background: linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 50%, #f1f8e9 100%);
+    color: #0f172a;
     position: relative;
 }
 
-.card::before {
+/* ✅ School logo watermark */
+.main-content::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 60vw;
+    height: 100vh;
+    background-image: url('/shared/img/makiling_logo.png');
+    background-repeat: no-repeat;
+    background-position: center right;
+    background-size: 50vh;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ✅ Ensure content is above the watermark */
+.main-content > * {
+    position: relative;
+    z-index: 1;
+}
+
+.main-content.sidebar-collapsed {
+    margin-left: 72px !important;
+}
+
+/* ═══ Page Titles — Dark Institutional ═══ */
+.main-content h1,
+.main-content .page-header h1,
+.main-content .content-header h1 {
+    background: linear-gradient(135deg, #0c2f6b 0%, #166534 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+    font-family: var(--font-title, 'Cinzel', serif);
+    font-weight: 700;
+}
+
+.main-content h2,
+.main-content h3,
+.form-section-title {
+    color: #0c2f6b;
+}
+
+.main-content header p,
+.main-content .subtitle {
+    color: #4a5568;
+    font-size: 0.9rem;
+}
+
+/* ═══════════════════════════════════════════════════════
+   3. CARDS — Light glass with green border
+   ═══════════════════════════════════════════════════════ */
+.card,
+.card.glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-radius: 24px;
+    padding: 2.5rem;
+    color: #0f172a;
+    box-shadow: 
+        0 10px 30px rgba(12, 47, 107, 0.08),
+        inset 0 1px 0 rgba(34, 197, 94, 0.08);
+    position: relative;
+}
+
+.card::before,
+.card.glass::before {
     content: '';
     position: absolute;
     top: 0;
     left: 24px;
     right: 24px;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--mis-green-light), var(--mis-gold), var(--mis-green-light), transparent);
-    opacity: 0.5;
+    background: linear-gradient(90deg, transparent, #22c55e, #ca8a04, #22c55e, transparent);
+    opacity: 0.6;
     border-radius: 2px;
 }
 
-.card.glass {
-    background: rgba(6, 30, 18, 0.75);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(34, 197, 94, 0.15);
-}
-
-/* ═══ Form Grid ═══ */
+/* ═══════════════════════════════════════════════════════
+   4. FORMS — Light inputs with green focus
+   ═══════════════════════════════════════════════════════ */
 .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    gap: 1rem;
 }
 
 .input-group {
@@ -407,62 +457,74 @@ label {
     display: block;
     margin-bottom: 10px;
     font-size: 0.9rem;
-    color: #a0a0c0;
+    color: #334155;
+    font-weight: 600;
 }
 
-input[type="text"], input[type="email"], input[type="time"] {
+input[type="text"], 
+input[type="email"], 
+input[type="password"],
+input[type="number"],
+input[type="time"],
+textarea {
     width: 100%;
-    background: rgba(6, 30, 18, 0.6);
-    border: 1px solid rgba(34, 197, 94, 0.12);
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
     border-radius: 12px;
     padding: 14px;
-    color: white;
+    color: #0f172a;
+    font-family: 'Inter', sans-serif;
     box-sizing: border-box;
-    transition: border 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    transition: all 0.2s ease;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #94a3b8;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-    border-color: #22c55e !important;
-    outline: none !important;
-    box-shadow: 
-        0 0 0 3px rgba(34, 197, 94, 0.2),
-        0 0 12px rgba(34, 197, 94, 0.15) !important;
-    background: rgba(6, 30, 18, 0.85) !important;
+    border-color: #22c55e;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+    background: #ffffff;
 }
 
-/* ═══ SELECT DROPDOWNS (MIS Green Theme) ═══ */
+/* ═══ Select Dropdowns — Light ═══ */
 select {
-    background: rgba(6, 30, 18, 0.85) !important;
-    border: 1px solid rgba(34, 197, 94, 0.2) !important;
-    color: #ffffff !important;
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
     border-radius: 12px !important;
     padding: 14px !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 0.9rem !important;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    width: 100%;
 }
 
 select:hover {
-    border-color: rgba(34, 197, 94, 0.4) !important;
+    border-color: #22c55e !important;
 }
 
 select:focus {
     border-color: #22c55e !important;
-    box-shadow: 
-        0 0 0 3px rgba(34, 197, 94, 0.2),
-        0 0 12px rgba(34, 197, 94, 0.15) !important;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15) !important;
+    outline: none;
 }
 
 select option {
-    background: #0a1e12;
-    color: #ffffff;
+    background: #ffffff;
+    color: #0f172a;
     padding: 10px;
 }
 
-/* ═══ Buttons ═══ */
+/* ═══════════════════════════════════════════════════════
+   5. BUTTONS — Green gradient (unchanged)
+   ═══════════════════════════════════════════════════════ */
 .btn-generate {
     width: 100%;
     background: linear-gradient(135deg, #14532d 0%, #166534 50%, #22c55e 100%);
@@ -479,6 +541,7 @@ select option {
     overflow: hidden;
     letter-spacing: 0.02em;
     box-shadow: 0 4px 14px rgba(22, 101, 52, 0.4);
+    font-family: 'Inter', sans-serif;
 }
 
 .btn-generate::before {
@@ -509,7 +572,9 @@ select option {
     box-shadow: 0 5px 10px rgba(34, 197, 94, 0.3);
 }
 
-/* ═══ Mobile Responsive ═══ */
+/* ═══════════════════════════════════════════════════════
+   6. MOBILE RESPONSIVE
+   ═══════════════════════════════════════════════════════ */
 @media (max-width: 700px) {
     .sidebar {
         width: 100%;
@@ -582,22 +647,15 @@ select option {
     .main-content.sidebar-collapsed {
         margin-left: 0 !important;
     }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
-/* ═══ PAGE TITLES (Brand Styled) ═══ */
-.main-content h1 {
-    background: linear-gradient(135deg, #ffffff 0%, #86efac 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.02em;
-}
-
-.main-content header p {
-    color: #94a3b8 !important;
-    font-size: 0.9rem;
-}
-
+/* ═══════════════════════════════════════════════════════
+   7. LOGO TEXT (2-line brand display)
+   ═══════════════════════════════════════════════════════ */
 .logo-text {
     display: flex;
     flex-direction: column;
@@ -605,7 +663,6 @@ select option {
     line-height: 1;
     gap: 2px;
     overflow: hidden;
-    transition: opacity var(--sidebar-transition), max-width var(--sidebar-transition);
 }
 
 .logo-line-1 {
@@ -619,7 +676,7 @@ select option {
 }
 
 .logo-line-2 {
-    font-family: Cinzel, serif;
+    font-family: 'Cinzel', serif;
     font-size: 0.58rem;
     font-weight: 700;
     color: var(--mis-gold);
@@ -627,4 +684,25 @@ select option {
     text-transform: uppercase;
     line-height: 1;
     white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   8. ANTI-BLINK — Fade entire page in as one unit
+   ═══════════════════════════════════════════════════════ */
+body {
+    opacity: 0;
+    animation: pageFadeIn 0.2s ease-out 0.03s forwards;
+}
+
+@keyframes pageFadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body {
+        opacity: 1;
+        animation: none;
+    }
 }

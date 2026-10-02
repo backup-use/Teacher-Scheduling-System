@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════
    MAKILING INTEGRATED SCHOOL — TIMETABLE GENERATION
    Green-first branding matching other admin pages
+   Theme: HYBRID — Dark sidebar + Light content area
    ═══════════════════════════════════════════════════════ */
 
 :root {
@@ -39,7 +40,7 @@
 
 body {
     color: #cbd5e1;
-    font-family: var(--font-body);
+    font-family: var(--font-body, 'Inter', sans-serif);
     margin: 0;
     display: flex;
     min-height: 100vh;
@@ -51,10 +52,25 @@ body {
         radial-gradient(circle at top right, rgba(202, 138, 4, 0.08) 0%, transparent 40%),
         radial-gradient(circle at bottom left, rgba(2, 132, 199, 0.1) 0%, transparent 45%),
         #090a0f;
+
+    /* ✅ ANTI-BLINK */
+    opacity: 0;
+    animation: pageFadeIn 0.2s ease-out 0.03s forwards;
+}
+
+@keyframes pageFadeIn {
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body {
+        opacity: 1;
+        animation: none;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════
-   1. SIDEBAR
+   1. SIDEBAR (STAYS DARK)
    ═══════════════════════════════════════════════════════ */
 .sidebar {
     width: var(--sidebar-width);
@@ -126,13 +142,9 @@ body {
     max-width: 200px;
     height: 100%;
     padding-top: 0;
-    transition: opacity var(--sidebar-transition), 
-                max-width var(--sidebar-transition),
-                padding var(--sidebar-transition);
+    /* ✅ FIX: Only max-width transition — no opacity to prevent blink */
+    transition: max-width var(--sidebar-transition);
 }
-
-
-
 
 .sidebar .logo img {
     flex-shrink: 0;
@@ -327,44 +339,72 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   2. MAIN CONTENT
+   2. MAIN CONTENT — LIGHT INSTITUTIONAL THEME
    ═══════════════════════════════════════════════════════ */
-
-.main-content h1,
-.content-header h1 {
-    font-family: var(--font-title);
-    font-weight: 700;
-    letter-spacing: 0.01em;
-}
-
-/* ═══ SECTION TITLES ═══ */
-.main-content h2,
-.main-content h3,
-.form-section-title {
-    font-family: var(--font-section);
-    font-weight: 600;
-    letter-spacing: 0.01em;
-}
-
 .main-content {
     flex: 1;
     margin-left: var(--sidebar-width);
     padding: 3rem;
     padding-top: 2rem;
     overflow-y: auto;
+    overflow-x: hidden;
     transition: margin-left var(--sidebar-transition);
     will-change: margin-left;
+    /* ✅ LIGHT BACKGROUND */
+    background: linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 50%, #f1f8e9 100%);
+    color: #0f172a;
+    position: relative;
+    min-height: 100vh;
+}
+
+/* ✅ School logo watermark */
+.main-content::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 60vw;
+    height: 100vh;
+    background-image: url('/shared/img/makiling_logo.png');
+    background-repeat: no-repeat;
+    background-position: center right;
+    background-size: 50vh;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.main-content > * {
+    position: relative;
+    z-index: 1;
 }
 
 .main-content.sidebar-collapsed {
     margin-left: var(--sidebar-collapsed-width) !important;
 }
 
+/* ═══ Titles ═══ */
+.main-content h1,
+.content-header h1 {
+    font-family: var(--font-title, 'Cinzel', serif);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.main-content h2,
+.main-content h3,
+.form-section-title {
+    font-family: var(--font-section, 'Cinzel', serif);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+/* ═══ Page header (dark navy→green gradient) ═══ */
 .content-header h1 {
     font-size: 1.8rem;
     font-weight: 800;
     letter-spacing: -0.02em;
-    background: linear-gradient(135deg, #ffffff 0%, #86efac 100%);
+    background: linear-gradient(135deg, #0c2f6b 0%, #166534 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -372,19 +412,21 @@ body {
 }
 
 .content-header p {
-    color: #94a3b8 !important;
+    color: #4a5568 !important;
     margin: 0;
     font-size: 0.9rem;
 }
 
+/* ═══ Output Heading ═══ */
 h2.output-heading {
     font-size: 1.3rem;
     font-weight: 700;
-    color: #ffffff;
+    color: #0c2f6b;
     letter-spacing: -0.01em;
     margin-bottom: 15px;
     position: relative;
     padding-left: 14px;
+    font-family: var(--font-title, 'Cinzel', serif);
 }
 
 h2.output-heading::before {
@@ -395,25 +437,28 @@ h2.output-heading::before {
     transform: translateY(-50%);
     width: 4px;
     height: 70%;
-    background: linear-gradient(180deg, #22c55e, #ca8a04);
+    background: linear-gradient(180deg, #166534, #ca8a04);
     border-radius: 2px;
 }
 
-/* ═══ Control Deck Panel ═══ */
+/* ═══════════════════════════════════════════════════════
+   3. CONTROL DECK PANEL — Light Glass
+   ═══════════════════════════════════════════════════════ */
 .control-deck-panel {
-    background: rgba(6, 30, 18, 0.75);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(34, 197, 94, 0.2);
     border-radius: 16px;
     padding: 40px;
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
     box-shadow: 
-        0 20px 48px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(34, 197, 94, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+        0 20px 48px rgba(12, 47, 107, 0.1),
+        inset 0 1px 0 rgba(34, 197, 94, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     position: relative;
     overflow: hidden;
+    color: #0f172a;
 }
 
 .control-deck-panel::before {
@@ -424,19 +469,19 @@ h2.output-heading::before {
     right: 24px;
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--mis-green-light), var(--mis-gold), var(--mis-green-light), transparent);
-    opacity: 0.5;
+    opacity: 0.6;
     border-radius: 2px;
 }
 
 .control-deck-panel p {
-    color: #cbd5e1;
+    color: #334155;
     font-size: 1rem;
-    max-width: 600px;
+    
     margin: 0 auto 25px auto;
     line-height: 1.6;
 }
 
-/* ═══ Premium Timetable Initialization Button ═══ */
+/* ═══ Initialize Button ═══ */
 .btn-initialize-engine {
     background: linear-gradient(135deg, #14532d 0%, #166534 50%, #22c55e 100%);
     color: #ffffff;
@@ -485,53 +530,58 @@ h2.output-heading::before {
     transform: translateY(0);
 }
 
-/* ═══ Dashboard Card Panel (Schedule Output) ═══ */
+/* ═══════════════════════════════════════════════════════
+   4. SCHEDULE OUTPUT PANEL — Light
+   ═══════════════════════════════════════════════════════ */
 .dashboard-card-panel {
-    background: rgba(6, 30, 18, 0.6);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(34, 197, 94, 0.2);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 30px;
     box-shadow: 
-        0 20px 48px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(34, 197, 94, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+        0 10px 30px rgba(12, 47, 107, 0.08),
+        inset 0 1px 0 rgba(34, 197, 94, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     position: relative;
+    color: #0f172a;
 }
 
 /* ═══ Table Container ═══ */
 .table-container-wrapper {
-    background: rgba(6, 30, 18, 0.6);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(34, 197, 94, 0.2);
     border-radius: 12px;
     width: 100%;
     overflow-x: auto;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 15px rgba(12, 47, 107, 0.06);
 }
 
+/* ═══ Data Tables ═══ */
 .timetable-matrix-view {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
     font-size: 0.95rem;
+    color: #0f172a;
 }
 
 .timetable-matrix-view th {
-    background: rgba(34, 197, 94, 0.1);
-    color: #4ade80;
+    background: linear-gradient(135deg, rgba(22, 101, 52, 0.15), rgba(34, 197, 94, 0.1));
+    color: #166534;
     padding: 16px 20px;
     font-weight: 700;
     text-transform: uppercase;
     font-size: 0.8rem;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid rgba(34, 197, 94, 0.2);
+    border-bottom: 2px solid rgba(34, 197, 94, 0.3);
 }
 
 .timetable-matrix-view td {
     padding: 16px 20px;
-    color: #ffffff;
-    border-bottom: 1px solid rgba(34, 197, 94, 0.08);
+    color: #0f172a;
+    border-bottom: 1px solid rgba(34, 197, 94, 0.1);
     vertical-align: middle;
 }
 
@@ -540,7 +590,7 @@ h2.output-heading::before {
 }
 
 .timetable-matrix-view tr:hover td {
-    background: rgba(34, 197, 94, 0.05);
+    background: rgba(34, 197, 94, 0.06);
 }
 
 .empty-placeholder-msg {
@@ -552,16 +602,17 @@ h2.output-heading::before {
 
 /* ═══ Timetable Grid Cards ═══ */
 .timetable-grid-card {
-    background: rgba(6, 30, 18, 0.5);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(34, 197, 94, 0.2);
     border-radius: 14px;
     padding: 2rem;
     box-shadow: 
-        0 10px 30px rgba(0, 0, 0, 0.25),
-        inset 0 1px 0 rgba(34, 197, 94, 0.08);
+        0 10px 30px rgba(12, 47, 107, 0.08),
+        inset 0 1px 0 rgba(34, 197, 94, 0.06);
     margin-bottom: 2rem;
     position: relative;
     overflow: hidden;
+    color: #0f172a;
 }
 
 .timetable-grid-card::before {
@@ -572,7 +623,7 @@ h2.output-heading::before {
     right: 24px;
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--mis-green-light), var(--mis-gold), var(--mis-green-light), transparent);
-    opacity: 0.5;
+    opacity: 0.6;
     border-radius: 2px;
 }
 
@@ -585,7 +636,7 @@ h2.output-heading::before {
 
 .calendar-table th,
 .calendar-table td {
-    border: 1px solid rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.15);
     padding: 12px;
     text-align: center;
     vertical-align: top;
@@ -594,8 +645,8 @@ h2.output-heading::before {
 }
 
 .calendar-table th {
-    background: rgba(34, 197, 94, 0.08);
-    color: #4ade80;
+    background: linear-gradient(135deg, rgba(22, 101, 52, 0.1), rgba(34, 197, 94, 0.06));
+    color: #166534;
     text-transform: uppercase;
     font-size: 0.75rem;
     letter-spacing: 1px;
@@ -605,10 +656,11 @@ h2.output-heading::before {
 }
 
 .calendar-table td {
-    color: #ffffff;
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.6);
 }
 
-/* ═══ Subject Chips ═══ */
+/* ═══ Subject Chips (keep original colorful tiles) ═══ */
 .schedule-subject-tile {
     border-radius: 8px;
     padding: 10px;
@@ -618,15 +670,15 @@ h2.output-heading::before {
     justify-content: center;
     gap: 4px;
     box-shadow: 
-        0 4px 12px rgba(0, 0, 0, 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        0 4px 12px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .schedule-subject-tile:hover {
     transform: scale(1.04);
-    box-shadow: 0 6px 16px rgba(34, 197, 94, 0.3);
+    box-shadow: 0 6px 16px rgba(34, 197, 94, 0.25);
 }
 
 .tile-subject-name {
@@ -640,6 +692,7 @@ h2.output-heading::before {
 
 .tile-meta-text {
     font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.95);
     opacity: 0.9;
     white-space: nowrap;
     overflow: hidden;
@@ -675,7 +728,7 @@ h2.output-heading::before {
 }
 
 /* ═══════════════════════════════════════════════════════
-   3. MOBILE RESPONSIVE
+   5. MOBILE RESPONSIVE
    ═══════════════════════════════════════════════════════ */
 @media (max-width: 700px) {
     .sidebar {
@@ -751,6 +804,9 @@ h2.output-heading::before {
     }
 }
 
+/* ═══════════════════════════════════════════════════════
+   6. LOGO TEXT (2-line brand display)
+   ═══════════════════════════════════════════════════════ */
 .logo-text {
     display: flex;
     flex-direction: column;
@@ -758,7 +814,6 @@ h2.output-heading::before {
     line-height: 1;
     gap: 2px;
     overflow: hidden;
-    transition: opacity var(--sidebar-transition), max-width var(--sidebar-transition);
 }
 
 .logo-line-1 {
@@ -772,10 +827,12 @@ h2.output-heading::before {
 }
 
 .logo-line-2 {
-    font-family: 'Cinzel', serif;       /* Copperplate alt */
-    font-size: 0.55rem;
-    font-weight: 600;
+    font-family: 'Cinzel', serif;
+    font-size: 0.58rem;
+    font-weight: 700;
     color: var(--mis-gold);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
 }

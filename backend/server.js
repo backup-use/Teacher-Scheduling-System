@@ -742,7 +742,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // ═══ AUTH: LOGIN ═══
+        // ═══ AUTH: LOGIN ═══
     if (pathname === "/api/auth/login" && req.method === "POST") {
       // DEV MODE: Relaxed rate limit for testing (50 attempts per 2 minutes)
       // PRODUCTION MODE: Uncomment the second line and comment out the first
@@ -831,6 +831,99 @@ const server = http.createServer(async (req, res) => {
         );
       } catch (err) {
         return send(res, 500, { error: "Login failed." });
+      }
+    }
+
+        // ═══ AUTH: RESET PASSWORD (Username + Master Key) ═══
+    if (pathname === "/api/auth/reset-password" && req.method === "POST") {
+      if (!rateLimit(req, res, { windowMs: 15 * 60_000, maxRequests: 10, keyPrefix: "reset-pw" })) {
+        return;
+      }
+
+      try {
+        const body = await parseBody(req);
+        const username = sanitizeString(body.username, 100);
+        const masterKey = typeof body.masterKey === "string" ? body.masterKey : "";
+        const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
+
+        // ═══ VALIDATION ═══
+        if (!username) {
+          return send(res, 400, { error: "Username is required." });
+        }
+        if (!masterKey) {
+          return send(res, 400, { error: "Master Security Key is required." });
+        }
+        if (!newPassword) {
+          return send(res, 400, { error: "New password is required." });
+        }
+        if (newPassword.length < 8) {
+          return send(res, 400, { error: "Password must be at least 8 characters." });
+        }
+        if (!/[A-Z]/.test(newPassword)) {
+          return send(res, 400, { error: "Password must contain at least one uppercase letter." });
+        }
+        if (!/[a-z]/.test(newPassword)) {
+          return send(res, 400, { error: "Password must contain at least one lowercase letter." });
+        }
+        if (!/[0-9]/.test(newPassword)) {
+          return send(res, 400, { error: "Password must contain at least one number." });
+        }
+
+        // ═══ VERIFY MASTER KEY ═══
+        const MASTER_KEY = process.env.MASTER_KEY || "LECTURA_2026";
+        if (masterKey !== MASTER_KEY) {
+          await logAuditEvent("reset_password_failed", null, req.socket.remoteAddress, {
+            username,
+            reason: "invalid_master_key"
+          });
+          return send(res, 401, { error: "Invalid Master Security Key. Please contact your administrator." });
+        }
+
+        // ═══ FIND USER BY USERNAME ═══
+        const { rows } = await db.query(
+          "SELECT id, username FROM public.users WHERE LOWER(username) = LOWER($1)",
+          [username]
+        );
+
+        if (rows.length === 0) {
+          await logAuditEvent("reset_password_failed", null, req.socket.remoteAddress, {
+            username,
+            reason: "user_not_found"
+          });
+          return send(res, 404, { error: "Username not found. Please check your username." });
+        }
+
+        const user = rows[0];
+
+        // ═══ HASH NEW PASSWORD ═══
+        const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // ═══ UPDATE PASSWORD + INVALIDATE SESSIONS ═══
+        await db.query(
+          `UPDATE public.users 
+           SET password = $1, 
+               last_password_change = NOW(),
+               updated_at = NOW(),
+               session_version = COALESCE(session_version, 1) + 1
+           WHERE id = $2`,
+          [newHashedPassword, user.id]
+        );
+
+        await logAuditEvent("reset_password_success", user.id, req.socket.remoteAddress, {
+          username: user.username,
+          method: "master_key_reset"
+        });
+
+        console.log(`🔑 Password reset for user: ${user.username} (IP: ${req.socket.remoteAddress})`);
+
+        return send(res, 200, {
+          success: true,
+          message: "Password reset successfully! You can now log in with your new password. All other sessions have been logged out for security.",
+        });
+
+      } catch (err) {
+        console.error("❌ Reset password error:", err.message);
+        return send(res, 500, { error: "Failed to reset password. Please try again." });
       }
     }
 

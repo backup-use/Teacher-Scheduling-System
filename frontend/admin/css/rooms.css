@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════
    MAKILING INTEGRATED SCHOOL — FACILITIES MANAGEMENT
    Green-first branding matching other admin pages
+   Theme: HYBRID — Dark sidebar + Light content area
    ═══════════════════════════════════════════════════════ */
 
 :root {
@@ -38,22 +39,37 @@
 
 body {
     margin: 0;
-    color: #cbd5e1;
+    color: #0f172a;
     display: flex;
     min-height: 100vh;
-    font-family: var(--font-body);
+    font-family: var(--font-body, 'Inter', sans-serif);
     -webkit-font-smoothing: antialiased;
 
-    background: 
+    background:
         radial-gradient(circle at top left, rgba(22, 101, 52, 0.35) 0%, transparent 50%),
         radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.15) 0%, transparent 50%),
         radial-gradient(circle at top right, rgba(202, 138, 4, 0.08) 0%, transparent 40%),
         radial-gradient(circle at bottom left, rgba(2, 132, 199, 0.1) 0%, transparent 45%),
         #090a0f;
+
+    /* ✅ ANTI-BLINK */
+    opacity: 0;
+    animation: pageFadeIn 0.2s ease-out 0.03s forwards;
+}
+
+@keyframes pageFadeIn {
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body {
+        opacity: 1;
+        animation: none;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════
-   1. SIDEBAR
+   1. SIDEBAR (STAYS DARK)
    ═══════════════════════════════════════════════════════ */
 .sidebar {
     width: var(--sidebar-width);
@@ -125,13 +141,8 @@ body {
     max-width: 200px;
     height: 100%;
     padding-top: 0;
-    transition: opacity var(--sidebar-transition), 
-                max-width var(--sidebar-transition),
-                padding var(--sidebar-transition);
+    transition: max-width var(--sidebar-transition);
 }
-
-
-
 
 .sidebar .logo img {
     flex-shrink: 0;
@@ -202,7 +213,7 @@ body {
     border-radius: 10px;
     color: #a0a0c0;
     text-decoration: none;
-    transition: background 0.2s ease, color 0.2s ease, 
+    transition: background 0.2s ease, color 0.2s ease,
                 padding var(--sidebar-transition);
     background: transparent;
     border: 1px solid transparent;
@@ -239,7 +250,7 @@ body {
 }
 
 .nav-label {
-    transition: opacity var(--sidebar-transition), 
+    transition: opacity var(--sidebar-transition),
                 max-width var(--sidebar-transition);
     opacity: 1;
     max-width: 200px;
@@ -251,7 +262,7 @@ body {
     background: linear-gradient(90deg, rgba(22, 101, 52, 0.5) 0%, rgba(34, 197, 94, 0.15) 100%);
     border-color: rgba(34, 197, 94, 0.4);
     color: #4ade80;
-    box-shadow: 
+    box-shadow:
         0 0 12px rgba(34, 197, 94, 0.25),
         inset 3px 0 0 var(--mis-gold);
     position: relative;
@@ -326,72 +337,101 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   2. MAIN CONTENT
+   2. MAIN CONTENT — LIGHT INSTITUTIONAL THEME
    ═══════════════════════════════════════════════════════ */
-
-.main-content h1,
-.content-header h1 {
-    font-family: var(--font-title);
-    font-weight: 700;
-    letter-spacing: 0.01em;
-}
-
-/* ═══ SECTION TITLES ═══ */
-.main-content h2,
-.main-content h3,
-.form-section-title {
-    font-family: var(--font-section);
-    font-weight: 600;
-    letter-spacing: 0.01em;
-}
-
-main, .main-content {
+main,
+.main-content {
     flex-grow: 1;
     margin-left: var(--sidebar-width);
     padding: 3rem;
     min-height: 100vh;
     overflow-y: auto;
+    overflow-x: hidden;
     transition: margin-left var(--sidebar-transition);
     will-change: margin-left;
+    background: linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 50%, #f1f8e9 100%);
+    color: #0f172a;
+    position: relative;
+}
+
+.main-content::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 60vw;
+    height: 100vh;
+    background-image: url('/shared/img/makiling_logo.png');
+    background-repeat: no-repeat;
+    background-position: center right;
+    background-size: 50vh;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.main-content > * {
+    position: relative;
+    z-index: 1;
 }
 
 .main-content.sidebar-collapsed {
     margin-left: var(--sidebar-collapsed-width) !important;
 }
 
+/* ═══ Titles ═══ */
+.main-content h1,
+.content-header h1 {
+    font-family: var(--font-title, 'Cinzel', serif);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.main-content h2,
+.main-content h3,
+.form-section-title {
+    font-family: var(--font-section, 'Cinzel', serif);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
 h1, h2, h3, label {
-    color: #ffffff !important;
+    color: #0c2f6b !important;
 }
 
 .content-header h1 {
     font-size: 1.8rem;
     font-weight: 800;
     letter-spacing: -0.02em;
-    background: linear-gradient(135deg, #ffffff 0%, #86efac 100%);
+    background: linear-gradient(135deg, #0c2f6b 0%, #166534 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     margin: 0 0 6px 0;
+    color: #0c2f6b;
 }
 
 .content-header p {
-    color: #94a3b8 !important;
+    color: #4a5568 !important;
     margin: 0;
     font-size: 0.9rem;
 }
 
-/* ═══ Dashboard Card Panel ═══ */
+/* ═══════════════════════════════════════════════════════
+   3. DASHBOARD CARD PANEL — Light Glass
+   ═══════════════════════════════════════════════════════ */
 .dashboard-card-panel {
-    background: rgba(6, 30, 18, 0.75);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(34, 197, 94, 0.2);
     border-radius: 20px;
     padding: 2rem;
-    box-shadow: 
-        0 25px 50px -12px rgba(0, 0, 0, 0.5),
-        inset 0 1px 0 rgba(34, 197, 94, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    box-shadow:
+        0 20px 48px rgba(12, 47, 107, 0.1),
+        inset 0 1px 0 rgba(34, 197, 94, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     position: relative;
+    color: #0f172a;
 }
 
 .dashboard-card-panel::before {
@@ -402,7 +442,7 @@ h1, h2, h3, label {
     right: 24px;
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--mis-green-light), var(--mis-gold), var(--mis-green-light), transparent);
-    opacity: 0.5;
+    opacity: 0.6;
     border-radius: 2px;
 }
 
@@ -426,19 +466,20 @@ h1, h2, h3, label {
 .input-label {
     display: block;
     font-size: 0.85rem;
-    color: #a0a0c0 !important;
+    color: #334155 !important;
     margin-bottom: 6px;
     font-weight: 600;
     letter-spacing: 0.02em;
 }
 
+/* ═══ Input Fields — Light ═══ */
 .custom-input-box {
     width: 100%;
     padding: 12px 14px;
-    background: rgba(6, 30, 18, 0.6);
-    border: 1px solid rgba(34, 197, 94, 0.12);
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
     border-radius: 8px;
-    color: #ffffff;
+    color: #0f172a;
     font-size: 0.95rem;
     font-family: 'Inter', sans-serif;
     box-sizing: border-box;
@@ -447,16 +488,14 @@ h1, h2, h3, label {
 }
 
 .custom-input-box::placeholder {
-    color: #64748b;
+    color: #94a3b8;
 }
 
 .custom-input-box:focus {
     border-color: #22c55e;
     outline: none;
-    background: rgba(6, 30, 18, 0.85);
-    box-shadow: 
-        0 0 0 3px rgba(34, 197, 94, 0.2),
-        0 0 12px rgba(34, 197, 94, 0.15);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
 }
 
 /* ═══ Register Room Button ═══ */
@@ -497,7 +536,7 @@ h1, h2, h3, label {
 .btn-add-subject:hover {
     background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
     transform: translateY(-2px);
-    box-shadow: 
+    box-shadow:
         0 10px 25px rgba(34, 197, 94, 0.45),
         0 0 0 1px rgba(250, 204, 21, 0.3);
 }
@@ -506,10 +545,10 @@ h1, h2, h3, label {
     transform: translateY(0);
 }
 
-/* ═══ Subject Display Box ═══ */
+/* ═══ Subject Display Box — Light ═══ */
 .subject-display-box {
-    background: rgba(6, 30, 18, 0.5);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(240, 249, 244, 0.6);
+    border: 1px solid rgba(34, 197, 94, 0.2);
     border-radius: 12px;
     padding: 16px;
     min-height: 250px;
@@ -539,24 +578,25 @@ h1, h2, h3, label {
     background: rgba(34, 197, 94, 0.5);
 }
 
-/* ═══ Room Card Items ═══ */
+/* ═══ Room Card Items — Light ═══ */
 .room-card-item {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     width: 100% !important;
     padding: 14px 18px !important;
-    background: rgba(34, 197, 94, 0.05);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: #ffffff;
+    border: 1px solid rgba(34, 197, 94, 0.25);
     border-radius: 10px;
     box-sizing: border-box;
     transition: all 0.2s ease;
 }
 
 .room-card-item:hover {
-    background: rgba(34, 197, 94, 0.1);
-    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(240, 249, 244, 0.95);
+    border-color: rgba(34, 197, 94, 0.5);
     transform: translateX(2px);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.12);
 }
 
 .room-details-meta {
@@ -569,7 +609,7 @@ h1, h2, h3, label {
 }
 
 .room-title-text {
-    color: #ffffff;
+    color: #0c2f6b;
     font-size: 0.95rem;
     font-weight: 700;
     white-space: nowrap;
@@ -578,14 +618,14 @@ h1, h2, h3, label {
 }
 
 .room-capacity-badge {
-    color: #4ade80;
+    color: #166534;
     font-size: 0.8rem;
-    font-weight: 600;
-    background: rgba(34, 197, 94, 0.15);
+    font-weight: 700;
+    background: rgba(34, 197, 94, 0.12);
     padding: 3px 10px;
     border-radius: 12px;
     white-space: nowrap;
-    border: 1px solid rgba(34, 197, 94, 0.25);
+    border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .btn-delete-row-action {
@@ -595,7 +635,7 @@ h1, h2, h3, label {
     box-shadow: none !important;
     padding: 6px !important;
     margin: 0 !important;
-    color: #f87171;
+    color: #b91c1c;
     cursor: pointer;
     font-size: 1.1rem;
     display: inline-flex;
@@ -609,8 +649,8 @@ h1, h2, h3, label {
 
 .btn-delete-row-action:hover {
     transform: scale(1.15);
-    background: rgba(185, 28, 28, 0.15) !important;
-    color: #fca5a5;
+    background: rgba(185, 28, 28, 0.12) !important;
+    color: #7f1d1d;
 }
 
 /* ═══ Toast Notification ═══ */
@@ -625,7 +665,7 @@ h1, h2, h3, label {
     border-radius: 10px;
     font-weight: 600;
     font-family: 'Inter', sans-serif;
-    box-shadow: 
+    box-shadow:
         0 8px 24px rgba(34, 197, 94, 0.4),
         0 0 0 1px rgba(34, 197, 94, 0.3);
     z-index: 9999;
@@ -641,7 +681,7 @@ h1, h2, h3, label {
 }
 
 /* ═══════════════════════════════════════════════════════
-   3. MOBILE RESPONSIVE
+   4. MOBILE RESPONSIVE
    ═══════════════════════════════════════════════════════ */
 @media (max-width: 700px) {
     .sidebar {
@@ -717,6 +757,9 @@ h1, h2, h3, label {
     }
 }
 
+/* ═══════════════════════════════════════════════════════
+   5. LOGO TEXT (2-line brand display)
+   ═══════════════════════════════════════════════════════ */
 .logo-text {
     display: flex;
     flex-direction: column;
@@ -724,7 +767,6 @@ h1, h2, h3, label {
     line-height: 1;
     gap: 2px;
     overflow: hidden;
-    transition: opacity var(--sidebar-transition), max-width var(--sidebar-transition);
 }
 
 .logo-line-1 {
@@ -738,10 +780,128 @@ h1, h2, h3, label {
 }
 
 .logo-line-2 {
-    font-family: 'Cinzel', serif;       /* Copperplate alt */
-    font-size: 0.55rem;
-    font-weight: 600;
+    font-family: 'Cinzel', serif;
+    font-size: 0.58rem;
+    font-weight: 700;
     color: var(--mis-gold);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   6. FORCE TEXT VISIBILITY — Room Cards & Form (FINAL FIX)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ✅ Dashboard panel — white bg, dark text */
+.dashboard-card-panel {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #0f172a !important;
+}
+
+.dashboard-card-panel * {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+/* ✅ Room card items — LIGHT bg + DARK text */
+.room-card-item,
+.room-card-item * {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    border-color: rgba(34, 197, 94, 0.25) !important;
+}
+
+/* ✅ Hover state — light green tint */
+.room-card-item:hover,
+.room-card-item:hover * {
+    background: rgba(240, 249, 244, 0.95) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    border-color: rgba(34, 197, 94, 0.5) !important;
+}
+
+/* ✅ Room title text — dark navy */
+.room-title-text,
+.room-title-text * {
+    color: #0c2f6b !important;
+    -webkit-text-fill-color: #0c2f6b !important;
+    font-weight: 700 !important;
+}
+
+/* ✅ Capacity badge — dark green */
+.room-capacity-badge,
+.room-capacity-badge * {
+    color: #166534 !important;
+    -webkit-text-fill-color: #166534 !important;
+    background: rgba(34, 197, 94, 0.15) !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+
+/* ✅ Delete icon — dark red */
+.btn-delete-row-action,
+.btn-delete-row-action * {
+    color: #b91c1c !important;
+    -webkit-text-fill-color: #b91c1c !important;
+    background: transparent !important;
+}
+
+.btn-delete-row-action:hover,
+.btn-delete-row-action:hover * {
+    color: #7f1d1d !important;
+    -webkit-text-fill-color: #7f1d1d !important;
+    background: rgba(185, 28, 28, 0.15) !important;
+}
+
+/* ✅ Form labels — dark slate */
+.form-group label,
+.input-label,
+label {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+}
+
+/* ✅ Form inputs — white bg, dark text */
+.custom-input-box,
+input,
+select,
+textarea {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+.custom-input-box::placeholder,
+input::placeholder,
+textarea::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+}
+
+/* ✅ Subject display box — light bg */
+.subject-display-box {
+    background: rgba(240, 249, 244, 0.5) !important;
+    border: 1px solid rgba(34, 197, 94, 0.2) !important;
+}
+
+/* ✅ Save Button — white text on green */
+.btn-add-subject,
+.btn-add-subject * {
+    background: linear-gradient(135deg, #14532d 0%, #166534 50%, #22c55e 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* ✅ Headings — dark navy */
+.content-header h1,
+.content-header h1 * {
+    color: #0c2f6b !important;
+    -webkit-text-fill-color: #0c2f6b !important;
+}
+
+.content-header p {
+    color: #4a5568 !important;
+    -webkit-text-fill-color: #4a5568 !important;
+}   

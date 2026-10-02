@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════
    MAKILING INTEGRATED SCHOOL — EDIT TEACHER PAGE
    Green-first branding matching Addteacher.css
+   Theme: HYBRID — Dark sidebar + Light content area
    ═══════════════════════════════════════════════════════ */
 
 :root {
@@ -48,10 +49,24 @@ body {
     display: flex;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    /* ✅ ANTI-BLINK */
+    opacity: 0;
+    animation: pageFadeIn 0.2s ease-out 0.03s forwards;
+}
+
+@keyframes pageFadeIn {
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body {
+        opacity: 1;
+        animation: none;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════
-   1. SIDEBAR
+   1. SIDEBAR (STAYS DARK)
    ═══════════════════════════════════════════════════════ */
 .sidebar {
     width: var(--sidebar-width);
@@ -123,12 +138,9 @@ body {
     max-width: 200px;
     height: 100%;
     padding-top: 0;
-    transition: opacity var(--sidebar-transition), 
-                max-width var(--sidebar-transition),
-                padding var(--sidebar-transition);
+    /* ✅ FIX: Only max-width transition — no opacity to prevent blink */
+    transition: max-width var(--sidebar-transition);
 }
-
-
 
 .sidebar .logo img {
     flex-shrink: 0;
@@ -323,25 +335,8 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   2. MAIN CONTENT
+   2. MAIN CONTENT — LIGHT INSTITUTIONAL THEME
    ═══════════════════════════════════════════════════════ */
-
-.main-content h1,
-.content-header h1 {
-    font-family: var(--font-title);
-    font-weight: 700;
-    letter-spacing: 0.01em;
-}
-
-/* ═══ SECTION TITLES ═══ */
-.main-content h2,
-.main-content h3,
-.form-section-title {
-    font-family: var(--font-section);
-    font-weight: 600;
-    letter-spacing: 0.01em;
-}
-
 .main-content {
     flex: 1;
     margin-left: var(--sidebar-width);
@@ -351,31 +346,75 @@ body {
     align-items: flex-start;
     min-height: 100vh;
     overflow-y: auto;
+    overflow-x: hidden;
     transition: margin-left var(--sidebar-transition);
     will-change: margin-left;
+    /* ✅ LIGHT BACKGROUND */
+    background: linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 50%, #f1f8e9 100%);
+    color: #0f172a;
+    position: relative;
+}
+
+/* ✅ School logo watermark */
+.main-content::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 60vw;
+    height: 100vh;
+    background-image: url('/shared/img/makiling_logo.png');
+    background-repeat: no-repeat;
+    background-position: center right;
+    background-size: 50vh;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.main-content > * {
+    position: relative;
+    z-index: 1;
 }
 
 .main-content.sidebar-collapsed {
     margin-left: var(--sidebar-collapsed-width) !important;
 }
 
+/* ═══ Titles ═══ */
+.main-content h1,
+.content-header h1 {
+    font-family: var(--font-title, 'Cinzel', serif);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.main-content h2,
+.main-content h3,
+.form-section-title {
+    font-family: var(--font-section, 'Cinzel', serif);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
 /* ═══════════════════════════════════════════════════════
-   3. FORM CARD (Green Glass)
+   3. FORM CARD (LIGHT GLASS)
    ═══════════════════════════════════════════════════════ */
 .form-card {
-    background: rgba(6, 30, 18, 0.75);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(34, 197, 94, 0.2);
     border-radius: 16px;
     padding: 30px;
     width: 100%;
     max-width: 550px;
     box-shadow: 
-        0 20px 48px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 rgba(34, 197, 94, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+        0 20px 48px rgba(12, 47, 107, 0.1),
+        inset 0 1px 0 rgba(34, 197, 94, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     box-sizing: border-box;
     position: relative;
+    color: #0f172a;
 }
 
 .form-card::before {
@@ -386,7 +425,7 @@ body {
     right: 24px;
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--mis-green-light), var(--mis-gold), var(--mis-green-light), transparent);
-    opacity: 0.5;
+    opacity: 0.6;
     border-radius: 2px;
 }
 
@@ -394,7 +433,7 @@ h2 {
     margin-top: 0;
     font-size: 1.5rem;
     font-weight: 800;
-    background: linear-gradient(135deg, #ffffff 0%, #86efac 100%);
+    background: linear-gradient(135deg, #0c2f6b 0%, #166534 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -402,6 +441,7 @@ h2 {
     border-bottom: 1px solid rgba(34, 197, 94, 0.15);
     padding-bottom: 15px;
     margin-bottom: 25px;
+    font-family: var(--font-title, 'Cinzel', serif);
 }
 
 .form-row {
@@ -429,21 +469,27 @@ h2 {
     margin-bottom: 25px;
 }
 
+/* ═══ Labels — Dark ═══ */
 label {
     font-size: 0.85rem;
-    color: #a0a0c0;
+    color: #334155;
     margin-bottom: 6px;
-    font-weight: 500;
+    font-weight: 600;
+    display: block;
 }
 
+/* ═══ Inputs — Light ═══ */
 input[type="text"], 
 input[type="email"],
-input[type="time"] {
+input[type="time"],
+input[type="password"],
+input[type="number"],
+textarea {
     padding: 12px 14px;
-    background: rgba(6, 30, 18, 0.6);
-    border: 1px solid rgba(34, 197, 94, 0.12);
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
     border-radius: 8px;
-    color: #ffffff;
+    color: #0f172a;
     font-size: 0.95rem;
     font-family: 'Inter', sans-serif;
     transition: all 0.2s ease;
@@ -452,17 +498,19 @@ input[type="time"] {
 }
 
 input[type="text"]::placeholder,
-input[type="email"]::placeholder {
-    color: #64748b;
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+textarea::placeholder {
+    color: #94a3b8;
 }
 
-input:focus {
+input:focus,
+select:focus,
+textarea:focus {
     outline: none;
     border-color: #22c55e;
-    background: rgba(6, 30, 18, 0.85);
-    box-shadow: 
-        0 0 0 3px rgba(34, 197, 94, 0.2),
-        0 0 12px rgba(34, 197, 94, 0.15);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
 }
 
 .info-note {
@@ -478,7 +526,7 @@ input:focus {
 }
 
 .section-title {
-    color: #4ade80;
+    color: #166534;
     font-weight: 700;
     font-size: 0.9rem;
     display: block;
@@ -499,8 +547,9 @@ input:focus {
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    color: #e2e8f0;
+    color: #334155;
     font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .day-label input[type="checkbox"] {
@@ -519,6 +568,7 @@ input:focus {
     margin-bottom: 14px;
 }
 
+/* ═══ Buttons ═══ */
 .btn-container {
     display: flex;
     justify-content: flex-end;
@@ -529,9 +579,9 @@ input:focus {
 }
 
 .btn-cancel {
-    background: rgba(51, 65, 85, 0.6);
-    color: #e2e8f0;
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
     padding: 12px 20px;
     border-radius: 8px;
     cursor: pointer;
@@ -546,8 +596,8 @@ input:focus {
 }
 
 .btn-cancel:hover {
-    background: rgba(51, 65, 85, 0.9);
-    border-color: rgba(148, 163, 184, 0.4);
+    background: #e2e8f0;
+    border-color: #94a3b8;
 }
 
 .btn-save {
@@ -596,14 +646,14 @@ input:focus {
     transform: none;
 }
 
-/* ═══ Select Inputs (Green Theme) ═══ */
+/* ═══ Select Dropdowns — Light ═══ */
 select,
 select.time-select {
     padding: 12px 14px;
-    background: rgba(6, 30, 18, 0.85);
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
     border-radius: 8px;
-    color: #ffffff;
+    color: #0f172a !important;
     font-size: 0.95rem;
     font-family: 'Inter', sans-serif;
     transition: all 0.2s ease;
@@ -614,22 +664,20 @@ select.time-select {
 
 select:hover,
 select.time-select:hover {
-    border-color: rgba(34, 197, 94, 0.4);
+    border-color: #22c55e !important;
 }
 
 select:focus,
 select.time-select:focus {
     outline: none;
-    border-color: #22c55e;
-    box-shadow: 
-        0 0 0 3px rgba(34, 197, 94, 0.2),
-        0 0 12px rgba(34, 197, 94, 0.15);
+    border-color: #22c55e !important;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15) !important;
 }
 
 select option,
 select.time-select option {
-    background-color: #0a1e12 !important;
-    color: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
     padding: 10px;
 }
 
@@ -717,6 +765,9 @@ select.time-select option {
     }
 }
 
+/* ═══════════════════════════════════════════════════════
+   5. LOGO TEXT (2-line brand display)
+   ═══════════════════════════════════════════════════════ */
 .logo-text {
     display: flex;
     flex-direction: column;
@@ -724,7 +775,6 @@ select.time-select option {
     line-height: 1;
     gap: 2px;
     overflow: hidden;
-    transition: opacity var(--sidebar-transition), max-width var(--sidebar-transition);
 }
 
 .logo-line-1 {
@@ -738,10 +788,13 @@ select.time-select option {
 }
 
 .logo-line-2 {
-    font-family: 'Cinzel', serif;       /* Copperplate alt */
-    font-size: 0.55rem;
-    font-weight: 600;
+    font-family: 'Cinzel', serif;
+    font-size: 0.58rem;
+    font-weight: 700;
     color: var(--mis-gold);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
 }
+

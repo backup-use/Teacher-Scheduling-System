@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════
    MAKILING INTEGRATED SCHOOL — PROFILE SETTINGS
    Green-first branding matching other admin pages
+   Theme: HYBRID — Dark sidebar + Light content area
    ═══════════════════════════════════════════════════════ */
 
 :root {
@@ -33,20 +34,23 @@
     --primary-gradient: linear-gradient(135deg, #166534 0%, #22c55e 100%);
 }
 
-/* ═══ PROFILE OVERVIEW CARD ═══ */
+/* ═══ PROFILE OVERVIEW CARD — WHITE GLASS ═══ */
 .profile-overview-card {
     display: flex;
     align-items: center;
     gap: 20px;
-    background: rgba(6, 30, 18, 0.6);
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(34, 197, 94, 0.25);
     border-radius: 16px;
     padding: 1.75rem;
     margin-bottom: 1.5rem;
     position: relative;
     overflow: hidden;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 
+        0 20px 48px rgba(12, 47, 107, 0.08),
+        inset 0 1px 0 rgba(34, 197, 94, 0.08);
 }
 
 .profile-overview-card::before {
@@ -57,7 +61,7 @@
     right: 24px;
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--mis-green-light, #22c55e), var(--mis-gold, #ca8a04), var(--mis-green-light, #22c55e), transparent);
-    opacity: 0.6;
+    opacity: 0.7;
     border-radius: 2px;
 }
 
@@ -89,13 +93,15 @@
     font-size: 1.4rem;
     font-weight: 800;
     letter-spacing: -0.01em;
-    color: #ffffff;
+    color: #0c2f6b;
+    -webkit-text-fill-color: #0c2f6b;
 }
 
 .role-badge {
     display: inline-block;
     background: rgba(34, 197, 94, 0.15);
-    color: #4ade80;
+    color: #166534;
+    -webkit-text-fill-color: #166534;
     padding: 4px 12px;
     border-radius: 20px;
     font-size: 0.75rem;
@@ -108,24 +114,26 @@
 
 .profile-meta {
     margin: 0;
-    color: #94a3b8;
+    color: #4a5568;
+    -webkit-text-fill-color: #4a5568;
     font-size: 0.85rem;
 }
 
 .profile-meta strong {
-    color: #4ade80;
+    color: #0c2f6b;
+    -webkit-text-fill-color: #0c2f6b;
     font-weight: 700;
 }
 
-/* ═══ TABS ═══ */
+/* ═══ TABS — LIGHT GLASS ═══ */
 .profile-tabs {
     display: flex;
     gap: 6px;
-    background: rgba(6, 30, 18, 0.5);
+    background: rgba(255, 255, 255, 0.7);
     padding: 6px;
     border-radius: 12px;
     margin-bottom: 1.5rem;
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.25);
 }
 
 .profile-tab {
@@ -134,7 +142,8 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: 8px;
-    color: #a0a0c0;
+    color: #334155;
+    -webkit-text-fill-color: #334155;
     font-weight: 600;
     font-size: 0.875rem;
     cursor: pointer;
@@ -143,17 +152,17 @@
 }
 
 .profile-tab:hover {
-    color: #ffffff;
-    background: rgba(34, 197, 94, 0.08);
+    color: #166534;
+    -webkit-text-fill-color: #166534;
+    background: rgba(34, 197, 94, 0.1);
 }
 
 .profile-tab.active {
-    background: linear-gradient(90deg, rgba(22, 101, 52, 0.6), rgba(34, 197, 94, 0.25));
-    color: #4ade80;
+    background: linear-gradient(90deg, #166534 0%, #22c55e 100%);
+    color: #ffffff;
+    -webkit-text-fill-color: #ffffff;
     border-color: rgba(34, 197, 94, 0.4);
-    box-shadow: 
-        0 0 12px rgba(34, 197, 94, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 12px rgba(22, 101, 52, 0.3);
 }
 
 .profile-tab-content {
@@ -162,27 +171,22 @@
 
 .profile-tab-content.active {
     display: block;
-    animation: fadeIn 0.25s ease;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* ═══ FORM CARDS ═══ */
+/* ═══ FORM CARDS — WHITE GLASS ═══ */
 #main-content .form-card {
-    background: rgba(6, 30, 18, 0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(34, 197, 94, 0.25);
     border-radius: 16px;
     padding: 1.75rem;
     margin-bottom: 1.5rem;
     box-shadow: 
-        0 20px 48px rgba(0, 0, 0, 0.35),
-        inset 0 1px 0 rgba(34, 197, 94, 0.1);
+        0 20px 48px rgba(12, 47, 107, 0.08),
+        inset 0 1px 0 rgba(34, 197, 94, 0.08);
     position: relative;
+    color: #0f172a;
 }
 
 #main-content .form-card::before {
@@ -193,12 +197,13 @@
     right: 24px;
     height: 2px;
     background: linear-gradient(90deg, transparent, #22c55e, #ca8a04, #22c55e, transparent);
-    opacity: 0.5;
+    opacity: 0.7;
     border-radius: 2px;
 }
 
 #main-content .form-section-title {
-    color: #ffffff;
+    color: #0c2f6b;
+    -webkit-text-fill-color: #0c2f6b;
     font-size: 1.1rem;
     font-weight: 800;
     margin: 0 0 6px 0;
@@ -206,38 +211,43 @@
 }
 
 .form-section-desc {
-    color: #94a3b8;
+    color: #4a5568;
+    -webkit-text-fill-color: #4a5568;
     font-size: 0.875rem;
     margin: 0 0 1.25rem 0;
     line-height: 1.5;
 }
 
 .form-section-desc strong {
-    color: #4ade80;
+    color: #0c2f6b;
+    -webkit-text-fill-color: #0c2f6b;
     font-weight: 700;
 }
 
 /* ═══ WARNING BOX ═══ */
 .form-warning {
-    background: rgba(202, 138, 4, 0.08);
+    background: rgba(202, 138, 4, 0.1);
     border: 1px solid rgba(202, 138, 4, 0.3);
     border-left: 3px solid #ca8a04;
     border-radius: 8px;
     padding: 12px 16px;
-    color: #fcd34d;
+    color: #854d0e;
+    -webkit-text-fill-color: #854d0e;
     font-size: 0.85rem;
     margin: 1rem 0;
     line-height: 1.5;
 }
 
 .form-warning strong {
-    color: #facc15;
+    color: #713f12;
+    -webkit-text-fill-color: #713f12;
 }
 
 /* ═══ INPUT HINTS ═══ */
 .input-hint {
     display: block;
     color: #64748b;
+    -webkit-text-fill-color: #64748b;
     font-size: 0.75rem;
     margin-top: 6px;
     line-height: 1.4;
@@ -250,7 +260,7 @@
 
 .strength-bar {
     height: 5px;
-    background: rgba(34, 197, 94, 0.1);
+    background: #e2e8f0;
     border-radius: 3px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -265,7 +275,8 @@
 
 .strength-text {
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: #64748b;
+    -webkit-text-fill-color: #64748b;
     font-weight: 600;
 }
 
@@ -302,15 +313,18 @@
     justify-content: space-between;
     align-items: center;
     padding: 14px 18px;
-    background: rgba(34, 197, 94, 0.05);
+    background: #ffffff;
     border-radius: 10px;
     border-left: 3px solid #22c55e;
+    border-top: 1px solid rgba(34, 197, 94, 0.15);
+    border-right: 1px solid rgba(34, 197, 94, 0.15);
+    border-bottom: 1px solid rgba(34, 197, 94, 0.15);
     gap: 12px;
     transition: all 0.2s ease;
 }
 
 .history-item:hover {
-    background: rgba(34, 197, 94, 0.1);
+    background: rgba(240, 249, 244, 0.95);
     border-left-color: #ca8a04;
 }
 
@@ -321,25 +335,29 @@
 
 .history-item-type {
     font-weight: 700;
-    color: #ffffff;
+    color: #0c2f6b;
+    -webkit-text-fill-color: #0c2f6b;
     font-size: 0.875rem;
     margin-bottom: 2px;
     text-transform: capitalize;
 }
 
 .history-item-details {
-    color: #a0a0c0;
+    color: #4a5568;
+    -webkit-text-fill-color: #4a5568;
     font-size: 0.8rem;
     line-height: 1.4;
 }
 
 .history-item-details strong {
-    color: #4ade80;
+    color: #166534;
+    -webkit-text-fill-color: #166534;
     font-weight: 700;
 }
 
 .history-item-date {
     color: #64748b;
+    -webkit-text-fill-color: #64748b;
     font-size: 0.75rem;
     text-align: right;
     flex-shrink: 0;
@@ -350,11 +368,12 @@
     text-align: center;
     padding: 40px 20px;
     color: #64748b;
+    -webkit-text-fill-color: #64748b;
     font-size: 0.875rem;
 }
 
 /* ═══════════════════════════════════════════════════════
-   DARK MODE INPUT OVERRIDES (Green Theme)
+   LIGHT MODE INPUT OVERRIDES (Green Theme)
    ═══════════════════════════════════════════════════════ */
 
 #main-content input[type="text"],
@@ -363,9 +382,10 @@
 #main-content input[type="number"],
 #main-content textarea,
 #main-content select {
-    background: rgba(6, 30, 18, 0.6) !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(34, 197, 94, 0.12) !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    border: 1.5px solid #cbd5e1 !important;
     border-radius: 10px;
     padding: 12px 14px;
     font-family: 'Inter', sans-serif;
@@ -380,7 +400,8 @@
 #main-content input[type="email"]::placeholder,
 #main-content input[type="password"]::placeholder,
 #main-content textarea::placeholder {
-    color: #64748b !important;
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
     opacity: 0.8;
 }
 
@@ -392,26 +413,26 @@
 #main-content select:focus {
     outline: none !important;
     border-color: #22c55e !important;
-    background: rgba(6, 30, 18, 0.85) !important;
+    background: #ffffff !important;
     box-shadow: 
-        0 0 0 3px rgba(34, 197, 94, 0.2),
-        0 0 12px rgba(34, 197, 94, 0.15) !important;
+        0 0 0 3px rgba(34, 197, 94, 0.15),
+        0 0 12px rgba(34, 197, 94, 0.1) !important;
 }
 
-/* Fix the browser's autofill yellow/white background */
+/* Fix autofill */
 #main-content input:-webkit-autofill,
 #main-content input:-webkit-autofill:hover,
 #main-content input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #ffffff !important;
-    -webkit-box-shadow: 0 0 0px 1000px rgba(6, 30, 18, 0.85) inset !important;
+    -webkit-text-fill-color: #0f172a !important;
+    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
     transition: background-color 5000s ease-in-out 0s;
-    caret-color: #ffffff;
 }
 
-/* ═══ PRIMARY BUTTONS ═══ */
+/* ═══ PRIMARY BUTTONS — WHITE TEXT ON GREEN ═══ */
 #main-content .btn-primary {
     background: linear-gradient(135deg, #14532d 0%, #166534 50%, #22c55e 100%);
     color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
     border: none !important;
     border-radius: 10px;
     padding: 12px 24px;
@@ -443,6 +464,8 @@
 
 #main-content .btn-primary:hover {
     background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
     transform: translateY(-2px);
     box-shadow: 
         0 10px 25px rgba(34, 197, 94, 0.4),
@@ -461,10 +484,6 @@
     box-shadow: none;
 }
 
-#main-content .btn-primary:disabled::before {
-    display: none;
-}
-
 /* ═══ FORM ACTIONS ═══ */
 #main-content .form-actions {
     display: flex;
@@ -472,12 +491,13 @@
     justify-content: flex-end;
     margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(34, 197, 94, 0.1);
+    border-top: 1px solid rgba(34, 197, 94, 0.15);
 }
 
-/* ═══ LABELS ═══ */
+/* ═══ LABELS — DARK SLATE ═══ */
 #main-content .input-group label {
-    color: #cbd5e1;
+    color: #334155;
+    -webkit-text-fill-color: #334155;
     font-weight: 600;
     font-size: 0.85rem;
     margin-bottom: 8px;
@@ -499,9 +519,9 @@
     grid-column: span 2;
 }
 
-/* ═══ PAGE HEADER ═══ */
+/* ═══ PAGE HEADER — DARK NAVY GRADIENT ═══ */
 .main-content .page-header h1 {
-    background: linear-gradient(135deg, #ffffff 0%, #86efac 100%);
+    background: linear-gradient(135deg, #0c2f6b 0%, #166534 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -509,12 +529,22 @@
     font-size: 1.9rem;
     font-weight: 800;
     margin: 0 0 6px 0;
+    color: #0c2f6b;
 }
 
 .main-content .page-header p {
-    color: #94a3b8;
+    color: #4a5568;
+    -webkit-text-fill-color: #4a5568;
     font-size: 0.9rem;
     margin: 0 0 1.5rem 0;
+}
+
+/* ═══ STRONG ELEMENTS ═══ */
+#current-username-display,
+#last-password-change {
+    color: #0c2f6b;
+    -webkit-text-fill-color: #0c2f6b;
+    font-weight: 700;
 }
 
 /* ═══ MOBILE RESPONSIVE ═══ */
@@ -537,6 +567,9 @@
     }
 }
 
+/* ═══════════════════════════════════════════════════════
+   LOGO TEXT (2-line brand display)
+   ═══════════════════════════════════════════════════════ */
 .logo-text {
     display: flex;
     flex-direction: column;
@@ -558,7 +591,7 @@
 }
 
 .logo-line-2 {
-    font-family: 'Cinzel', serif;       /* Copperplate alt */
+    font-family: 'Cinzel', serif;
     font-size: 0.55rem;
     font-weight: 600;
     color: var(--mis-gold);

@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════
    MAKILING INTEGRATED SCHOOL — MY TIMETABLE (Teacher)
    Green-first branding matching other pages
+   Theme: HYBRID — Dark sidebar + Light content area
    ═══════════════════════════════════════════════════════ */
 
 :root {
@@ -8,30 +9,30 @@
     --mis-moss: #4a6b3a;
     --mis-moss-dark: #354d2a;
     --mis-moss-light: #6b8f52;
-    
+
     --mis-gold: #d4a017;
     --mis-gold-light: #f0be3d;
-    
+
     --mis-sky: #87ceeb;
     --mis-turquoise: #2e8b7a;
     --mis-turquoise-light: #4fc4ae;
-    
+
     /* ═══ FONTS ═══ */
     --font-logo: 'Pirata One', 'Cinzel', serif;
     --font-title: 'Cinzel', serif;
     --font-section: 'Cinzel', serif;
     --font-body: 'Inter', 'Segoe UI', sans-serif;
-    
+
     /* ═══ SIDEBAR ═══ */
     --sidebar-width: 260px;
     --sidebar-collapsed-width: 72px;
     --sidebar-transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    
+
     /* ═══ GLASS ═══ */
     --glass-bg: rgba(6, 30, 18, 0.85);
     --glass-border: rgba(34, 197, 94, 0.15);
     --input-bg: rgba(6, 30, 18, 0.6);
-    
+
     /* ═══ LEGACY ═══ */
     --cyan: var(--mis-moss-light);
     --accent-glow: rgba(74, 107, 58, 0.4);
@@ -50,7 +51,7 @@ html, body {
 }
 
 body {
-    background: 
+    background:
         radial-gradient(circle at top left, rgba(22, 101, 52, 0.35) 0%, transparent 50%),
         radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.15) 0%, transparent 50%),
         radial-gradient(circle at top right, rgba(202, 138, 4, 0.08) 0%, transparent 40%),
@@ -60,10 +61,25 @@ body {
     display: flex;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+
+    /* ✅ ANTI-BLINK */
+    opacity: 0;
+    animation: pageFadeIn 0.2s ease-out 0.03s forwards;
+}
+
+@keyframes pageFadeIn {
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body {
+        opacity: 1;
+        animation: none;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════
-   SIDEBAR
+   SIDEBAR (STAYS DARK)
    ═══════════════════════════════════════════════════════ */
 .sidebar {
     width: var(--sidebar-width);
@@ -136,8 +152,8 @@ body {
     white-space: nowrap;
     overflow: hidden;
     max-width: 200px;
-    transition: opacity var(--sidebar-transition), 
-                max-width var(--sidebar-transition);
+    /* ✅ FIX: Only max-width transition — no opacity to prevent blink */
+    transition: max-width var(--sidebar-transition);
 }
 
 .sidebar .logo img {
@@ -161,7 +177,7 @@ body {
     line-height: 1;
     gap: 2px;
     overflow: hidden;
-    transition: opacity var(--sidebar-transition), max-width var(--sidebar-transition);
+    /* ✅ No transition to prevent blink */
 }
 
 .logo-line-1 {
@@ -231,7 +247,7 @@ body {
     border-radius: 10px;
     color: #a0a0c0;
     text-decoration: none;
-    transition: background 0.2s ease, color 0.2s ease, 
+    transition: background 0.2s ease, color 0.2s ease,
                 padding var(--sidebar-transition);
     background: transparent;
     border: 1px solid transparent;
@@ -268,7 +284,7 @@ body {
 }
 
 .nav-label {
-    transition: opacity var(--sidebar-transition), 
+    transition: opacity var(--sidebar-transition),
                 max-width var(--sidebar-transition);
     opacity: 1;
     max-width: 200px;
@@ -280,7 +296,7 @@ body {
     background: linear-gradient(90deg, rgba(22, 101, 52, 0.5) 0%, rgba(34, 197, 94, 0.15) 100%);
     border-color: rgba(34, 197, 94, 0.4);
     color: #4ade80;
-    box-shadow: 
+    box-shadow:
         0 0 12px rgba(34, 197, 94, 0.25),
         inset 3px 0 0 var(--mis-gold);
     position: relative;
@@ -355,7 +371,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   MAIN CONTENT
+   MAIN CONTENT — LIGHT INSTITUTIONAL THEME
    ═══════════════════════════════════════════════════════ */
 .main-content {
     flex: 1;
@@ -370,18 +386,44 @@ body {
     will-change: margin-left;
     min-width: 0;
     width: auto;
+    /* ✅ LIGHT BACKGROUND */
+    background: linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 50%, #f1f8e9 100%);
+    color: #0f172a;
+    position: relative;
+}
+
+/* ✅ School logo watermark */
+.main-content::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 60vw;
+    height: 100vh;
+    background-image: url('/shared/img/makiling_logo.png');
+    background-repeat: no-repeat;
+    background-position: center right;
+    background-size: 50vh;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.main-content > * {
+    position: relative;
+    z-index: 1;
 }
 
 .main-content.sidebar-collapsed {
     margin-left: var(--sidebar-collapsed-width) !important;
 }
 
-/* ═══ Instructor Title ═══ */
+/* ═══ Instructor Title — Dark navy ═══ */
 .main-content h1,
 .main-content h2,
 .main-content .instructor-title,
 #instructor-title {
-    color: #ffffff !important;
+    color: #0c2f6b !important;
     font-family: var(--font-title);
     font-weight: 700;
     font-size: 1.6rem;
@@ -391,7 +433,7 @@ body {
 }
 
 .subtitle, .main-content p {
-    color: #94a3b8 !important;
+    color: #4a5568 !important;
     font-size: 0.9rem;
     margin: 0 0 1.5rem 0;
 }
@@ -455,7 +497,7 @@ body {
     padding: 12px;
     width: 100%;
     box-sizing: border-box;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 24px rgba(12, 47, 107, 0.1);
 }
 
 .timetable-table {
@@ -498,7 +540,7 @@ body {
     padding: 4px 6px;
 }
 
-/* ═══ Schedule Card ═══ */
+/* ═══ Schedule Card (subject tiles — keep colorful) ═══ */
 .schedule-card {
     border-radius: 4px;
     text-align: center;
@@ -658,7 +700,7 @@ td.break-row {
 }
 
 /* ═══════════════════════════════════════════════════════
-   MODAL UI
+   MODAL — Light Glass
    ═══════════════════════════════════════════════════════ */
 .vacant-modal-overlay {
     position: fixed;
@@ -666,7 +708,7 @@ td.break-row {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(15, 23, 42, 0.75);
     backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
@@ -683,41 +725,41 @@ td.break-row {
 }
 
 .vacant-modal-content {
-    background: linear-gradient(145deg, #0a1e12, #061a0f);
-    border: 1px solid rgba(34, 197, 94, 0.25);
+    background: #ffffff;
+    border: 1px solid rgba(34, 197, 94, 0.3);
     padding: 20px;
     border-radius: 12px;
     width: 90%;
     max-width: 400px;
-    box-shadow: 
-        0 25px 50px -12px rgba(0, 0, 0, 0.6),
-        0 0 40px rgba(34, 197, 94, 0.15);
+    box-shadow:
+        0 25px 50px -12px rgba(12, 47, 107, 0.25),
+        0 0 40px rgba(34, 197, 94, 0.1);
     font-family: 'Inter', sans-serif;
-    color: #ffffff;
+    color: #0f172a;
     text-align: left;
 }
 
 .vacant-modal-content h3 {
     margin: 0 0 6px 0;
     font-size: 1.15rem;
-    color: #f8fafc;
-    font-weight: 600;
+    color: #0c2f6b;
+    font-weight: 700;
 }
 
 .modal-subtitle {
     margin: 0 0 12px 0;
     font-size: 0.85rem;
-    color: #94a3b8;
+    color: #4a5568;
 }
 
 #modal-note-textarea {
     width: 100%;
     height: 100px;
-    background: rgba(6, 30, 18, 0.7);
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
     border-radius: 8px;
     padding: 10px;
-    color: #ffffff;
+    color: #0f172a;
     font-size: 0.88rem;
     resize: none;
     box-sizing: border-box;
@@ -728,7 +770,8 @@ td.break-row {
 #modal-note-textarea:focus {
     outline: none;
     border-color: #22c55e;
-    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
 }
 
 .modal-actions-row {
@@ -749,13 +792,14 @@ td.break-row {
 }
 
 #modal-cancel-btn {
-    background: rgba(51, 65, 85, 0.6);
-    color: #cbd5e1;
+    background: #f1f5f9;
+    color: #4a5568;
+    border: 1px solid #cbd5e1;
 }
 
 #modal-cancel-btn:hover {
-    background: rgba(71, 85, 105, 0.8);
-    color: #ffffff;
+    background: #e2e8f0;
+    color: #0f172a;
 }
 
 #modal-save-btn {

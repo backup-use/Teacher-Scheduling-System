@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             tr.innerHTML = `
                 <td><strong>🏫 ${roomName}</strong></td>
-                <td style="color: #ccc;">${roomType}</td>
+                <td style="color: #181616;">${roomType}</td>
                 <td><span class="capacity-badge">${capacity} Seats</span></td>
             `;
             tbody.appendChild(tr);

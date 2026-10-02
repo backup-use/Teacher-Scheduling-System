@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════
    MAKILING INTEGRATED SCHOOL — STUDENT LIST (Teacher)
    Green-first branding matching other pages
+   Theme: HYBRID — Dark sidebar + Light content area
    ═══════════════════════════════════════════════════════ */
 
 :root {
@@ -8,45 +9,45 @@
     --mis-moss: #4a6b3a;
     --mis-moss-dark: #354d2a;
     --mis-moss-light: #6b8f52;
-    
+
     --mis-gold: #d4a017;
     --mis-gold-light: #f0be3d;
-    
+
     --mis-sky: #87ceeb;
     --mis-turquoise: #2e8b7a;
     --mis-turquoise-light: #4fc4ae;
-    
+
     /* ═══ FONTS ═══ */
     --font-logo: 'Pirata One', 'Cinzel', serif;
     --font-title: 'Cinzel', serif;
     --font-section: 'Cinzel', serif;
     --font-body: 'Inter', 'Segoe UI', sans-serif;
-    
+
     /* ═══ SIDEBAR ═══ */
     --sidebar-width: 260px;
     --sidebar-collapsed-width: 72px;
     --sidebar-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    
+
     /* ═══ GLASS ═══ */
     --glass-bg: rgba(6, 30, 18, 0.85);
     --glass-border: rgba(34, 197, 94, 0.15);
     --input-bg: rgba(6, 30, 18, 0.6);
-    
+
     /* ═══ LEGACY ═══ */
     --cyan: var(--mis-moss-light);
     --cyan-bright: var(--mis-turquoise-light);
     --accent-glow: rgba(74, 107, 58, 0.4);
     --primary-gradient: linear-gradient(135deg, #354d2a 0%, #4a6b3a 100%);
     --mis-red: #b91c1c;
-    --text-primary: #ffffff;
-    --text-secondary: #94a3b8;
+    --text-primary: #0f172a;
+    --text-secondary: #4a5568;
     --text-muted: #64748b;
 }
 
 * { box-sizing: border-box; }
 
 body {
-    background: 
+    background:
         radial-gradient(circle at top left, rgba(22, 101, 52, 0.35) 0%, transparent 50%),
         radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.15) 0%, transparent 50%),
         radial-gradient(circle at top right, rgba(202, 138, 4, 0.08) 0%, transparent 40%),
@@ -57,10 +58,25 @@ body {
     display: flex;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+
+    /* ✅ ANTI-BLINK */
+    opacity: 0;
+    animation: pageFadeIn 0.2s ease-out 0.03s forwards;
+}
+
+@keyframes pageFadeIn {
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body {
+        opacity: 1;
+        animation: none;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════
-   SIDEBAR
+   SIDEBAR (STAYS DARK)
    ═══════════════════════════════════════════════════════ */
 .sidebar {
     width: var(--sidebar-width);
@@ -133,8 +149,8 @@ body {
     white-space: nowrap;
     overflow: hidden;
     max-width: 200px;
-    transition: opacity var(--sidebar-transition), 
-                max-width var(--sidebar-transition);
+    /* ✅ FIX: Only max-width transition — no opacity to prevent blink */
+    transition: max-width var(--sidebar-transition);
 }
 
 .sidebar .logo img {
@@ -158,7 +174,7 @@ body {
     line-height: 1;
     gap: 2px;
     overflow: hidden;
-    transition: opacity var(--sidebar-transition), max-width var(--sidebar-transition);
+    /* ✅ No transition to prevent blink */
 }
 
 .logo-line-1 {
@@ -228,7 +244,7 @@ body {
     border-radius: 10px;
     color: #a0a0c0;
     text-decoration: none;
-    transition: background 0.2s ease, color 0.2s ease, 
+    transition: background 0.2s ease, color 0.2s ease,
                 padding var(--sidebar-transition);
     background: transparent;
     border: 1px solid transparent;
@@ -265,7 +281,7 @@ body {
 }
 
 .nav-label {
-    transition: opacity var(--sidebar-transition), 
+    transition: opacity var(--sidebar-transition),
                 max-width var(--sidebar-transition);
     opacity: 1;
     max-width: 200px;
@@ -277,7 +293,7 @@ body {
     background: linear-gradient(90deg, rgba(22, 101, 52, 0.5) 0%, rgba(34, 197, 94, 0.15) 100%);
     border-color: rgba(34, 197, 94, 0.4);
     color: #4ade80;
-    box-shadow: 
+    box-shadow:
         0 0 12px rgba(34, 197, 94, 0.25),
         inset 3px 0 0 var(--mis-gold);
     position: relative;
@@ -352,7 +368,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   MAIN CONTENT
+   MAIN CONTENT — LIGHT INSTITUTIONAL THEME
    ═══════════════════════════════════════════════════════ */
 .main-content {
     flex: 1;
@@ -366,6 +382,32 @@ body {
     width: auto;
     transition: margin-left var(--sidebar-transition);
     will-change: margin-left;
+    /* ✅ LIGHT BACKGROUND */
+    background: linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 50%, #f1f8e9 100%);
+    color: #0f172a;
+    position: relative;
+}
+
+/* ✅ School logo watermark */
+.main-content::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 60vw;
+    height: 100vh;
+    background-image: url('/shared/img/makiling_logo.png');
+    background-repeat: no-repeat;
+    background-position: center right;
+    background-size: 50vh;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.main-content > * {
+    position: relative;
+    z-index: 1;
 }
 
 .main-content.sidebar-collapsed {
@@ -388,7 +430,7 @@ body {
     font-weight: 700;
     font-family: var(--font-title);
     letter-spacing: -0.3px;
-    background: linear-gradient(135deg, #ffffff 0%, #86efac 100%);
+    background: linear-gradient(135deg, #0c2f6b 0%, #166534 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -440,7 +482,7 @@ body {
 .btn-primary:hover {
     background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
     transform: translateY(-2px);
-    box-shadow: 
+    box-shadow:
         0 8px 20px rgba(34, 197, 94, 0.4),
         0 0 0 1px rgba(250, 204, 21, 0.3);
 }
@@ -453,9 +495,9 @@ body {
 
 .btn-secondary {
     padding: 10px 20px;
-    background: rgba(51, 65, 85, 0.6);
-    color: var(--text-secondary);
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: #f1f5f9;
+    color: #4a5568;
+    border: 1px solid #cbd5e1;
     border-radius: 10px;
     font-weight: 600;
     font-size: 0.85rem;
@@ -465,18 +507,18 @@ body {
 }
 
 .btn-secondary:hover {
-    background: rgba(71, 85, 105, 0.8);
-    color: var(--text-primary);
-    border-color: rgba(148, 163, 184, 0.4);
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
 }
 
 .btn-icon {
     width: 34px;
     height: 34px;
     border-radius: 8px;
-    background: rgba(34, 197, 94, 0.06);
-    border: 1px solid rgba(34, 197, 94, 0.15);
-    color: var(--text-secondary);
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: #334155;
     font-size: 1rem;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -487,20 +529,20 @@ body {
 }
 
 .btn-icon:hover {
-    background: rgba(34, 197, 94, 0.15);
-    border-color: rgba(34, 197, 94, 0.35);
-    color: #4ade80;
+    background: rgba(34, 197, 94, 0.18);
+    border-color: rgba(34, 197, 94, 0.5);
+    color: #166534;
     transform: translateY(-1px);
 }
 
 .btn-icon.btn-danger:hover {
     background: rgba(185, 28, 28, 0.15);
     border-color: rgba(185, 28, 28, 0.4);
-    color: #f87171;
+    color: #b91c1c;
 }
 
 /* ═══════════════════════════════════════════════════════
-   SECTIONS GRID
+   SECTIONS GRID — Light Glass
    ═══════════════════════════════════════════════════════ */
 .sections-grid {
     display: flex;
@@ -509,14 +551,15 @@ body {
 }
 
 .section-card {
-    background: rgba(6, 30, 18, 0.6);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(34, 197, 94, 0.2);
     border-radius: 16px;
     overflow: hidden;
     transition: all 0.25s ease;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     position: relative;
+    box-shadow: 0 8px 20px rgba(12, 47, 107, 0.06);
 }
 
 .section-card::before {
@@ -527,20 +570,20 @@ body {
     right: 24px;
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--mis-moss-light), var(--mis-gold), var(--mis-moss-light), transparent);
-    opacity: 0.5;
+    opacity: 0.6;
     border-radius: 2px;
 }
 
 .section-card:hover {
-    border-color: rgba(34, 197, 94, 0.3);
-    box-shadow: 0 4px 20px rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.4);
+    box-shadow: 0 12px 30px rgba(34, 197, 94, 0.15);
     transform: translateY(-2px);
 }
 
 .section-header {
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid rgba(34, 197, 94, 0.1);
-    background: rgba(34, 197, 94, 0.03);
+    border-bottom: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(240, 249, 244, 0.6);
 }
 
 .section-title-row {
@@ -554,7 +597,7 @@ body {
     margin: 0;
     font-size: 1.1rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: #0c2f6b;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -563,8 +606,8 @@ body {
     font-size: 0.72rem;
     font-weight: 700;
     padding: 4px 10px;
-    background: rgba(34, 197, 94, 0.12);
-    color: #4ade80;
+    background: rgba(34, 197, 94, 0.15);
+    color: #166534;
     border: 1px solid rgba(34, 197, 94, 0.3);
     border-radius: 12px;
     text-transform: uppercase;
@@ -572,9 +615,9 @@ body {
 }
 
 .section-badge.dropped {
-    background: rgba(148, 163, 184, 0.1);
-    color: #94a3b8;
-    border-color: rgba(148, 163, 184, 0.2);
+    background: rgba(148, 163, 184, 0.15);
+    color: #64748b;
+    border-color: rgba(148, 163, 184, 0.3);
 }
 
 .section-body {
@@ -582,7 +625,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   STUDENT LIST
+   STUDENT LIST — Light
    ═══════════════════════════════════════════════════════ */
 .student-list {
     display: flex;
@@ -596,27 +639,27 @@ body {
     align-items: center;
     gap: 16px;
     padding: 12px 16px;
-    background: rgba(34, 197, 94, 0.03);
-    border: 1px solid rgba(34, 197, 94, 0.08);
+    background: rgba(240, 249, 244, 0.6);
+    border: 1px solid rgba(34, 197, 94, 0.15);
     border-radius: 10px;
     transition: all 0.2s ease;
     flex-wrap: wrap;
 }
 
 .student-row:hover {
-    background: rgba(34, 197, 94, 0.08);
-    border-color: rgba(34, 197, 94, 0.2);
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
     transform: translateX(2px);
 }
 
 .student-row.student-dropped {
-    opacity: 0.55;
-    background: rgba(148, 163, 184, 0.04);
+    opacity: 0.6;
+    background: rgba(148, 163, 184, 0.08);
 }
 
 .student-row.student-dropped .student-name {
     text-decoration: line-through;
-    color: var(--text-muted);
+    color: #94a3b8;
 }
 
 .student-info {
@@ -625,14 +668,14 @@ body {
 }
 
 .student-name {
-    color: var(--text-primary);
+    color: #0f172a;
     font-weight: 600;
     font-size: 0.95rem;
     margin-bottom: 3px;
 }
 
 .student-meta {
-    color: var(--text-muted);
+    color: #64748b;
     font-size: 0.78rem;
 }
 
@@ -653,20 +696,20 @@ body {
 
 .status-badge.active {
     background: rgba(34, 197, 94, 0.15);
-    color: #4ade80;
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #166534;
+    border: 1px solid rgba(34, 197, 94, 0.35);
 }
 
 .status-badge.dropped {
-    background: rgba(148, 163, 184, 0.12);
-    color: #94a3b8;
-    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(148, 163, 184, 0.15);
+    color: #64748b;
+    border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
 .no-students {
     text-align: center;
     padding: 24px;
-    color: var(--text-muted);
+    color: #64748b;
     font-size: 0.88rem;
 }
 
@@ -680,8 +723,8 @@ body {
 .empty-state {
     text-align: center;
     padding: 60px 20px;
-    background: rgba(34, 197, 94, 0.02);
-    border: 1px dashed rgba(34, 197, 94, 0.15);
+    background: rgba(240, 249, 244, 0.6);
+    border: 1px dashed rgba(34, 197, 94, 0.3);
     border-radius: 14px;
 }
 
@@ -689,17 +732,17 @@ body {
     font-size: 3.5rem;
     margin-bottom: 16px;
     display: block;
-    opacity: 0.6;
+    opacity: 0.7;
 }
 
 .empty-state h3 {
-    color: var(--text-primary);
+    color: #0c2f6b;
     font-size: 1.15rem;
     margin: 0 0 8px 0;
 }
 
 .empty-state p {
-    color: var(--text-secondary);
+    color: #4a5568;
     font-size: 0.88rem;
     margin: 0;
 }
@@ -707,7 +750,7 @@ body {
 .loading-state {
     text-align: center;
     padding: 60px 20px;
-    color: var(--text-secondary);
+    color: #64748b;
 }
 
 .loading-spinner {
@@ -725,7 +768,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════
-   MODAL
+   MODAL — Light Glass
    ═══════════════════════════════════════════════════════ */
 .modal-overlay {
     position: fixed;
@@ -733,7 +776,7 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(15, 23, 42, 0.75);
     backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
@@ -750,16 +793,17 @@ body {
 }
 
 .modal-box {
-    background: linear-gradient(145deg, #0a1e12, #061a0f);
-    border: 1px solid rgba(34, 197, 94, 0.25);
+    background: #ffffff;
+    border: 1px solid rgba(34, 197, 94, 0.3);
     border-radius: 18px;
     width: 90%;
     max-width: 480px;
-    box-shadow: 
-        0 25px 60px rgba(0, 0, 0, 0.8), 
-        0 0 40px rgba(34, 197, 94, 0.15);
+    box-shadow:
+        0 25px 60px rgba(12, 47, 107, 0.25),
+        0 0 40px rgba(34, 197, 94, 0.1);
     overflow: hidden;
     animation: modalSlideIn 0.3s ease;
+    color: #0f172a;
 }
 
 @keyframes modalSlideIn {
@@ -773,22 +817,23 @@ body {
     align-items: center;
     padding: 20px 24px;
     border-bottom: 1px solid rgba(34, 197, 94, 0.15);
+    background: rgba(240, 249, 244, 0.5);
 }
 
 .modal-header h2 {
     margin: 0;
     font-size: 1.15rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: #0c2f6b;
 }
 
 .modal-close {
     width: 32px;
     height: 32px;
     border-radius: 8px;
-    background: rgba(51, 65, 85, 0.5);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    color: var(--text-secondary);
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #4a5568;
     font-size: 1rem;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -799,9 +844,9 @@ body {
 }
 
 .modal-close:hover {
-    background: rgba(185, 28, 28, 0.15);
+    background: rgba(185, 28, 28, 0.1);
     border-color: rgba(185, 28, 28, 0.4);
-    color: #f87171;
+    color: #b91c1c;
 }
 
 .modal-body {
@@ -812,7 +857,7 @@ body {
 }
 
 .modal-body label {
-    color: var(--text-secondary);
+    color: #334155;
     font-size: 0.8rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -830,10 +875,10 @@ body {
 .modal-body textarea {
     width: 100%;
     padding: 11px 14px;
-    background: rgba(6, 30, 18, 0.7);
-    border: 1px solid rgba(34, 197, 94, 0.15);
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
     border-radius: 10px;
-    color: var(--text-primary);
+    color: #0f172a;
     font-family: inherit;
     font-size: 0.9rem;
     transition: all 0.2s ease;
@@ -845,15 +890,15 @@ body {
 .modal-body textarea:focus {
     outline: none;
     border-color: #22c55e;
-    background: rgba(6, 30, 18, 0.9);
-    box-shadow: 
-        0 0 0 3px rgba(34, 197, 94, 0.2),
-        0 0 12px rgba(34, 197, 94, 0.15);
+    background: #ffffff;
+    box-shadow:
+        0 0 0 3px rgba(34, 197, 94, 0.15),
+        0 0 12px rgba(34, 197, 94, 0.1);
 }
 
 .modal-body select option {
-    background: #0a1e12;
-    color: #fff;
+    background: #ffffff;
+    color: #0f172a;
 }
 
 .modal-body textarea {
@@ -895,7 +940,7 @@ body {
     }
 
     .sidebar.collapsed .nav-label,
-    .sidebar.collapsed .logo-text {
+    .sidebar.collapsed .logo {
         opacity: 1;
         max-width: none;
         pointer-events: auto;
