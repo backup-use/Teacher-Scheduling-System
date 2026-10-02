@@ -12,7 +12,7 @@ async function test() {
   
   if (connected) {
     try {
-      const result = await query('SELECT * FROM users LIMIT 1');
+      const result = await query('SELECT * FROM public.users LIMIT 1');
       console.log('Users table exists:', !!result);
     } catch (err) {
       console.log('Users table error:', err.message);

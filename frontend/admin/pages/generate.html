@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura | Timetable Generation</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
+    <title>Makiling IS | Timetable Generation</title>
+    <link rel="icon" type="image/png" href="/shared/img/makiling_logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/generate.css">
     
     <!-- 📄 PDF Export Libraries -->
@@ -16,12 +19,11 @@
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
             <div class="logo">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
-                    <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
-                    <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
-                </svg>
-                <span>Lectura<span style="color: #00D2FF;">.</span></span>
+                <img src="/shared/img/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
+                <div class="logo-text">
+                    <span class="logo-line-1">Makiling</span>
+                    <span class="logo-line-2">Integrated School</span>
+                </div>
             </div>
             <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
                 <span class="toggle-icon">◀</span>
@@ -53,6 +55,10 @@
                 <span class="nav-icon">⚡</span>
                 <span class="nav-label">Generate Timetable</span>
             </button>
+            <button onclick="window.location.href='profile.html'" class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Profile Settings</span>
+            </button>
         </nav>
 
         <a href="../../shared/logout.html" class="nav-item logout-btn">
@@ -70,23 +76,23 @@
     <main class="main-content" id="main-content">
         <header class="content-header" style="margin-bottom: 30px;">
             <div class="header-title-area">
-                <h1 style="color: #ffffff; margin-bottom: 5px;">Automated Timetable Generation Control Deck</h1>
-                <p style="color: #94a3b8; margin: 0;">Press the initialize button below to execute the automated constraint matching engine.</p>
+                <h1>Automated Timetable Generation Control Deck</h1>
+                <p>Press the initialize button below to execute the automated constraint matching engine.</p>
             </div>
         </header>
 
         <div class="control-deck-panel" style="margin-bottom: 25px;">
-            <p style="color: #cbd5e1; margin-bottom: 15px;">The core scheduling matching matrix engine automatically resolves structural system conflicts for assigned classroom targets, instructor shift times, availability blocks, and student body.</p>
+            <p>The core scheduling matching matrix engine automatically resolves structural system conflicts for assigned classroom targets, instructor shift times, availability blocks, and student body.</p>
             <button type="button" class="btn-initialize-engine" onclick="generateNewSchedule()">
                 ⚡ Initialize Scheduling Generator
             </button>
         </div>
 
-        <h2 style="color: #ffffff; font-size: 1.3rem; margin-bottom: 15px; font-weight: 500;">Generated Academic Schedule Output</h2>
+        <h2 class="output-heading">Generated Academic Schedule Output</h2>
         
-        <div class="dashboard-card-panel" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 10px; margin-bottom: 30px;">
+        <div class="dashboard-card-panel">
             <div id="timetable-matrix-output-body">
-                <div style="text-align: center; color: #64748b; padding: 40px; font-style: italic;">
+                <div class="empty-placeholder-msg">
                     No active schedule has been compiled yet. Click the initialize button above to process data.
                 </div>
             </div>

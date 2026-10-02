@@ -3,21 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura | View Rooms</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
+    <title>Makiling IS | View Rooms</title>
+    <link rel="icon" type="image/png" href="/shared/img/makiling_logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/rooms-view.css">
 </head>
 <body>
     <!-- ═══ SIDEBAR ═══ -->
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
-            <div class="logo" style="margin-bottom: 2.5rem; display: flex; align-items: center; gap: 12px; font-size: 1.4rem; font-weight: 700; color: #ffffff;">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.4));">
-                    <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
-                    <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
-                    <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
-                </svg>
-                <span>Lectura<span style="color: #00D2FF;">.</span></span>
+            <div class="logo">
+                <img src="/shared/img/makiling_logo.png" alt="Makiling IS Logo" width="40" height="40">
+                <div class="logo-text">
+                    <span class="logo-line-1">Makiling</span>
+                    <span class="logo-line-2">Integrated School</span>
+                </div>
             </div>
             <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
                 <span class="toggle-icon">◀</span>
@@ -58,14 +60,14 @@
     <main class="main-content" id="main-content">
         <div class="rooms-header">
             <h1>🏫 School Rooms Directory</h1>
-            <p style="color: #aaa; font-size: 0.9rem;">View available campus spaces, capacities, and designations.</p>
+            <p class="subtitle">View available campus spaces, capacities, and designations.</p>
         </div>
 
         <div class="search-bar-container">
             <input type="text" id="room-search" class="search-input" placeholder="🔍 Search room name or type...">
         </div>
 
-        <div class="card-glass" style="padding: 0;">
+        <div class="card-glass">
             <table class="rooms-table">
                 <thead>
                     <tr>
@@ -76,7 +78,7 @@
                 </thead>
                 <tbody id="rooms-rows">
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #aaa; padding: 2rem;">Loading facilities directory...</td>
+                        <td colspan="3" class="loading-state">Loading facilities directory...</td>
                     </tr>
                 </tbody>
             </table>

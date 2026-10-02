@@ -2,22 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lectura | Admin</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIS | Teacher Management</title>
+    <link rel="icon" type="image/png" href="/shared/img/makiling_logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/Addteacher.css">
-    <link rel="stylesheet" href="../css/teacher-list.css">
 </head>
 <body>
     <!-- ═══ SIDEBAR ═══ -->
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
             <div class="logo">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
-                    <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
-                    <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
-                </svg>
-                <span>Lectura<span style="color: #00D2FF;">.</span></span>
+                <img src="/shared/img/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
+                <div class="logo-text">
+                    <span class="logo-line-1">Makiling</span>
+                    <span class="logo-line-2">Integrated School</span>
+                </div>
             </div>
             <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
                 <span class="toggle-icon">◀</span>
@@ -49,6 +51,10 @@
                 <span class="nav-icon">⚡</span>
                 <span class="nav-label">Generate Timetable</span>
             </button>
+            <button onclick="window.location.href='profile.html'" class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Profile Settings</span>
+            </button>
         </nav>
 
         <a href="../../shared/logout.html" class="nav-item logout-btn">
@@ -57,7 +63,6 @@
         </a>
     </aside>
 
-    <!-- Expand button -->
     <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
         <span>▶</span>
     </button>
@@ -65,7 +70,7 @@
     <!-- ═══ MAIN CONTENT ═══ -->
     <main class="main-content" id="main-content">
         <section id="teachers-tab" class="tab-pane">
-            <header style=" display: flex; justify-content: space-between; align-items: center;">
+            <header style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h1 style="font-size: 2.2rem; font-weight: 600;">Teacher Management</h1>
                     <p style="color: #a0a0c0; margin-top: 5px;">Register new faculty members to the system.</p>
@@ -108,9 +113,9 @@
                                 <span id="dropdown-arrow" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #a0a0c0; cursor: pointer; pointer-events: none; font-size: 0.8rem;">▼</span>
                             </div>
 
-                            <div id="subject-checkbox-menu" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #0f111a; border: 1px solid #00d2ff; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; padding: 8px; margin-top: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">
+                            <div id="subject-checkbox-menu" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #0f111a; border: 1px solid #2563EB; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; padding: 8px; margin-top: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">
                                 <div id="subject-checkbox-list">
-                                    <div style="color: #00d2ff; padding: 6px; font-size: 0.85rem;">Select a grade level to filter subjects...</div>
+                                    <div style="color: #2563EB; padding: 6px; font-size: 0.85rem;">Select a grade level to filter subjects...</div>
                                 </div>
                             </div>
                         </div>
@@ -118,7 +123,7 @@
 
                     <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
                         <label>Availability Settings</label>
-                        <div id="days-selector" style="display: flex; gap: 20px; margin: 15px 0;">
+                        <div id="days-selector" style="display: flex; gap: 20px; margin: 15px 0; flex-wrap: wrap;">
                             <label><input type="checkbox" name="days" value="Monday"> Mon</label>
                             <label><input type="checkbox" name="days" value="Tuesday"> Tue</label>
                             <label><input type="checkbox" name="days" value="Wednesday"> Wed</label>
@@ -133,7 +138,7 @@
                     </div>
 
                     <button type="submit" class="btn-generate" style="margin-top: 2rem;">
-                        ✨ ADD TEACHERS & CREATE ACCOUNT
+                        ✨ ADD TEACHER & CREATE ACCOUNT
                     </button>
                 </form>
             </div>
@@ -166,7 +171,6 @@
         </section>
     </main>
 
-    <!-- ═══ Sidebar Toggle Script ═══ -->
     <script>
         (function initSidebarToggle() {
             const sidebar = document.getElementById('app-sidebar');

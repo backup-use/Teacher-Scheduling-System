@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura | Manage Sections</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
+    <title>Makiling IS | Manage Sections</title>
+    <link rel="icon" type="image/png" href="/shared/img/makiling_logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/sections.css">
 </head>
 <body>
@@ -12,12 +15,11 @@
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
             <div class="logo">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
-                    <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
-                    <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
-                </svg>
-                <span>Lectura<span style="color: #00D2FF;">.</span></span>
+                <img src="/shared/img/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
+                <div class="logo-text">
+                    <span class="logo-line-1">Makiling</span>
+                    <span class="logo-line-2">Integrated School</span>
+                </div>
             </div>
             <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
                 <span class="toggle-icon">◀</span>
@@ -49,6 +51,10 @@
                 <span class="nav-icon">⚡</span>
                 <span class="nav-label">Generate Timetable</span>
             </button>
+            <button onclick="window.location.href='profile.html'" class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Profile Settings</span>
+            </button>
         </nav>
 
         <a href="../../shared/logout.html" class="nav-item logout-btn">
@@ -66,24 +72,24 @@
     <main class="main-content" id="main-content">
         <header class="content-header" style="margin-bottom: 30px;">
             <div class="header-title-area">
-                <h1 style="color: #ffffff; margin-bottom: 5px;">Section Management Setup</h1>
-                <p style="color: #94a3b8; margin: 0;">Define target class sections and link home rooms to prevent double-booking sections or rooms during schedule synthesis.</p>
+                <h1>Section Management Setup</h1>
+                <p>Define target class sections and link home rooms to prevent double-booking sections or rooms during schedule synthesis.</p>
             </div>
         </header>
 
         <div class="dashboard-card-panel">
-            <div class="workspace-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div class="workspace-grid">
                 
                 <!-- LEFT COLUMN: FORM -->
                 <div class="panel-col">
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; display: block; margin-bottom: 8px;">Section Name</label>
-                        <input type="text" id="sectionName" placeholder="e.g., Grade 7 - Sapphire" class="custom-input-box" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 6px; box-sizing: border-box;">
+                    <div class="form-group">
+                        <label class="input-label" for="sectionName">Section Name</label>
+                        <input type="text" id="sectionName" placeholder="e.g., Grade 7 - Sapphire" class="custom-input-box">
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; display: block; margin-bottom: 8px;">Grade Level</label>
-                        <select id="sectionGrade" class="custom-input-box" style="width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 6px; box-sizing: border-box;">
+                    <div class="form-group">
+                        <label class="input-label" for="sectionGrade">Grade Level</label>
+                        <select id="sectionGrade" class="custom-input-box">
                             <option value="Grade 7">Grade 7</option>
                             <option value="Grade 8">Grade 8</option>
                             <option value="Grade 9">Grade 9</option>
@@ -93,21 +99,21 @@
                         </select>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; display: block; margin-bottom: 8px;">Assigned Home Room</label>
-                        <select id="assignedRoom" class="custom-input-box" style="width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 6px; box-sizing: border-box;">
+                    <div class="form-group">
+                        <label class="input-label" for="assignedRoom">Assigned Home Room</label>
+                        <select id="assignedRoom" class="custom-input-box">
                             <option value="">Select Room...</option>
                         </select>
                     </div>
 
-                    <button type="button" id="add-section-btn" style="width: 100%; padding: 12px; background: #00d2ff; color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase;">SAVE SECTION ➕</button>
+                    <button type="button" id="add-section-btn" class="btn-add-subject">SAVE SECTION ➕</button>
                 </div>
                 
                 <!-- RIGHT COLUMN: SECTIONS LIST -->
                 <div class="panel-col">
-                    <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; font-weight: 600; display: block; margin-bottom: 10px;">Configured Sections</label>
+                    <label class="input-label" style="display: block; margin-bottom: 10px;">Configured Sections</label>
                     
-                    <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; min-height: 280px; max-height: 450px; overflow-y: auto;">
+                    <div class="subject-display-box">
                         <div id="sections-list-container"></div>
                     </div>
                 </div>

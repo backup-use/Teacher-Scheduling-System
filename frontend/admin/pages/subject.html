@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura | Master Subject Catalog</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7' rx='2' fill='%2300D2FF'/><rect x='3' y='12' width='7' height='9' rx='2' fill='%237C3AED'/><rect x='12' y='14' width='9' height='7' rx='2' fill='%2300D2FF' opacity='0.8'/></svg>">
-
+    <title>Makiling IS | Master Subject Catalog</title>
+    <link rel="icon" type="image/png" href="/shared/img/makiling_logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/subject.css">
 </head>
 <body>
@@ -13,12 +15,11 @@
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
             <div class="logo">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="3" width="7" height="7" rx="2" fill="#00D2FF" />
-                    <rect x="3" y="12" width="7" height="9" rx="2" fill="#7C3AED" />
-                    <rect x="12" y="14" width="9" height="7" rx="2" fill="#00D2FF" opacity="0.8" />
-                </svg>
-                <span>Lectura<span style="color: #00D2FF;">.</span></span>
+                <img src="/shared/img/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
+                <div class="logo-text">
+                    <span class="logo-line-1">Makiling</span>
+                    <span class="logo-line-2">Integrated School</span>
+                </div>
             </div>
             <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
                 <span class="toggle-icon">◀</span>
@@ -50,6 +51,10 @@
                 <span class="nav-icon">⚡</span>
                 <span class="nav-label">Generate Timetable</span>
             </button>
+            <button onclick="window.location.href='profile.html'" class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Profile Settings</span>
+            </button>
         </nav>
 
         <a href="../../shared/logout.html" class="nav-item logout-btn">
@@ -67,25 +72,25 @@
     <main class="main-content" id="main-content">
         <header class="content-header" style="margin-bottom: 30px;">
             <div class="header-title-area">
-                <h1 style="color: #ffffff; margin-bottom: 5px;">Master Subject Catalog Setup</h1>
-                <p style="color: #94a3b8; margin: 0;">Input the courses offered by the school. The auto-generation algorithm looks at this list and cross-references it with teacher targets to keep schedules fair (*patas*).</p>
+                <h1>Master Subject Catalog Setup</h1>
+                <p>Input the courses offered by the school. The auto-generation algorithm looks at this list and cross-references it with teacher targets to keep schedules fair (*patas*).</p>
             </div>
         </header>
 
         <div class="dashboard-card-panel">
-            <div class="subject-workspace-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div class="subject-workspace-grid">
                 
                 <!-- LEFT COLUMN: FORM -->
                 <div class="subject-panel-col">
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; display: block; margin-bottom: 8px;">Subject Title(s)</label>
-                        <textarea id="subjectTitle" placeholder="e.g., Mathematics, Science, English, MAPEH (Separate multiple subjects with commas)" class="custom-input-box" style="width: 100%; height: 120px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 6px; resize: vertical; box-sizing: border-box;"></textarea>
-                        <small style="color: #00d2ff; font-size: 0.75rem; display: block; margin-top: 6px;">💡 Tip: Separate subjects using commas to batch add in one click.</small>
+                    <div class="form-group">
+                        <label class="input-label" for="subjectTitle">Subject Title(s)</label>
+                        <textarea id="subjectTitle" placeholder="e.g., Mathematics, Science, English, MAPEH (Separate multiple subjects with commas)" class="custom-input-box" style="height: 120px; resize: vertical;"></textarea>
+                        <small class="input-hint">💡 Tip: Separate subjects using commas to batch add in one click.</small>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; display: block; margin-bottom: 8px;">Grade Level Assignment</label>
-                        <select id="gradeLevel" class="custom-input-box" style="width: 100%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 6px; box-sizing: border-box;">
+                    <div class="form-group">
+                        <label class="input-label" for="gradeLevel">Grade Level Assignment</label>
+                        <select id="gradeLevel" class="custom-input-box">
                             <option value="Junior High School - Grade 7">Junior High School - Grade 7</option>
                             <option value="Junior High School - Grade 8">Junior High School - Grade 8</option>
                             <option value="Junior High School - Grade 9">Junior High School - Grade 9</option>
@@ -95,26 +100,26 @@
                         </select>
                     </div>
 
-                    <button type="button" id="add-subject-btn" class="btn-add-subject" style="width: 100%; padding: 12px; background: #00d2ff; color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase;">ADD SUBJECT(S) TO SYSTEM ➕</button>
+                    <button type="button" id="add-subject-btn" class="btn-add-subject">ADD SUBJECT(S) TO SYSTEM ➕</button>
                 </div>
                 
                 <!-- RIGHT COLUMN: ACTIVE OFFERINGS -->
                 <div class="subject-panel-col">
-                    <label class="input-label" style="color: #94a3b8; font-size: 0.9rem; font-weight: 600; display: block; margin-bottom: 10px;">Subject Lists</label>
+                    <label class="input-label" style="display: block; margin-bottom: 10px;">Subject Lists</label>
 
                     <!-- BATCH DELETE TOOLBAR -->
-                    <div id="batch-delete-bar" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                    <div id="batch-delete-bar" class="batch-delete-bar">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" style="width: 16px; height: 16px; cursor: pointer; accent-color: #ff5f5f;">
-                            <label for="select-all-checkbox" style="color: #cbd5e1; font-size: 0.8rem; cursor: pointer; font-weight: 600; user-select: none;">Select All Subjects</label>
+                            <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)">
+                            <label for="select-all-checkbox">Select All Subjects</label>
                         </div>
-                        <button id="btn-delete-checked" onclick="executeBatchDelete()" disabled style="background: rgba(239, 68, 68, 0.2); color: #64748b; border: 1px solid transparent; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.78rem; cursor: not-allowed; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+                        <button id="btn-delete-checked" onclick="executeBatchDelete()" disabled class="btn-delete-checked">
                             🗑️ DELETE CHECKED (<span id="selected-count">0</span>)
                         </button>
                     </div>
 
                     <!-- SUBJECT LIST CONTAINER -->
-                    <div class="subject-display-box" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; min-height: 280px; max-height: 450px; overflow-y: auto;">
+                    <div class="subject-display-box">
                         <div id="subjects-list-container"></div>
                     </div>
                 </div>

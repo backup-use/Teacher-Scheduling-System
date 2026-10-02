@@ -132,11 +132,9 @@ function validateUsername(username) {
 // ═══════════════════════════════════════════════════════
 
 function getAuth(req) {
-  // Try cookie first (more secure)
   const cookies = parseCookies(req.headers.cookie || "");
   let token = cookies["lectura_token"];
 
-  // Fallback to Authorization header
   if (!token) {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -144,10 +142,38 @@ function getAuth(req) {
     }
   }
 
-  if (!token) return null;
+  if (!token || token === "null" || token === "undefined") return null;
+  
   try {
     return jwt.verify(token, JWT_SECRET);
-  } catch {
+  } catch (err) {
+    console.log("⚠️ JWT Verification failed:", err.message);
+    return null;
+  }
+}
+
+async function getAuthWithSessionCheck(req) {
+  const decoded = getAuth(req);
+  if (!decoded) return null;
+
+  try {
+    const { rows } = await db.query(
+      "SELECT session_version FROM public.users WHERE id = $1",
+      [decoded.id]
+    );
+    if (rows.length === 0) return null;
+
+    const currentVersion = rows[0].session_version || 1;
+    const tokenVersion = decoded.sessionVersion || 1;
+
+    if (currentVersion !== tokenVersion) {
+      console.log("⚠️ Session version mismatch — token invalidated");
+      return null;
+    }
+
+    return decoded;
+  } catch (err) {
+    console.error("❌ getAuthWithSessionCheck error:", err.message);
     return null;
   }
 }
@@ -163,18 +189,13 @@ function parseCookies(cookieHeader) {
 }
 
 // ═══════════════════════════════════════════════════════
-// ═══ RATE LIMITER (In-Memory)                        ═══
+// ═══ RATE LIMITER                                    ═══
 // ═══════════════════════════════════════════════════════
 
 const rateLimitMap = new Map();
 
 function rateLimit(req, res, options = {}) {
-  const {
-    windowMs = 60_000,
-    maxRequests = 60,
-    keyPrefix = "global",
-  } = options;
-
+  const { windowMs = 60_000, maxRequests = 60, keyPrefix = "global" } = options;
   const ip = req.socket.remoteAddress || "unknown";
   const now = Date.now();
   const key = `${keyPrefix}:${ip}`;
@@ -203,7 +224,6 @@ function rateLimit(req, res, options = {}) {
   return true;
 }
 
-// Cleanup old entries every 5 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of rateLimitMap.entries()) {
@@ -332,13 +352,54 @@ async function generateSchedule(teacher) {
 
 async function initAdmin() {
   try {
-    await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);");
-    await db.query("ALTER TABLE sections ADD COLUMN IF NOT EXISTS shift VARCHAR(3) DEFAULT 'AM';");
-    await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;");
-    await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMP NULL;");
-    await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS hidden_by VARCHAR(255) NULL;");
+    // ═══ 1. CREATE USERS TABLE IF IT DOESN'T EXIST ═══
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS public.users (
+        id VARCHAR(255) PRIMARY KEY,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL DEFAULT 'teacher',
+        name VARCHAR(255),
+        display_name VARCHAR(255),
+        teacher_id VARCHAR(255),
+        email VARCHAR(255),
+        session_version INTEGER DEFAULT 1,
+        last_password_change TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log("✅ Users table ready.");
 
-    // ═══ AUDIT LOGS TABLE ═══
+    // ═══ 2. ADD MISSING COLUMNS TO USERS (safety net) ═══
+    const userColumns = [
+      ["created_at", "TIMESTAMP DEFAULT NOW()"],
+      ["updated_at", "TIMESTAMP DEFAULT NOW()"],
+      ["email", "VARCHAR(255)"],
+      ["display_name", "VARCHAR(255)"],
+      ["last_password_change", "TIMESTAMP"],
+      ["session_version", "INTEGER DEFAULT 1"]
+    ];
+    for (const [col, type] of userColumns) {
+      try {
+        await db.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS ${col} ${type};`);
+      } catch (e) {
+        console.log(`⚠️ Could not add column ${col}:`, e.message);
+      }
+    }
+    console.log("✅ User columns verified.");
+
+    // ═══ 3. TEACHERS & SECTIONS columns ═══
+    try {
+      await db.query("ALTER TABLE sections ADD COLUMN IF NOT EXISTS shift VARCHAR(3) DEFAULT 'AM';");
+      await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;");
+      await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMP NULL;");
+      await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS hidden_by VARCHAR(255) NULL;");
+    } catch (e) {
+      console.log("⚠️ Some teacher/section columns could not be added:", e.message);
+    }
+
+    // ═══ 4. AUDIT LOGS ═══
     await db.query(`
       CREATE TABLE IF NOT EXISTS audit_logs (
         id SERIAL PRIMARY KEY,
@@ -354,7 +415,7 @@ async function initAdmin() {
     await db.query("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);");
     console.log("✅ Audit logs table ready.");
 
-    // ═══ CONSENT LOGS TABLE (DPA Compliance) ═══
+    // ═══ 5. CONSENT LOGS ═══
     await db.query(`
       CREATE TABLE IF NOT EXISTS consent_logs (
         id SERIAL PRIMARY KEY,
@@ -369,8 +430,35 @@ async function initAdmin() {
     await db.query("CREATE INDEX IF NOT EXISTS idx_consent_teacher ON consent_logs(teacher_id);");
     console.log("✅ Consent logs table ready.");
 
+    // ═══ 6. USER PROFILE CHANGES ═══
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS user_profile_changes (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
+        change_type VARCHAR(50) NOT NULL,
+        old_value VARCHAR(500),
+        new_value VARCHAR(500),
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        changed_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await db.query("CREATE INDEX IF NOT EXISTS idx_profile_changes_user ON user_profile_changes(user_id);");
+    await db.query("CREATE INDEX IF NOT EXISTS idx_profile_changes_type ON user_profile_changes(change_type);");
+    await db.query("CREATE INDEX IF NOT EXISTS idx_profile_changes_date ON user_profile_changes(changed_at DESC);");
+    console.log("✅ User profile changes table ready.");
+
+    // ═══ 7. Set display_name for existing users ═══
+    try {
+      await db.query("UPDATE public.users SET display_name = name WHERE display_name IS NULL;");
+      await db.query("UPDATE public.users SET session_version = 1 WHERE session_version IS NULL;");
+    } catch (e) {
+      console.log("⚠️ Could not update display_name/session_version:", e.message);
+    }
+
+    // ═══ 8. CHECK ADMIN ACCOUNT ═══
     const { rows } = await db.query(
-      "SELECT id, password FROM users WHERE username = $1",
+      "SELECT id, password FROM public.users WHERE username = $1",
       [ADMIN_USERNAME]
     );
 
@@ -378,8 +466,9 @@ async function initAdmin() {
       const adminId = "usr-" + genId();
       const hashed = await bcrypt.hash(ADMIN_PASSWORD, 10);
       await db.query(
-        "INSERT INTO users (id, username, password, role, name) VALUES ($1, $2, $3, $4, $5)",
-        [adminId, ADMIN_USERNAME, hashed, "admin", ADMIN_NAME]
+        `INSERT INTO public.users (id, username, password, role, name, display_name, teacher_id, email, session_version) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1)`,
+        [adminId, ADMIN_USERNAME, hashed, "admin", ADMIN_NAME, ADMIN_NAME, null, null]
       );
       console.log(`✅ Admin account created: ${ADMIN_USERNAME}`);
       return;
@@ -391,7 +480,7 @@ async function initAdmin() {
       const isLegacy = rows[0].password === sha;
       const newHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
       await db.query(
-        "UPDATE users SET password = $1 WHERE username = $2",
+        "UPDATE public.users SET password = $1 WHERE username = $2",
         [newHash, ADMIN_USERNAME]
       );
       console.log(isLegacy ? `🔧 Migrated admin password to bcrypt.` : `🔧 Admin password healed.`);
@@ -489,7 +578,6 @@ async function generateJHSMaster(payload) {
   const usedTeachers = new Set();
   const usedRooms = new Set();
   const dailyTeacherCount = {};
-
   const masterSectionSchedules = {};
 
   for (const section of jhsSections) {
@@ -638,7 +726,6 @@ const server = http.createServer(async (req, res) => {
   const pathname = parsedUrl.pathname;
   const query = Object.fromEntries(parsedUrl.searchParams);
 
-  // ═══ CORS PREFLIGHT ═══
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
       "Access-Control-Allow-Origin": CORS_ORIGIN,
@@ -651,16 +738,18 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname.startsWith("/api/")) {
-    // ═══════════════════════════════════════════════════════
-    // ═══ GLOBAL API RATE LIMIT (100 req/min per IP)     ═══
-    // ═══════════════════════════════════════════════════════
     if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 100, keyPrefix: "api" })) {
       return;
     }
 
-    // ═══ AUTH: LOGIN (strict rate limit) ═══
+    // ═══ AUTH: LOGIN ═══
     if (pathname === "/api/auth/login" && req.method === "POST") {
-      if (!rateLimit(req, res, { windowMs: 15 * 60_000, maxRequests: 5, keyPrefix: "login" })) {
+      // DEV MODE: Relaxed rate limit for testing (50 attempts per 2 minutes)
+      // PRODUCTION MODE: Uncomment the second line and comment out the first
+      const loginLimitOptions = { windowMs: 2 * 60_000, maxRequests: 50, keyPrefix: "login" };
+      // const loginLimitOptions = { windowMs: 15 * 60_000, maxRequests: 5, keyPrefix: "login" }; // Strict production
+      
+      if (!rateLimit(req, res, loginLimitOptions)) {
         return;
       }
       try {
@@ -673,7 +762,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         const { rows } = await db.query(
-          "SELECT id, username, role, name, teacher_id, password FROM users WHERE username = $1",
+          "SELECT id, username, role, name, display_name, teacher_id, password, session_version FROM public.users WHERE username = $1",
           [username]
         );
 
@@ -691,7 +780,7 @@ const server = http.createServer(async (req, res) => {
           valid = sha === user.password;
           if (valid) {
             const newHash = await bcrypt.hash(password, 10);
-            await db.query("UPDATE users SET password = $1 WHERE id = $2", [newHash, user.id]);
+            await db.query("UPDATE public.users SET password = $1 WHERE id = $2", [newHash, user.id]);
           }
         }
 
@@ -706,6 +795,7 @@ const server = http.createServer(async (req, res) => {
             username: user.username,
             role: user.role,
             teacherId: user.teacher_id,
+            sessionVersion: user.session_version || 1,
           },
           JWT_SECRET,
           { expiresIn: "8h" }
@@ -713,15 +803,13 @@ const server = http.createServer(async (req, res) => {
 
         await logAuditEvent("login_success", user.id, req.socket.remoteAddress, { role: user.role });
 
-        // Set secure HTTP-only cookie
         const cookieOptions = [
           `lectura_token=${token}`,
           "HttpOnly",
           "SameSite=Strict",
           "Path=/",
-          "Max-Age=28800", // 8 hours
+          "Max-Age=28800",
         ];
-        // Add Secure flag only in production (HTTPS)
         if (process.env.NODE_ENV === "production") {
           cookieOptions.push("Secure");
         }
@@ -730,12 +818,12 @@ const server = http.createServer(async (req, res) => {
           res,
           200,
           {
-            token, // Keep for backward compat with current frontend
+            token,
             user: {
               id: user.id,
               username: user.username,
               role: user.role,
-              name: user.name,
+              name: user.display_name || user.name,
               teacher_id: user.teacher_id,
             },
           },
@@ -748,15 +836,267 @@ const server = http.createServer(async (req, res) => {
 
     // ── ADMIN PROTECTED ROUTES ──
     if (pathname.startsWith("/api/admin/")) {
-      const auth = getAuth(req);
+      const auth = await getAuthWithSessionCheck(req);
       if (!auth || auth.role !== "admin") {
         await logAuditEvent("unauthorized_access", null, req.socket.remoteAddress, { path: pathname });
         return send(res, 403, { error: "Forbidden: Admin privileges required." });
       }
 
+      // ═══ GET /api/admin/profile ═══
+      if (pathname === "/api/admin/profile" && req.method === "GET") {
+        try {
+          const { rows } = await db.query(
+            "SELECT * FROM public.users WHERE id = $1",
+            [auth.id]
+          );
+          
+          if (rows.length === 0) {
+            return send(res, 404, { error: "Profile not found." });
+          }
+
+          const profile = rows[0];
+
+          return send(res, 200, {
+            id: profile.id || "",
+            username: profile.username || "admin",
+            name: profile.name || "Administrator",
+            displayName: profile.display_name || profile.name || "Administrator",
+            email: profile.email || "",
+            role: profile.role || "admin",
+            createdAt: profile.created_at || new Date().toISOString(),
+            updatedAt: profile.updated_at || new Date().toISOString(),
+            lastPasswordChange: profile.last_password_change || null,
+          });
+        } catch (err) {
+          console.error("❌ Get profile error:", err.message);
+          console.error("Stack:", err.stack);
+          return send(res, 500, { error: "Failed to load profile: " + err.message });
+        }
+      }
+
+      // ═══ PUT /api/admin/profile (display name + email) ═══
+      if (pathname === "/api/admin/profile" && req.method === "PUT") {
+        if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 10, keyPrefix: "profile-update" })) return;
+        try {
+          const body = await parseBody(req);
+          const displayName = sanitizeString(body.displayName || body.name, 100);
+          const email = body.email ? validateEmail(body.email) : null;
+
+          if (!displayName) {
+            return send(res, 400, { error: "Display name is required." });
+          }
+
+          const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
+          if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
+          const existing = rows[0];
+
+          await db.query(
+            `UPDATE public.users 
+             SET name = $1, display_name = $2, email = $3, updated_at = NOW()
+             WHERE id = $4`,
+            [displayName, displayName, email || existing.email, auth.id]
+          );
+
+          if (displayName !== (existing.display_name || existing.name)) {
+            await db.query(
+              `INSERT INTO user_profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent)
+               VALUES ($1, 'display_name', $2, $3, $4, $5)`,
+              [auth.id, existing.display_name || existing.name, displayName, req.socket.remoteAddress, req.headers["user-agent"] || ""]
+            );
+          }
+          if (email && email !== existing.email) {
+            await db.query(
+              `INSERT INTO user_profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent)
+               VALUES ($1, 'email', $2, $3, $4, $5)`,
+              [auth.id, existing.email || "", email, req.socket.remoteAddress, req.headers["user-agent"] || ""]
+            );
+          }
+
+          await logAuditEvent("update_profile", auth.id, req.socket.remoteAddress, {
+            displayName,
+            emailChanged: !!(email && email !== existing.email),
+          });
+
+          const updated = await db.query(
+            "SELECT * FROM public.users WHERE id = $1",
+            [auth.id]
+          );
+
+          const profile = updated.rows[0];
+          return send(res, 200, {
+            success: true,
+            profile: {
+              id: profile.id,
+              username: profile.username,
+              name: profile.name,
+              displayName: profile.display_name || profile.name,
+              email: profile.email || "",
+              role: profile.role,
+              createdAt: profile.created_at || new Date().toISOString(),
+              updatedAt: profile.updated_at || new Date().toISOString(),
+              lastPasswordChange: profile.last_password_change || null,
+            },
+          });
+        } catch (err) {
+          console.error("❌ Update profile error:", err.message);
+          return send(res, 500, { error: "Failed to update profile: " + err.message });
+        }
+      }
+
+      // ═══ PUT /api/admin/profile/username ═══
+      if (pathname === "/api/admin/profile/username" && req.method === "PUT") {
+        if (!rateLimit(req, res, { windowMs: 60 * 60_000, maxRequests: 3, keyPrefix: "change-username" })) return;
+        try {
+          const body = await parseBody(req);
+          const newUsername = validateUsername(body.newUsername);
+          const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
+
+          if (!newUsername) {
+            return send(res, 400, { error: "Invalid username. Use 3-50 characters (letters, numbers, dots, dashes, underscores)." });
+          }
+          if (!currentPassword) {
+            return send(res, 400, { error: "Current password is required." });
+          }
+
+          const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
+          if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
+          const existing = rows[0];
+
+          const passwordValid = await bcrypt.compare(currentPassword, existing.password);
+          if (!passwordValid) {
+            await logAuditEvent("change_username_failed", auth.id, req.socket.remoteAddress, { reason: "invalid_password" });
+            return send(res, 401, { error: "Current password is incorrect." });
+          }
+
+          if (newUsername.toLowerCase() !== existing.username.toLowerCase()) {
+            const usernameCheck = await db.query(
+              "SELECT id FROM public.users WHERE LOWER(username) = LOWER($1) AND id != $2",
+              [newUsername, auth.id]
+            );
+            if (usernameCheck.rows.length > 0) {
+              return send(res, 400, { error: "Username is already taken." });
+            }
+          }
+
+          await db.query(
+            `UPDATE public.users SET username = $1, updated_at = NOW() WHERE id = $2`,
+            [newUsername, auth.id]
+          );
+
+          await db.query(
+            `INSERT INTO user_profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent)
+             VALUES ($1, 'username', $2, $3, $4, $5)`,
+            [auth.id, existing.username, newUsername, req.socket.remoteAddress, req.headers["user-agent"] || ""]
+          );
+
+          await logAuditEvent("change_username", auth.id, req.socket.remoteAddress, {
+            oldUsername: existing.username,
+            newUsername,
+          });
+
+          return send(res, 200, {
+            success: true,
+            message: "Username updated successfully. Please use your new username next time you log in.",
+            username: newUsername,
+          });
+        } catch (err) {
+          console.error("❌ Change username error:", err.message);
+          return send(res, 500, { error: "Failed to change username: " + err.message });
+        }
+      }
+
+      // ═══ PUT /api/admin/profile/password ═══
+      if (pathname === "/api/admin/profile/password" && req.method === "PUT") {
+        if (!rateLimit(req, res, { windowMs: 60 * 60_000, maxRequests: 5, keyPrefix: "change-password" })) return;
+        try {
+          const body = await parseBody(req);
+          const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
+          const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
+
+          if (!currentPassword || !newPassword) {
+            return send(res, 400, { error: "Current password and new password are required." });
+          }
+
+          if (newPassword.length < 8) {
+            return send(res, 400, { error: "Password must be at least 8 characters." });
+          }
+          if (!/[A-Z]/.test(newPassword)) {
+            return send(res, 400, { error: "Password must contain at least one uppercase letter." });
+          }
+          if (!/[a-z]/.test(newPassword)) {
+            return send(res, 400, { error: "Password must contain at least one lowercase letter." });
+          }
+          if (!/[0-9]/.test(newPassword)) {
+            return send(res, 400, { error: "Password must contain at least one number." });
+          }
+
+          const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
+          if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
+          const existing = rows[0];
+
+          const passwordValid = await bcrypt.compare(currentPassword, existing.password);
+          if (!passwordValid) {
+            await logAuditEvent("change_password_failed", auth.id, req.socket.remoteAddress, { reason: "invalid_password" });
+            return send(res, 401, { error: "Current password is incorrect." });
+          }
+
+          const samePassword = await bcrypt.compare(newPassword, existing.password);
+          if (samePassword) {
+            return send(res, 400, { error: "New password must be different from current password." });
+          }
+
+          const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+          await db.query(
+            `UPDATE public.users 
+             SET password = $1, 
+                 last_password_change = NOW(), 
+                 updated_at = NOW(),
+                 session_version = COALESCE(session_version, 1) + 1
+             WHERE id = $2`,
+            [newHashedPassword, auth.id]
+          );
+
+          await db.query(
+            `INSERT INTO user_profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent)
+             VALUES ($1, 'password', '***', '***', $2, $3)`,
+            [auth.id, req.socket.remoteAddress, req.headers["user-agent"] || ""]
+          );
+
+          await logAuditEvent("change_password", auth.id, req.socket.remoteAddress, {
+            sessionVersionIncremented: true,
+          });
+
+          return send(res, 200, {
+            success: true,
+            message: "Password changed successfully. All other sessions have been logged out for security.",
+          });
+        } catch (err) {
+          console.error("❌ Change password error:", err.message);
+          return send(res, 500, { error: "Failed to change password: " + err.message });
+        }
+      }
+
+      // ═══ GET /api/admin/profile/history ═══
+      if (pathname === "/api/admin/profile/history" && req.method === "GET") {
+        try {
+          const { rows } = await db.query(
+            `SELECT id, change_type, old_value, new_value, ip_address, changed_at
+             FROM user_profile_changes 
+             WHERE user_id = $1
+             ORDER BY changed_at DESC
+             LIMIT 50`,
+            [auth.id]
+          );
+          return send(res, 200, { history: rows });
+        } catch (err) {
+          console.error("❌ Get profile history error:", err.message);
+          return send(res, 500, { error: "Failed to load history." });
+        }
+      }
+
       // ═══ POST /api/admin/generate-jhs-master ═══
       if (pathname === "/api/admin/generate-jhs-master" && req.method === "POST") {
-        // Strict limit: 5 generations per 30 min
         if (!rateLimit(req, res, { windowMs: 30 * 60_000, maxRequests: 5, keyPrefix: "gen-jhs" })) {
           return;
         }
@@ -1023,16 +1363,12 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══ POST /api/admin/teachers (create teacher) ═══
       if (pathname === "/api/admin/teachers" && req.method === "POST") {
-        // Strict rate limit: 10 teachers per hour
         if (!rateLimit(req, res, { windowMs: 60 * 60_000, maxRequests: 10, keyPrefix: "teacher-create" })) {
           return;
         }
         try {
           const body = await parseBody(req);
-
-          // ═══ VALIDATE INPUT ═══
           const firstName = validateName(body.firstName);
           const lastName = validateName(body.lastName);
           const email = validateEmail(body.email);
@@ -1052,7 +1388,7 @@ const server = http.createServer(async (req, res) => {
           let baseUsername = (firstName.toLowerCase() + "." + lastName.toLowerCase()).replace(/\s+/g, "");
           let username = baseUsername;
           for (let i = 0; i < 5; i++) {
-            const existingUser = await db.query("SELECT id FROM users WHERE username = $1", [username]);
+            const existingUser = await db.query("SELECT id FROM public.users WHERE username = $1", [username]);
             if (existingUser.rows.length === 0) break;
             username = `${baseUsername}${Math.floor(100 + Math.random() * 900)}`;
           }
@@ -1104,8 +1440,8 @@ const server = http.createServer(async (req, res) => {
           const hashedPassword = await bcrypt.hash(password, 10);
 
           await db.query(
-            "INSERT INTO users (id, username, password, role, name, teacher_id, email) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-            [userId, username, hashedPassword, "teacher", `${firstName} ${lastName}`, teacherIdStr, email]
+            "INSERT INTO public.users (id, username, password, role, name, display_name, teacher_id, email, session_version) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1)",
+            [userId, username, hashedPassword, "teacher", `${firstName} ${lastName}`, `${firstName} ${lastName}`, teacherIdStr, email]
           );
 
           await logAuditEvent("create_teacher", auth.id, req.socket.remoteAddress, {
@@ -1113,7 +1449,6 @@ const server = http.createServer(async (req, res) => {
             name: `${firstName} ${lastName}`,
           });
 
-          // ═══ LOG CONSENT (DPA compliance) ═══
           try {
             await db.query(
               `INSERT INTO consent_logs (
@@ -1141,7 +1476,6 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══ PUT /api/admin/teachers/:id ═══
       if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "PUT") {
         try {
           const id = pathname.split("/").pop();
@@ -1181,7 +1515,6 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══ HIDE / UNHIDE TEACHER ═══
       if (pathname.match(/^\/api\/admin\/teachers\/[^/]+\/hide$/) && req.method === "POST") {
         try {
           const parts = pathname.split("/");
@@ -1226,12 +1559,11 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══ DELETE TEACHER ═══
       if (pathname.match(/^\/api\/admin\/teachers\/[^/]+$/) && req.method === "DELETE") {
         try {
           const id = pathname.split("/").pop();
           await db.query("DELETE FROM teachers WHERE id = $1", [id]);
-          await db.query("DELETE FROM users WHERE teacher_id = $1 OR id = $1", [String(id)]);
+          await db.query("DELETE FROM public.users WHERE teacher_id = $1 OR id = $1", [String(id)]);
           await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
 
           await logAuditEvent("delete_teacher", auth.id, req.socket.remoteAddress, { teacherId: id });
@@ -1329,7 +1661,6 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══ POST /api/admin/schedules/swap ═══
       if (pathname === "/api/admin/schedules/swap" && req.method === "POST") {
         if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 30, keyPrefix: "swap" })) {
           return;
@@ -1351,7 +1682,6 @@ const server = http.createServer(async (req, res) => {
             return `${rows[0].first_name} ${rows[0].last_name}`.trim();
           };
 
-          // ═══ CASE 1: MOVE ═══
           if (mode === "move" || !cellB || !cellB.teacherId) {
             if (!cellA.teacherId || !cellA.targetDay || !cellA.targetStartTime || !cellA.targetEndTime) {
               return send(res, 400, { error: "Move target required." });
@@ -1403,7 +1733,6 @@ const server = http.createServer(async (req, res) => {
             });
           }
 
-          // ═══ CASE 2: SWAP ═══
           if (!cellB.slotId || !cellB.teacherId) {
             return send(res, 400, { error: "cellB.slotId and cellB.teacherId are required." });
           }
@@ -1512,7 +1841,6 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══ POST /api/admin/schedules/regenerate/:id ═══
       if (pathname.match(/^\/api\/admin\/schedules\/regenerate\/[^/]+$/) && req.method === "POST") {
         try {
           const id = pathname.split("/").pop();
@@ -1566,7 +1894,7 @@ const server = http.createServer(async (req, res) => {
         try {
           let targetTeacherId = null;
           const { rows: userRows } = await db.query(
-            "SELECT id, name, teacher_id FROM users WHERE id = $1",
+            "SELECT id, name, teacher_id FROM public.users WHERE id = $1",
             [auth.id]
           );
 
@@ -1579,7 +1907,7 @@ const server = http.createServer(async (req, res) => {
               );
               if (byName.length > 0) {
                 targetTeacherId = String(byName[0].id);
-                await db.query("UPDATE users SET teacher_id = $1 WHERE id = $2", [targetTeacherId, auth.id]);
+                await db.query("UPDATE public.users SET teacher_id = $1 WHERE id = $2", [targetTeacherId, auth.id]);
               }
             }
           }
@@ -1621,12 +1949,11 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══ STUDENTS ═══
       if (pathname === "/api/teacher/students" && req.method === "GET") {
         try {
           let targetTeacherId = null;
           const { rows: userRows } = await db.query(
-            "SELECT id, name, teacher_id FROM users WHERE id = $1",
+            "SELECT id, name, teacher_id FROM public.users WHERE id = $1",
             [auth.id]
           );
           if (userRows.length > 0) {
@@ -1638,7 +1965,7 @@ const server = http.createServer(async (req, res) => {
               );
               if (byName.length > 0) {
                 targetTeacherId = String(byName[0].id);
-                await db.query("UPDATE users SET teacher_id = $1 WHERE id = $2", [targetTeacherId, auth.id]);
+                await db.query("UPDATE public.users SET teacher_id = $1 WHERE id = $2", [targetTeacherId, auth.id]);
               }
             }
           }
@@ -1798,13 +2125,28 @@ const server = http.createServer(async (req, res) => {
   res.end("Not found");
 });
 
-server.listen(PORT, "0.0.0.0", async () => {
-  await initAdmin();
-  console.log(`\n🚀 Scheduler running locally at http://localhost:${PORT}`);
-  console.log(`🔐 Admin login: ${ADMIN_USERNAME}`);
+server.listen(PORT, "0.0.0.0", () => {
+  // ✅ Print URL IMMEDIATELY so you always see it, even if DB is slow
+  console.log(`\n${"═".repeat(60)}`);
+  console.log(`🚀  Lectura Scheduler is running!`);
+  console.log(`${"═".repeat(60)}`);
+  console.log(`🌐  Open this URL in your browser:`);
+  console.log(`    👉  http://localhost:${PORT}`);
+  console.log(`\n🔐  Admin Login:`);
+  console.log(`    Username: ${ADMIN_USERNAME}`);
+  console.log(`${"═".repeat(60)}\n`);
+
+  // ✅ Then run DB initialization AFTER printing the URL
+  initAdmin().catch((err) => {
+    console.error("❌ initAdmin failed:", err.message);
+  });
 });
 
+// ═══ Startup DB ping (for logging only) ═══
 db.query("SELECT NOW()", (err, res) => {
-  if (err) console.error("❌ Supabase Connection Failed:", err.message);
-  else console.log("✅ Successfully connected to Supabase PostgreSQL at:", res.rows[0].now);
+  if (err) {
+    console.error("❌ Supabase Connection Failed:", err.message);
+  } else {
+    console.log("✅ Successfully connected to Supabase PostgreSQL at:", res.rows[0].now);
+  }
 });

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Makiling IS | Profile Settings</title>
+    <link rel="icon" type="image/png" href="/shared/img/makiling_logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/Addteacher.css">
+    <link rel="stylesheet" href="../css/profile.css">
+</head>
+<body>
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar" id="app-sidebar">
+        <div class="sidebar-top">
+            <div class="logo">
+                <img src="/shared/img/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
+                <div class="logo-text">
+                    <span class="logo-line-1">Makiling</span>
+                    <span class="logo-line-2">Integrated School</span>
+                </div>
+            </div>
+            <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
+                <span class="toggle-icon">◀</span>
+            </button>
+        </div>
+
+        <nav class="nav-links-wrapper">
+            <button onclick="window.location.href='Addteacher.html'" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Teachers</span>
+            </button>
+            <button onclick="window.location.href='teacher-list.html'" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">Teacher List</span>
+            </button>
+            <button onclick="window.location.href='subject.html'" class="nav-item">
+                <span class="nav-icon">📚</span>
+                <span class="nav-label">Manage Subjects</span>
+            </button>
+            <button onclick="window.location.href='rooms.html'" class="nav-item">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">Rooms</span>
+            </button>
+            <button onclick="window.location.href='sections.html'" class="nav-item">
+                <span class="nav-icon">📅</span>
+                <span class="nav-label">Sections</span>
+            </button>
+            <button onclick="window.location.href='generate.html'" class="nav-item">
+                <span class="nav-icon">⚡</span>
+                <span class="nav-label">Generate Timetable</span>
+            </button>
+            
+            <button onclick="window.location.href='profile.html'" class="nav-item active">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Profile Settings</span>
+            </button>
+        </nav>
+
+        <a href="../../shared/logout.html" class="nav-item logout-btn">
+            <span class="nav-icon">🚪</span>
+            <span class="nav-label">Logout</span>
+        </a>
+    </aside>
+
+    <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
+        <span>▶</span>
+    </button>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="main-content" id="main-content">
+        <header class="page-header">
+            <div>
+                <h1>Profile Settings</h1>
+                <p>Manage your account information, security, and preferences.</p>
+            </div>
+        </header>
+
+        <!-- ═══ PROFILE OVERVIEW CARD ═══ -->
+        <div class="profile-overview-card">
+            <div class="profile-avatar" id="profile-avatar">
+                <span>?</span>
+            </div>
+            <div class="profile-info">
+                <h2 id="profile-display-name">Loading...</h2>
+                <p id="profile-role-badge" class="role-badge">Loading...</p>
+                <p class="profile-meta" id="profile-meta">Loading...</p>
+            </div>
+        </div>
+
+        <!-- ═══ TABS ═══ -->
+        <div class="profile-tabs">
+            <button class="profile-tab active" data-tab="general">General</button>
+            <button class="profile-tab" data-tab="security">Security</button>
+            <button class="profile-tab" data-tab="history">Activity Log</button>
+        </div>
+
+        <!-- ═══ TAB: GENERAL ═══ -->
+        <div class="profile-tab-content active" id="tab-general">
+            <div class="form-card">
+                <h3 class="form-section-title">Display Information</h3>
+                <p class="form-section-desc">This is how you appear in the system. Your login username is managed separately in the Security tab.</p>
+
+                <form id="general-form">
+                    <div class="form-grid">
+                        <div class="input-group full-width">
+                            <label for="display-name">Display Name</label>
+                            <input type="text" id="display-name" placeholder="Enter your display name" required>
+                            <small class="input-hint">This name appears on your dashboard and in reports.</small>
+                        </div>
+
+                        <div class="input-group full-width">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" placeholder="your.email@school.edu">
+                            <small class="input-hint">Used for password recovery and important notifications.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ═══ TAB: SECURITY ═══ -->
+        <div class="profile-tab-content" id="tab-security">
+            <!-- Change Username -->
+            <div class="form-card">
+                <h3 class="form-section-title">🔑 Login Username</h3>
+                <p class="form-section-desc">Your current login username is: <strong id="current-username-display">loading...</strong></p>
+                <p class="form-warning">⚠️ Changing your username will require you to use the new username on your next login.</p>
+
+                <form id="username-form">
+                    <div class="form-grid">
+                        <div class="input-group full-width">
+                            <label for="new-username">New Username</label>
+                            <input type="text" id="new-username" placeholder="Enter new username" required minlength="3" maxlength="50">
+                            <small class="input-hint">3-50 characters. Letters, numbers, dots, dashes, and underscores only.</small>
+                        </div>
+
+                        <div class="input-group full-width">
+                            <label for="username-current-password">Current Password (for verification)</label>
+                            <input type="password" id="username-current-password" placeholder="Enter your current password" required>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Update Username</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Change Password -->
+            <div class="form-card">
+                <h3 class="form-section-title">🔒 Password</h3>
+                <p class="form-section-desc">Last changed: <strong id="last-password-change">Never</strong></p>
+
+                <form id="password-form">
+                    <div class="form-grid">
+                        <div class="input-group full-width">
+                            <label for="current-password">Current Password</label>
+                            <input type="password" id="current-password" placeholder="Enter current password" required>
+                        </div>
+
+                        <div class="input-group full-width">
+                            <label for="new-password">New Password</label>
+                            <input type="password" id="new-password" placeholder="Enter new password" required minlength="8">
+                            <div class="password-strength">
+                                <div class="strength-bar">
+                                    <div class="strength-fill" id="strength-fill"></div>
+                                </div>
+                                <span class="strength-text" id="strength-text">Enter a password</span>
+                            </div>
+                            <small class="input-hint">At least 8 characters with uppercase, lowercase, and a number.</small>
+                        </div>
+
+                        <div class="input-group full-width">
+                            <label for="confirm-password">Confirm New Password</label>
+                            <input type="password" id="confirm-password" placeholder="Re-enter new password" required minlength="8">
+                            <small class="input-hint" id="match-hint"></small>
+                        </div>
+                    </div>
+
+                    <div class="form-warning">
+                        ⚠️ <strong>Security Notice:</strong> Changing your password will log you out from all other devices for your protection.
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Change Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ═══ TAB: HISTORY ═══ -->
+        <div class="profile-tab-content" id="tab-history">
+            <div class="form-card">
+                <h3 class="form-section-title">📜 Recent Profile Changes</h3>
+                <p class="form-section-desc">The last 50 changes to your account. This is for security auditing purposes.</p>
+                <div id="history-list" class="history-list">
+                    <div class="loading-state">Loading activity history...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/profile.js"></script>
+</body>
+</html>
