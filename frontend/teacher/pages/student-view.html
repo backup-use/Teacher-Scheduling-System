@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Makiling IS | Student List</title>
-    <link rel="icon" type="image/png" href="/shared/img/makiling_logo.png">
+    <link rel="icon" type="image/png" href="/auth/makiling_logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
             <div class="logo">
-                <img src="/shared/img/makiling_logo.png" alt="Makiling IS Logo" width="40" height="40">
+                <img src="/auth/makiling_logo.png" alt="Makiling IS Logo" width="40" height="40">
                 <div class="logo-text">
                     <span class="logo-line-1">Makiling</span>
                     <span class="logo-line-2">Integrated School</span>
@@ -43,12 +43,16 @@
                 <span class="nav-icon">👥</span>
                 <span class="nav-label">Student List</span>
             </button>
+            <button onclick="window.location.href='profile.html'" class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Profile Settings</span>
+            </button>
         </nav>
 
-        <a href="../../shared/logout.html" class="nav-item logout-btn">
-            <span class="nav-icon">🚪</span>
+        <button type="button" id="logout-btn" class="nav-item logout-btn">
+            <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
             <span class="nav-label">Logout</span>
-        </a>
+        </button>
     </aside>
 
     <!-- Expand button (lalabas kapag collapsed) -->
@@ -145,7 +149,7 @@
             expandBtn.addEventListener('click', toggleSidebar);
         })();
     </script>
-
+    <script src="/auth/logout.js" defer></script>
     <script src="../js/student-view.js"></script>
 </body>
 </html>

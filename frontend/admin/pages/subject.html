@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Makiling IS | Master Subject Catalog</title>
-    <link rel="icon" type="image/png" href="/shared/img/makiling_logo.png">
+    <link rel="icon" type="image/png" href="/auth/makiling_logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/subject.css">
 </head>
@@ -15,57 +16,58 @@
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
             <div class="logo">
-                <img src="/shared/img/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
+                <img src="/auth/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
                 <div class="logo-text">
                     <span class="logo-line-1">Makiling</span>
                     <span class="logo-line-2">Integrated School</span>
                 </div>
             </div>
             <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
-                <span class="toggle-icon">◀</span>
+                <span class="toggle-icon"><i class="fa-solid fa-chevron-left"></i></span>
             </button>
         </div>
 
         <nav class="nav-links-wrapper">
             <button onclick="window.location.href='Addteacher.html'" class="nav-item">
-                <span class="nav-icon">👤</span>
+                <span class="nav-icon"><i class="fa-solid fa-user-plus"></i></span>
                 <span class="nav-label">Teachers</span>
             </button>
             <button onclick="window.location.href='teacher-list.html'" class="nav-item">
-                <span class="nav-icon">📋</span>
+                <span class="nav-icon"><i class="fa-solid fa-list"></i></span>
                 <span class="nav-label">Teacher List</span>
             </button>
             <button onclick="window.location.href='subject.html'" class="nav-item active">
-                <span class="nav-icon">📚</span>
+                <span class="nav-icon"><i class="fa-solid fa-book"></i></span>
                 <span class="nav-label">Manage Subjects</span>
             </button>
             <button onclick="window.location.href='rooms.html'" class="nav-item">
-                <span class="nav-icon">🏠</span>
+                <span class="nav-icon"><i class="fa-solid fa-door-open"></i></span>
                 <span class="nav-label">Rooms</span>
             </button>
             <button onclick="window.location.href='sections.html'" class="nav-item">
-                <span class="nav-icon">📅</span>
+                <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span class="nav-label">Sections</span>
             </button>
             <button onclick="window.location.href='generate.html'" class="nav-item">
-                <span class="nav-icon">⚡</span>
+                <span class="nav-icon"><i class="fa-solid fa-bolt"></i></span>
                 <span class="nav-label">Generate Timetable</span>
             </button>
+
             <button onclick="window.location.href='profile.html'" class="nav-item">
-                <span class="nav-icon">⚙️</span>
+                <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
                 <span class="nav-label">Profile Settings</span>
             </button>
         </nav>
 
-        <a href="../../shared/logout.html" class="nav-item logout-btn">
-            <span class="nav-icon">🚪</span>
+        <button type="button" id="logout-btn" class="nav-item logout-btn">
+            <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
             <span class="nav-label">Logout</span>
-        </a>
+        </button>
     </aside>
 
     <!-- Expand button -->
     <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
-        <span>▶</span>
+        <span><i class="fa-solid fa-chevron-right"></i></span>
     </button>
 
     <!-- ═══ MAIN CONTENT ═══ -->
@@ -73,19 +75,25 @@
         <header class="content-header" style="margin-bottom: 30px;">
             <div class="header-title-area">
                 <h1>Master Subject Catalog Setup</h1>
-                <p>Input the courses offered by the school. The auto-generation algorithm looks at this list and cross-references it with teacher targets to keep schedules fair (*patas*).</p>
+                <p>Input the courses offered by the school. The auto-generation algorithm cross-references this list with teacher targets to keep schedules fair (patas).</p>
             </div>
         </header>
 
         <div class="dashboard-card-panel">
             <div class="subject-workspace-grid">
-                
+
                 <!-- LEFT COLUMN: FORM -->
                 <div class="subject-panel-col">
                     <div class="form-group">
                         <label class="input-label" for="subjectTitle">Subject Title(s)</label>
-                        <textarea id="subjectTitle" placeholder="e.g., Mathematics, Science, English, MAPEH (Separate multiple subjects with commas)" class="custom-input-box" style="height: 120px; resize: vertical;"></textarea>
-                        <small class="input-hint">💡 Tip: Separate subjects using commas to batch add in one click.</small>
+                        <textarea id="subjectTitle"
+                                  placeholder="e.g., Mathematics, Science, English, MAPEH (Separate multiple subjects with commas)"
+                                  class="custom-input-box"
+                                  style="height: 120px; resize: vertical;"></textarea>
+                        <small class="input-hint">
+                            <i class="fa-solid fa-lightbulb"></i>
+                            Tip: Separate subjects using commas to batch add in one click.
+                        </small>
                     </div>
 
                     <div class="form-group">
@@ -100,21 +108,25 @@
                         </select>
                     </div>
 
-                    <button type="button" id="add-subject-btn" class="btn-add-subject">ADD SUBJECT(S) TO SYSTEM ➕</button>
+                    <button type="button" id="add-subject-btn" class="btn-add-subject">
+                        <i class="fa-solid fa-plus"></i>
+                        Add Subject(s) to System
+                    </button>
                 </div>
-                
+
                 <!-- RIGHT COLUMN: ACTIVE OFFERINGS -->
                 <div class="subject-panel-col">
                     <label class="input-label" style="display: block; margin-bottom: 10px;">Subject Lists</label>
 
                     <!-- BATCH DELETE TOOLBAR -->
                     <div id="batch-delete-bar" class="batch-delete-bar">
-                        <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="batch-delete-left">
                             <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)">
                             <label for="select-all-checkbox">Select All Subjects</label>
                         </div>
                         <button id="btn-delete-checked" onclick="executeBatchDelete()" disabled class="btn-delete-checked">
-                            🗑️ DELETE CHECKED (<span id="selected-count">0</span>)
+                            <i class="fa-solid fa-trash"></i>
+                            Delete Checked (<span id="selected-count">0</span>)
                         </button>
                     </div>
 
@@ -141,7 +153,7 @@
                 mainContent.classList.add('sidebar-collapsed');
                 expandBtn.classList.add('visible');
                 const icon = toggleBtn.querySelector('.toggle-icon');
-                if (icon) icon.textContent = '▶';
+                if (icon) icon.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
             }
 
             let isAnimating = false;
@@ -157,7 +169,9 @@
                     localStorage.setItem('sidebar-collapsed', nowCollapsed);
 
                     const icon = toggleBtn.querySelector('.toggle-icon');
-                    if (icon) icon.textContent = nowCollapsed ? '▶' : '◀';
+                    if (icon) icon.innerHTML = nowCollapsed
+                        ? '<i class="fa-solid fa-chevron-right"></i>'
+                        : '<i class="fa-solid fa-chevron-left"></i>';
 
                     setTimeout(() => { isAnimating = false; }, 350);
                 });
@@ -167,7 +181,7 @@
             expandBtn.addEventListener('click', toggleSidebar);
         })();
     </script>
-
+    <script src="/auth/logout.js" defer></script>
     <script src="../js/subject.js"></script>
 </body>
 </html>

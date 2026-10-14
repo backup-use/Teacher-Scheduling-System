@@ -67,7 +67,7 @@ async function loadTeacherToEdit() {
 
     const token = localStorage.getItem('token');
     if (!token) {
-        window.location.href = '/shared/login.html';
+        window.location.href = '/auth/login.html';
         return;
     }
 

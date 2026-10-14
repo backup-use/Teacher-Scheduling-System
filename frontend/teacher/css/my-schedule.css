@@ -400,7 +400,7 @@ body {
     right: 0;
     width: 60vw;
     height: 100vh;
-    background-image: url('/shared/img/makiling_logo.png');
+    background-image: url('/auth/makiling_logo.png');
     background-repeat: no-repeat;
     background-position: center right;
     background-size: 50vh;

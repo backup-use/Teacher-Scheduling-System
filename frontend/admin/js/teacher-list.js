@@ -1,18 +1,21 @@
 // ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
-let currentTab = 'active';            // 'active' | 'hidden'
+let currentTab = 'active';
 let activeTeachersCache = [];
 let hiddenTeachersCache = [];
 let currentSearchQuery = '';
 let pendingHideId = null;
 let pendingHideName = '';
-let isFetching = false;               // prevent double-fetch
+let pendingDeleteId = null;
+let pendingDeleteName = '';
+let isFetching = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadTeacherData();
     loadHiddenCount();
     injectHideModal();
+    injectDeleteModal();
 });
 
 window.addEventListener('pageshow', (event) => {
@@ -57,19 +60,18 @@ function escapeHtml(str) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// TAB SWITCHING — now fetches fresh data
+// TAB SWITCHING
 // ═══════════════════════════════════════════════════════════════
 async function switchTab(tab) {
     currentTab = tab;
     currentSearchQuery = '';
-    
+
     const searchInput = document.getElementById('teacher-search');
     if (searchInput) searchInput.value = '';
 
     document.getElementById('tab-active').classList.toggle('active', tab === 'active');
     document.getElementById('tab-hidden').classList.toggle('active', tab === 'hidden');
 
-    // ALWAYS fetch fresh data on tab switch
     await loadTeacherData();
 }
 
@@ -100,7 +102,7 @@ function filterTeachers() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// LOAD TEACHERS — with correct tab-aware fetching
+// LOAD TEACHERS
 // ═══════════════════════════════════════════════════════════════
 async function loadTeacherData() {
     if (isFetching) return;
@@ -109,37 +111,35 @@ async function loadTeacherData() {
     const tbody = document.getElementById('teacher-table-body');
     if (!tbody) { isFetching = false; return; }
 
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:50px; color:#00d2ff;">📚 LOADING TEACHERS...</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:50px; color:#166534;">
+        <i class="fa-solid fa-spinner fa-spin"></i> Loading teachers...
+    </td></tr>`;
 
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = '/shared/login.html';
-            isFetching = false;
-            return;
-        }
-
         const cacheBuster = `?_t=${Date.now()}`;
         const queryParam = currentTab === 'hidden' ? '&onlyHidden=true' : '&includeHidden=false';
         const endpoint = `/api/admin/teachers${cacheBuster}${queryParam}`;
 
         const res = await fetch(endpoint, {
-            headers: { 
-                'Authorization': `Bearer ${token}`,
+            credentials: 'include',
+            headers: {
                 'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
             },
             cache: 'no-store'
         });
 
-        if (!res.ok) {
-            throw new Error(`Server returned ${res.status}`);
+        if (res.status === 401 || res.status === 403) {
+            window.location.href = '/auth/login.html';
+            isFetching = false;
+            return;
         }
+
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
 
         const rawData = await res.json();
         const teachers = Array.isArray(rawData) ? rawData : (rawData.teachers || rawData.data || []);
 
-        // Save to correct cache based on currentTab
         if (currentTab === 'active') {
             activeTeachersCache = teachers;
             updateActiveBadge();
@@ -154,10 +154,12 @@ async function loadTeacherData() {
         console.error("Fetch error:", error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align:center; padding:40px; color:#ff5f5f;">
-                    <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
+                <td colspan="7" style="text-align:center; padding:40px; color:#dc2626;">
+                    <div style="font-size: 2.5rem; margin-bottom: 10px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
                     <div>Failed to load teachers.</div>
-                    <div style="font-size: 0.8rem; margin-top: 8px; color: #a0a0c0;">${escapeHtml(error.message)}</div>
+                    <div style="font-size: 0.8rem; margin-top: 8px; color: #64748b;">${escapeHtml(error.message)}</div>
                 </td>
             </tr>
         `;
@@ -167,14 +169,12 @@ async function loadTeacherData() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// HIDDEN COUNT (for badge)
+// HIDDEN COUNT
 // ═══════════════════════════════════════════════════════════════
 async function loadHiddenCount() {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
         const res = await fetch(`/api/admin/teachers/hidden-count?_t=${Date.now()}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            credentials: 'include'
         });
         if (res.ok) {
             const data = await res.json();
@@ -205,9 +205,12 @@ function renderTeacherRows(teachers, isHiddenTab) {
 
     if (!teachers || teachers.length === 0) {
         const emptyMsg = isHiddenTab
-            ? `<div style="font-size: 3rem; margin-bottom: 10px;">🙈</div><div>No hidden teachers.</div><div style="font-size: 0.85rem; margin-top: 8px; color: #a0a0c0;">Teachers you hide will appear here.</div>`
-            : `<div style="font-size: 3rem; margin-bottom: 10px;">👨‍🏫</div><div>No teachers found. Click "Teachers" to add one.</div>`;
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:40px; color:#a0a0c0;">${emptyMsg}</td></tr>`;
+            ? `<div style="font-size: 2.5rem; margin-bottom: 10px; color: #ca8a04;"><i class="fa-solid fa-eye-slash"></i></div>
+               <div>No hidden teachers.</div>
+               <div style="font-size: 0.85rem; margin-top: 8px; color: #64748b;">Teachers you hide will appear here.</div>`
+            : `<div style="font-size: 2.5rem; margin-bottom: 10px; color: #166534;"><i class="fa-solid fa-user-graduate"></i></div>
+               <div>No teachers found. Click "Teachers" to add one.</div>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:40px; color:#64748b;">${emptyMsg}</td></tr>`;
         return;
     }
 
@@ -230,9 +233,9 @@ function renderTeacherRows(teachers, isHiddenTab) {
         }
 
         const targetGrade = teacher.target_grade || teacher.targetGrade || teacher.gradeLevel || teacher.grade || '';
-        const gradeDisplay = targetGrade 
-            ? `<span style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">📌 ${escapeHtml(targetGrade)}</span>` 
-            : `<span style="color: rgba(255,255,255,0.3); font-style: italic; font-size: 0.85rem;">-- Unassigned --</span>`;
+        const gradeDisplay = targetGrade
+            ? `<span class="grade-badge"><i class="fa-solid fa-graduation-cap"></i> ${escapeHtml(targetGrade)}</span>`
+            : `<span class="grade-empty">Unassigned</span>`;
 
         let workDays = [];
         const daysData = teacher.work_days || teacher.workDays;
@@ -257,34 +260,41 @@ function renderTeacherRows(teachers, isHiddenTab) {
             timeShiftDisplay = (parsedShift && !parsedShift.includes('[object Object]')) ? parsedShift : 'N/A';
         }
 
-        const subjectsHTML = subjectsList.length > 0 
+        const subjectsHTML = subjectsList.length > 0
             ? subjectsList.map(sub => `<span class="subject-badge">${escapeHtml(sub)}</span>`).join('')
-            : `<span style="color: rgba(255,255,255,0.3); font-style: italic; font-size: 0.85rem;">No subjects</span>`;
+            : `<span class="subjects-empty">No subjects</span>`;
 
         const rowClass = isHiddenTab ? 'teacher-row hidden-teacher' : 'teacher-row';
+        const safeNameForJs = escapeHtml(fullName).replace(/'/g, "\\'");
 
         const actionsHTML = isHiddenTab
-            ? `<button onclick="unhideTeacher('${teacherId}', '${escapeHtml(fullName).replace(/'/g, "\\'")}', this)" 
-                    class="btn-unhide" title="Restore teacher">
-                    👁️ Unhide
-                </button>`
-            : `<button onclick="editTeacher('${teacherId}')" class="btn-icon" title="Edit Teacher">✏️</button>
-                <button onclick="openHideModal('${teacherId}', '${escapeHtml(fullName).replace(/'/g, "\\'")}')" 
-                        class="btn-icon" title="Hide Teacher">🙈</button>`;
+            ? `<button onclick="unhideTeacher('${teacherId}', '${safeNameForJs}')"
+                       class="btn-icon btn-unhide" title="Restore teacher">
+                   <i class="fa-solid fa-eye"></i>
+               </button>
+               <button onclick="openDeleteModal('${teacherId}', '${safeNameForJs}')"
+                       class="btn-icon btn-delete" title="Delete permanently">
+                   <i class="fa-solid fa-trash"></i>
+               </button>`
+            : `<button onclick="editTeacher('${teacherId}')" class="btn-icon btn-edit" title="Edit Teacher">
+                   <i class="fa-solid fa-pen"></i>
+               </button>
+               <button onclick="openHideModal('${teacherId}', '${safeNameForJs}')"
+                       class="btn-icon btn-hide" title="Hide Teacher">
+                   <i class="fa-solid fa-eye-slash"></i>
+               </button>`;
 
         tableHTML += `
-            <tr class="${rowClass}" 
-                onmouseover="this.style.background='rgba(255,255,255,0.03)'" 
-                onmouseout="this.style.background='transparent'">
-                <td style="padding: 14px 12px; font-weight: 600; color: #fff;">${escapeHtml(fullName)}</td>
-                <td style="padding: 14px 12px; color: #a0a0c0; font-size: 0.9rem;">${escapeHtml(email)}</td>
-                <td style="padding: 14px 12px;"><div style="display: flex; gap: 6px; flex-wrap: wrap;">${subjectsHTML}</div></td>
-                <td style="padding: 14px 12px;">${gradeDisplay}</td>
-                <td style="padding: 14px 12px; font-size: 0.85rem; color: #a0a0c0;">${escapeHtml(daysDisplay)}</td>
-                <td style="padding: 14px 12px; text-align: center;">
+            <tr class="${rowClass}">
+                <td title="${escapeHtml(fullName)}"><div>${escapeHtml(fullName)}</div></td>
+                <td class="cell-email" title="${escapeHtml(email)}"><div>${escapeHtml(email)}</div></td>
+                <td><div class="subjects-cell">${subjectsHTML}</div></td>
+                <td>${gradeDisplay}</td>
+                <td class="cell-days" title="${escapeHtml(daysDisplay)}"><div>${escapeHtml(daysDisplay)}</div></td>
+                <td style="text-align: center;">
                     <span class="shift-badge">${escapeHtml(timeShiftDisplay)}</span>
                 </td>
-                <td style="padding: 14px 12px; text-align: center;">${actionsHTML}</td>
+                <td style="text-align: center; white-space: nowrap;">${actionsHTML}</td>
             </tr>
         `;
     });
@@ -301,7 +311,7 @@ async function editTeacher(id) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// HIDE / UNHIDE MODALS
+// HIDE MODAL
 // ═══════════════════════════════════════════════════════════════
 function injectHideModal() {
     if (document.getElementById('hide-confirm-modal')) return;
@@ -309,16 +319,16 @@ function injectHideModal() {
     const modalHTML = `
         <div id="hide-confirm-modal" class="hide-modal-overlay">
             <div class="hide-modal-box">
-                <div class="hide-modal-icon">🙈</div>
+                <div class="hide-modal-icon"><i class="fa-solid fa-eye-slash"></i></div>
                 <h2 class="hide-modal-title">Hide this teacher?</h2>
                 <p class="hide-modal-text">
                     <strong id="hide-modal-name"></strong> will be moved to the <em>Hidden Teachers</em> tab.
                     Their data and historical records will be preserved.
                 </p>
                 <ul class="hide-modal-notes">
-                    <li>✅ They will <strong>NOT</strong> appear in schedule generation.</li>
-                    <li>✅ You can restore them anytime from the Hidden tab.</li>
-                    <li>✅ All records are kept safe.</li>
+                    <li><i class="fa-solid fa-check"></i> They will <strong>NOT</strong> appear in schedule generation.</li>
+                    <li><i class="fa-solid fa-check"></i> You can restore them anytime from the Hidden tab.</li>
+                    <li><i class="fa-solid fa-check"></i> All records are kept safe.</li>
                 </ul>
                 <div class="hide-modal-actions">
                     <button class="hide-modal-cancel" onclick="closeHideModal()">Cancel</button>
@@ -346,84 +356,141 @@ function closeHideModal() {
 
 async function confirmHide() {
     if (!pendingHideId) return;
-
     const teacherId = pendingHideId;
     const teacherName = pendingHideName;
     closeHideModal();
 
     try {
-        const token = localStorage.getItem('token');
-        if (!token) { alert('Please login first'); return; }
-
         const response = await fetch(`/api/admin/teachers/${teacherId}/hide`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
         });
 
         const result = await response.json().catch(() => ({}));
 
         if (response.ok && result.success) {
-            showToast(`🙈 ${teacherName} hidden successfully!`, 'success');
-
-            // Remove from active cache
+            showToast(`${teacherName} hidden successfully.`, 'success');
             activeTeachersCache = activeTeachersCache.filter(t => String(t.id) !== String(teacherId));
             updateActiveBadge();
-
-            // Refresh hidden count from server
             await loadHiddenCount();
-
-            // Re-render active tab
             filterTeachers();
         } else {
-            showToast(`❌ ${result.error || 'Failed to hide teacher.'}`, 'error');
+            showToast(result.error || 'Failed to hide teacher.', 'error');
         }
     } catch (err) {
         console.error("Hide Error:", err);
-        showToast(`❌ System error: ${err.message}`, 'error');
+        showToast(`System error: ${err.message}`, 'error');
     }
 }
 
-async function unhideTeacher(id, name, button) {
+// ═══════════════════════════════════════════════════════════════
+// UNHIDE
+// ═══════════════════════════════════════════════════════════════
+async function unhideTeacher(id, name) {
     if (!id || id === 'undefined') { alert('Invalid teacher ID'); return; }
 
     const confirmed = confirm(`Restore "${name}" to the active teacher list?\n\nThey will be included in future schedule generations.`);
     if (!confirmed) return;
 
     try {
-        const token = localStorage.getItem('token');
-        if (!token) { alert('Please login first'); return; }
-
         const response = await fetch(`/api/admin/teachers/${id}/unhide`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
         });
 
         const result = await response.json().catch(() => ({}));
 
         if (response.ok && result.success) {
-            showToast(`👁️ ${name} restored to active list!`, 'success');
-
-            // Remove from hidden cache
+            showToast(`${name} restored to active list.`, 'success');
             hiddenTeachersCache = hiddenTeachersCache.filter(t => String(t.id) !== String(id));
             updateHiddenBadge();
-
-            // Refresh active count from server
             await loadHiddenCount();
-
-            // Re-render hidden tab
             filterTeachers();
         } else {
-            showToast(`❌ ${result.error || 'Failed to unhide teacher.'}`, 'error');
+            showToast(result.error || 'Failed to unhide teacher.', 'error');
         }
     } catch (err) {
         console.error("Unhide Error:", err);
-        showToast(`❌ System error: ${err.message}`, 'error');
+        showToast(`System error: ${err.message}`, 'error');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DELETE MODAL
+// ═══════════════════════════════════════════════════════════════
+function injectDeleteModal() {
+    if (document.getElementById('delete-confirm-modal')) return;
+
+    const modalHTML = `
+        <div id="delete-confirm-modal" class="hide-modal-overlay">
+            <div class="hide-modal-box">
+                <div class="hide-modal-icon danger"><i class="fa-solid fa-trash"></i></div>
+                <h2 class="hide-modal-title danger">Permanently delete this teacher?</h2>
+                <p class="hide-modal-text">
+                    <strong id="delete-modal-name"></strong> will be <em>removed from the database</em>.
+                    This action <strong>cannot be undone</strong>.
+                </p>
+                <ul class="hide-modal-notes danger">
+                    <li><i class="fa-solid fa-xmark"></i> Their teacher record will be deleted.</li>
+                    <li><i class="fa-solid fa-xmark"></i> Their login account will be removed.</li>
+                    <li><i class="fa-solid fa-xmark"></i> Their schedule data will be deleted.</li>
+                </ul>
+                <p class="hide-modal-text" style="font-size:0.85rem;">
+                    Prefer <strong>Hide</strong> instead if you just want them inactive.
+                </p>
+                <div class="hide-modal-actions">
+                    <button class="hide-modal-cancel" onclick="closeDeleteModal()">Cancel</button>
+                    <button class="hide-modal-confirm danger" onclick="confirmDelete()">Yes, Delete Permanently</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function openDeleteModal(id, name) {
+    pendingDeleteId = id;
+    pendingDeleteName = name;
+    const nameEl = document.getElementById('delete-modal-name');
+    if (nameEl) nameEl.textContent = name;
+    document.getElementById('delete-confirm-modal')?.classList.add('active');
+}
+
+function closeDeleteModal() {
+    pendingDeleteId = null;
+    pendingDeleteName = '';
+    document.getElementById('delete-confirm-modal')?.classList.remove('active');
+}
+
+async function confirmDelete() {
+    if (!pendingDeleteId) return;
+    const teacherId = pendingDeleteId;
+    const teacherName = pendingDeleteName;
+    closeDeleteModal();
+
+    try {
+        const response = await fetch(`/api/admin/teachers/${teacherId}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (response.ok && result.success) {
+            showToast(`${teacherName} deleted permanently.`, 'success');
+            hiddenTeachersCache = hiddenTeachersCache.filter(t => String(t.id) !== String(teacherId));
+            updateHiddenBadge();
+            await loadHiddenCount();
+            filterTeachers();
+        } else {
+            showToast(result.error || 'Failed to delete teacher.', 'error');
+        }
+    } catch (err) {
+        console.error("Delete Error:", err);
+        showToast(`System error: ${err.message}`, 'error');
     }
 }
 
@@ -435,22 +502,22 @@ function showToast(message, type = 'success') {
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'toast-notification';
-        toast.style.position = 'fixed';
-        toast.style.bottom = '30px';
-        toast.style.right = '30px';
-        toast.style.padding = '12px 24px';
-        toast.style.borderRadius = '8px';
-        toast.style.fontWeight = '500';
-        toast.style.fontSize = '0.9rem';
-        toast.style.zIndex = '9999';
-        toast.style.boxShadow = '0 6px 24px rgba(0,0,0,0.5)';
-        toast.style.transition = 'all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55)';
+        toast.style.cssText = `
+            position: fixed; bottom: 30px; right: 30px; padding: 12px 20px;
+            border-radius: 10px; font-weight: 600; font-size: 0.9rem;
+            z-index: 99999; box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            font-family: 'Inter', sans-serif;
+            display: flex; align-items: center; gap: 10px;
+        `;
         document.body.appendChild(toast);
     }
-    toast.style.background = type === 'success' ? 'rgba(0, 210, 255, 0.95)' : 'rgba(255, 95, 95, 0.95)';
-    toast.style.color = type === 'success' ? '#000' : '#fff';
-    toast.style.border = type === 'success' ? '1px solid #00d2ff' : '1px solid #ff5f5f';
-    toast.textContent = message;
+    const iconHTML = type === 'success'
+        ? '<i class="fa-solid fa-circle-check"></i>'
+        : '<i class="fa-solid fa-circle-exclamation"></i>';
+    toast.innerHTML = `${iconHTML}<span>${escapeHtml(message)}</span>`;
+    toast.style.background = type === 'success' ? '#166534' : '#dc2626';
+    toast.style.color = '#ffffff';
     toast.style.opacity = '1';
     toast.style.transform = 'translateY(0)';
     setTimeout(() => {
@@ -460,19 +527,16 @@ function showToast(message, type = 'success') {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// LOGOUT / KEYS
+// KEYBOARD SHORTCUTS
 // ═══════════════════════════════════════════════════════════════
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/shared/login.html';
-}
-
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
         loadTeacherData();
         loadHiddenCount();
     }
-    if (e.key === 'Escape') closeHideModal();
+    if (e.key === 'Escape') {
+        closeHideModal();
+        closeDeleteModal();
+    }
 });

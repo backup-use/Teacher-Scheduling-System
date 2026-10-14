@@ -140,7 +140,9 @@ body {
     max-width: 200px;
     height: 100%;
     padding-top: 0;
-    transition: max-width var(--sidebar-transition);
+    /* ✅ Smooth fade in/out of the logo (opacity + max-width both transition) */
+    transition: max-width var(--sidebar-transition),
+                opacity var(--sidebar-transition);
 }
 
 .sidebar .logo img {
@@ -341,7 +343,7 @@ body {
 .main-content {
     flex: 1;
     margin-left: var(--sidebar-width);
-    padding: 2rem 3rem;
+    padding: 2rem 2rem;
     padding-top: 2rem;
     overflow-y: auto;
     overflow-x: hidden;
@@ -360,7 +362,7 @@ body {
     right: 0;
     width: 60vw;
     height: 100vh;
-    background-image: url('/shared/img/makiling_logo.png');
+    background-image: url('/auth/makiling_logo.png');
     background-repeat: no-repeat;
     background-position: center right;
     background-size: 50vh;
@@ -374,9 +376,10 @@ body {
     z-index: 1;
 }
 
-.main-content.sidebar-collapsed {
-    margin-left: var(--sidebar-collapsed-width) !important;
+.main-content.sidebar-collapsed { 
+    margin-left: var(--sidebar-collapsed-width) !important; 
 }
+
 
 /* ═══ Titles ═══ */
 .main-content h1,
@@ -558,6 +561,7 @@ body {
     box-shadow: 0 6px 18px rgba(34, 197, 94, 0.4);
 }
 
+
 /* ═══════════════════════════════════════════════════════
    4. TABLE — Light Glass
    ═══════════════════════════════════════════════════════ */
@@ -595,38 +599,63 @@ body {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0 8px;
+    table-layout: fixed;
+    text-align: center;
 }
 
+/* Header row — consistent padding + vertical alignment */
 .teacher-table th {
-    padding: 15px 20px;
+    padding: 12px 14px;
     color: #166534;
     text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 1px;
-    text-align: left;
+    font-size: 0.72rem;
+    letter-spacing: 0.8px;
+    text-align: center;
     font-weight: 700;
+    white-space: nowrap;
+    vertical-align: middle;
 }
 
+/* Body cells — aligned vertically middle, consistent padding */
 .teacher-table td {
-    padding: 18px 20px;
+    padding: 16px 14px;
     background: rgba(240, 249, 244, 0.6);
     vertical-align: middle;
     color: #0f172a;
-    font-size: 15px;
+    font-size: 13px;
+    line-height: 1.35;
     border-top: 1px solid rgba(34, 197, 94, 0.15);
     border-bottom: 1px solid rgba(34, 197, 94, 0.15);
 }
 
+/* ── First column: Teacher Name ──
+   2-line clamp, wrapped, vertically centered */
 .teacher-table tr td:first-child {
     border-left: 1px solid rgba(34, 197, 94, 0.15);
     border-radius: 12px 0 0 12px;
     color: #0c2f6b;
     font-weight: 700;
+    cursor: help;
+    line-height: 1.3;
+    vertical-align: middle;
+    padding: 14px 12px;
+}
+
+/* Name clamp — applied to a wrapper div inside the cell */
+.teacher-table tr td:first-child > div {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+    line-height: 1.3;
 }
 
 .teacher-table tr td:last-child {
     border-right: 1px solid rgba(34, 197, 94, 0.15);
     border-radius: 0 12px 12px 0;
+    text-align: center;
 }
 
 .teacher-table tr:hover td {
@@ -650,24 +679,28 @@ body {
 .subject-badge {
     background: rgba(34, 197, 94, 0.12);
     color: #166534;
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 6px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
     border: 1px solid rgba(34, 197, 94, 0.3);
     display: inline-block;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .shift-badge {
     color: #166534;
     font-family: 'Inter', monospace;
-    font-size: 0.85rem;
+    font-size: 0.72rem;
     font-weight: 700;
     background: rgba(34, 197, 94, 0.1);
-    padding: 4px 12px;
-    border-radius: 12px;
+    padding: 3px 8px;
+    border-radius: 10px;
     white-space: nowrap;
     border: 1px solid rgba(34, 197, 94, 0.25);
+    display: inline-block;
+    line-height: 1.2;
 }
 
 .btn-icon {
@@ -969,120 +1002,193 @@ body {
     white-space: nowrap;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   9. FORCE TEXT VISIBILITY — TEACHER TABLE (FINAL FIX)
-   Forces all text in teacher table to dark/readable colors
-   ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   10. ACTION BUTTONS — Icon-only with color coding
+   ═══════════════════════════════════════════════════════ */
 
-/* ✅ ALL cells — force dark slate text */
-.teacher-table td,
-.teacher-table td *,
-.teacher-table tbody tr td,
-.teacher-table tbody tr td * {
-    color: #0f172a !important;
-    -webkit-text-fill-color: #0f172a !important;
-    background-clip: initial !important;
-    -webkit-background-clip: initial !important;
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    border: none !important;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    margin: 0 3px !important;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+    line-height: 1;
+    font-family: inherit;
+    background: transparent;
 }
 
-/* ✅ FIRST cell (Teacher Name) — force dark navy */
-.teacher-table td:first-child,
-.teacher-table td:first-child *,
-.teacher-table tr td:nth-child(1),
-.teacher-table tbody tr td:nth-child(1),
-.teacher-table tbody tr td:nth-child(1) * {
-    color: #0c2f6b !important;
-    -webkit-text-fill-color: #0c2f6b !important;
-    font-weight: 700 !important;
-    background-clip: initial !important;
-    -webkit-background-clip: initial !important;
-}
-
-/* ✅ Table headers — force dark green */
-.teacher-table th,
-.teacher-table th *,
-.teacher-table thead th,
-.teacher-table thead th * {
-    color: #166534 !important;
-    -webkit-text-fill-color: #166534 !important;
-    background-clip: initial !important;
-    -webkit-background-clip: initial !important;
-}
-
-/* ✅ Ensure cells maintain their light green background */
-.teacher-table tbody tr td {
-    background: rgba(240, 249, 244, 0.6) !important;
-    border-top: 1px solid rgba(34, 197, 94, 0.15) !important;
-    border-bottom: 1px solid rgba(34, 197, 94, 0.15) !important;
-}
-
-.teacher-table tbody tr:hover td {
+.btn-icon.btn-edit {
     background: rgba(34, 197, 94, 0.12) !important;
-}
-
-/* ✅ Hidden teacher rows — muted but readable */
-.teacher-row.hidden-teacher td,
-.teacher-row.hidden-teacher td * {
-    color: #64748b !important;
-    -webkit-text-fill-color: #64748b !important;
-}
-
-/* ✅ Remove any gradient text bleed from parents */
-.teacher-table,
-.teacher-table tr,
-.teacher-table tbody {
-    background: transparent !important;
-    -webkit-background-clip: initial !important;
-    background-clip: initial !important;
-}
-
-/* ✅ Subject + Shift badges — force dark green */
-.subject-badge,
-.subject-badge * {
     color: #166534 !important;
     -webkit-text-fill-color: #166534 !important;
 }
-
-.shift-badge,
-.shift-badge * {
-    color: #166534 !important;
-    -webkit-text-fill-color: #166534 !important;
-}
-
-/* ✅ Action icon buttons — force dark */
-.btn-icon,
-.btn-icon * {
-    color: #334155 !important;
-    -webkit-text-fill-color: #334155 !important;
-}
-
-.btn-icon:hover,
-.btn-icon:hover * {
-    color: #166534 !important;
-    -webkit-text-fill-color: #166534 !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   FIX: Unhide Button Visibility
-   Ensures text is readable on the button background
-   ═══════════════════════════════════════════════════════════════════ */
-
-.btn-unhide,
-.btn-unhide * {
-    background: linear-gradient(135deg, #14532d, #166534) !important;
-    color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
-    border: 1px solid rgba(34, 197, 94, 0.5) !important;
-    font-weight: 700 !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    box-shadow: 0 2px 8px rgba(22, 101, 52, 0.3) !important;
-}
-
-.btn-unhide:hover,
-.btn-unhide:hover * {
-    background: linear-gradient(135deg, #166534, #22c55e) !important;
+.btn-icon.btn-edit:hover {
+    background: #166534 !important;
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.5) !important;
+}
+
+.btn-icon.btn-hide {
+    background: rgba(202, 138, 4, 0.12) !important;
+    color: #92400e !important;
+    -webkit-text-fill-color: #92400e !important;
+}
+.btn-icon.btn-hide:hover {
+    background: #ca8a04 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    transform: translateY(-1px);
+}
+
+.btn-icon.btn-unhide {
+    background: rgba(34, 197, 94, 0.15) !important;
+    color: #166534 !important;
+    -webkit-text-fill-color: #166534 !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+.btn-icon.btn-unhide:hover {
+    background: #16a34a !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border-color: #16a34a !important;
+    transform: translateY(-1px);
+}
+
+.btn-icon.btn-delete {
+    background: rgba(220, 38, 38, 0.12) !important;
+    color: #dc2626 !important;
+    -webkit-text-fill-color: #dc2626 !important;
+    border: 1px solid rgba(220, 38, 38, 0.25) !important;
+}
+.btn-icon.btn-delete:hover {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border-color: #dc2626 !important;
+    transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   11. GRADE & SUBJECT CELL STYLES
+   ═══════════════════════════════════════════════════════ */
+
+.grade-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(34, 197, 94, 0.12);
+    color: #166534;
+    -webkit-text-fill-color: #166534;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.grade-badge i {
+    color: #16a34a;
+    font-size: 0.85em;
+}
+
+.grade-empty {
+    color: #94a3b8;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.subjects-cell {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.subjects-empty {
+    color: #94a3b8;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.cell-email {
+    color: #475569;
+    font-size: 0.82rem;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.cell-email > div {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cell-days {
+    font-size: 0.78rem;
+    color: #475569;
+    line-height: 1.3;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.cell-days > div {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════
+   12. DANGER MODAL VARIANTS
+   ═══════════════════════════════════════════════════════ */
+
+.hide-modal-icon.danger {
+    color: #dc2626;
+}
+
+.hide-modal-title.danger {
+    color: #b91c1c;
+}
+
+.hide-modal-notes.danger {
+    background: rgba(254, 226, 226, 0.6);
+    border-color: rgba(220, 38, 38, 0.25);
+    color: #7f1d1d;
+}
+
+.hide-modal-notes.danger li i {
+    color: #dc2626;
+    margin-right: 6px;
+}
+
+.hide-modal-notes li i {
+    color: #16a34a;
+    margin-right: 6px;
+}
+
+.hide-modal-confirm.danger {
+    background: linear-gradient(135deg, #b91c1c, #dc2626);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.35);
+}
+
+.hide-modal-confirm.danger:hover {
+    background: linear-gradient(135deg, #991b1b, #b91c1c);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+    transform: translateY(-2px);
+}
+
+.hide-modal-icon i {
+    font-size: 2.5rem;
 }

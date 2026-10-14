@@ -5,24 +5,31 @@ const path = require("path");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const nodemailer = require("nodemailer");
 const db = require("./db");
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || null;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 const ADMIN_NAME = process.env.ADMIN_NAME || "System Administrator";
+const MASTER_KEY = process.env.MASTER_KEY;
+const DEBUG = process.env.DEBUG === "true";
+const dlog = (...args) => { if (DEBUG) console.log(...args); };
 
-if (!JWT_SECRET || JWT_SECRET.length < 32) {
-  console.error("❌ FATAL: JWT_SECRET missing or too short. Set it in .env");
+const REQUIRED_ENV = ["JWT_SECRET", "MASTER_KEY"];
+const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
+if (missingEnv.length > 0) {
+  console.error(`[FATAL] Missing required environment variables: ${missingEnv.join(", ")}`);
+  process.exit(1);
+}
+if (JWT_SECRET.length < 32) {
+  console.error("[FATAL] JWT_SECRET must be at least 32 characters long.");
   process.exit(1);
 }
 
-// ═══════════════════════════════════════════════════════
-// ═══ SECURITY HEADERS & RESPONSE HELPERS             ═══
-// ═══════════════════════════════════════════════════════
-
+// ── Security headers & response helpers ──
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
@@ -65,7 +72,7 @@ function parseBody(req) {
     req.on("end", () => {
       try {
         resolve(body ? JSON.parse(body) : {});
-      } catch (err) {
+      } catch {
         reject(new Error("Invalid JSON"));
       }
     });
@@ -87,10 +94,7 @@ function safeJsonParse(input, fallback = []) {
   }
 }
 
-// ═══════════════════════════════════════════════════════
-// ═══ INPUT VALIDATION & SANITIZATION                 ═══
-// ═══════════════════════════════════════════════════════
-
+// ── Input validation & sanitization ──
 function sanitizeString(input, maxLength = 255) {
   if (typeof input !== "string") return "";
   return input
@@ -127,9 +131,75 @@ function validateUsername(username) {
   return cleaned;
 }
 
-// ═══════════════════════════════════════════════════════
-// ═══ JWT & AUTHENTICATION                            ═══
-// ═══════════════════════════════════════════════════════
+// ── Mail transport ──
+const mailer = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+async function sendCredentialsEmail({ to, name, username, password }) {
+  const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/auth/login.html`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
+      <h2 style="color: #111827;">Your Lectura Scheduler account</h2>
+      <p>Hi ${name},</p>
+      <p>An administrator created an account for you. Use the credentials below to sign in:</p>
+      <table style="border-collapse: collapse; margin: 16px 0;">
+        <tr>
+          <td style="padding: 6px 12px; background: #f3f4f6;"><strong>Username</strong></td>
+          <td style="padding: 6px 12px;">${username}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 12px; background: #f3f4f6;"><strong>Password</strong></td>
+          <td style="padding: 6px 12px;">${password}</td>
+        </tr>
+      </table>
+      <p>
+        <a href="${loginUrl}"
+           style="display:inline-block; padding:10px 20px; background:#2563eb; color:#fff;
+                  text-decoration:none; border-radius:6px;">
+          Sign in
+        </a>
+      </p>
+      <p style="color:#6b7280; font-size: 13px;">
+        For your security, please change this password after your first login.
+      </p>
+    </div>
+  `;
+
+  const text =
+    `Hi ${name},\n\n` +
+    `Your Lectura Scheduler account:\n` +
+    `Username: ${username}\n` +
+    `Password: ${password}\n\n` +
+    `Sign in: ${loginUrl}\n\n` +
+    `Please change your password after first login.`;
+
+  await mailer.sendMail({
+    from: process.env.SMTP_FROM,
+    to,
+    subject: "Your Lectura Scheduler account",
+    text,
+    html,
+  });
+}
+
+// ── JWT & authentication ──
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(";").forEach((cookie) => {
+    const [name, ...rest] = cookie.trim().split("=");
+    if (name) cookies[name] = decodeURIComponent(rest.join("="));
+  });
+  return cookies;
+}
 
 function getAuth(req) {
   const cookies = parseCookies(req.headers.cookie || "");
@@ -143,11 +213,10 @@ function getAuth(req) {
   }
 
   if (!token || token === "null" || token === "undefined") return null;
-  
+
   try {
     return jwt.verify(token, JWT_SECRET);
-  } catch (err) {
-    console.log("⚠️ JWT Verification failed:", err.message);
+  } catch {
     return null;
   }
 }
@@ -166,32 +235,15 @@ async function getAuthWithSessionCheck(req) {
     const currentVersion = rows[0].session_version || 1;
     const tokenVersion = decoded.sessionVersion || 1;
 
-    if (currentVersion !== tokenVersion) {
-      console.log("⚠️ Session version mismatch — token invalidated");
-      return null;
-    }
-
+    if (currentVersion !== tokenVersion) return null;
     return decoded;
   } catch (err) {
-    console.error("❌ getAuthWithSessionCheck error:", err.message);
+    console.error("[auth] session check failed:", err.message);
     return null;
   }
 }
 
-function parseCookies(cookieHeader) {
-  const cookies = {};
-  if (!cookieHeader) return cookies;
-  cookieHeader.split(";").forEach((cookie) => {
-    const [name, ...rest] = cookie.trim().split("=");
-    if (name) cookies[name] = decodeURIComponent(rest.join("="));
-  });
-  return cookies;
-}
-
-// ═══════════════════════════════════════════════════════
-// ═══ RATE LIMITER                                    ═══
-// ═══════════════════════════════════════════════════════
-
+// ── Rate limiter ──
 const rateLimitMap = new Map();
 
 function rateLimit(req, res, options = {}) {
@@ -231,10 +283,7 @@ setInterval(() => {
   }
 }, 5 * 60_000);
 
-// ═══════════════════════════════════════════════════════
-// ═══ AUDIT LOGGING                                   ═══
-// ═══════════════════════════════════════════════════════
-
+// ── Audit logging ──
 async function logAuditEvent(action, userId, ip, details = {}) {
   try {
     await db.query(
@@ -243,28 +292,28 @@ async function logAuditEvent(action, userId, ip, details = {}) {
       [action, userId || null, ip || null, JSON.stringify(details)]
     );
   } catch (err) {
-    console.error("⚠️ Failed to log audit event:", err.message);
+    console.error("[audit] failed to log event:", err.message);
   }
 }
 
-// ═══════════════════════════════════════════════════════
-// ═══ FILE SERVING                                     ═══
-// ═══════════════════════════════════════════════════════
+// ── File serving ──
+const MIME_TYPES = {
+  ".html": "text/html",
+  ".css": "text/css",
+  ".js": "application/javascript",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
 
 function serveFile(res, filePath) {
   const ext = path.extname(filePath).toLowerCase();
-  const mimeTypes = {
-    ".html": "text/html",
-    ".css": "text/css",
-    ".js": "application/javascript",
-    ".json": "application/json",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon",
-  };
-  const contentType = mimeTypes[ext] || "application/octet-stream";
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
   fs.readFile(filePath, (err, data) => {
     if (err) {
       res.writeHead(404, { "Content-Type": "text/plain" });
@@ -278,81 +327,9 @@ function serveFile(res, filePath) {
   });
 }
 
-function sendCredentialsEmail(email, name, username, password, details) {
-  console.log(`📧 [MOCK EMAIL] Sent to ${email} for ${name} (User: ${username})`);
-}
-
-// ═══════════════════════════════════════════════════════
-// ═══ SCHEDULE GENERATOR (SHS legacy)                 ═══
-// ═══════════════════════════════════════════════════════
-
-async function generateSchedule(teacher) {
-  const days = safeJsonParse(teacher.work_days || teacher.workDays, ["Monday", "Wednesday", "Friday"]);
-  const subjects = safeJsonParse(teacher.subjects, ["General Subject"]);
-
-  const startRaw = teacher.start_time || teacher.startTime || "08:00";
-  const endRaw = teacher.end_time || teacher.endTime || "16:00";
-
-  const toMinutes = (t) => {
-    if (!t) return NaN;
-    let str = String(t).trim().toLowerCase();
-    const isPM = str.includes("pm");
-    const isAM = str.includes("am");
-    str = str.replace(/[^0-9:]/g, "");
-    const parts = str.split(":");
-    let h = parseInt(parts[0], 10);
-    const m = parts[1] ? parseInt(parts[1], 10) : 0;
-    if (isNaN(h) || isNaN(m)) return NaN;
-    if (isPM && h !== 12) h += 12;
-    if (isAM && h === 12) h = 0;
-    return h * 60 + m;
-  };
-  const fromMinutes = (mins) => {
-    const h = Math.floor(mins / 60).toString().padStart(2, "0");
-    const m = (mins % 60).toString().padStart(2, "0");
-    return `${h}:${m}`;
-  };
-
-  let startMin = toMinutes(startRaw);
-  let endMin = toMinutes(endRaw);
-
-  if (!Number.isFinite(startMin) || !Number.isFinite(endMin) || endMin <= startMin) {
-    startMin = 8 * 60;
-    endMin = 16 * 60;
-  }
-
-  const slots = [];
-
-  days.forEach((day, dayIdx) => {
-    let slotCounter = 0;
-    for (let t = startMin; t + 60 <= endMin; t += 60) {
-      const startHour = Math.floor(t / 60);
-      if (startHour === 9 || startHour === 12) continue;
-      const subject = subjects[(dayIdx + slotCounter) % subjects.length] || "General Subject";
-      slots.push({
-        id: crypto.randomBytes(4).toString("hex"),
-        day,
-        startTime: fromMinutes(t),
-        endTime: fromMinutes(t + 60),
-        subject,
-        room: "Room 101",
-        section: "Section A",
-        status: "scheduled",
-      });
-      slotCounter++;
-    }
-  });
-
-  return slots;
-}
-
-// ═══════════════════════════════════════════════════════
-// ═══ ADMIN INIT                                      ═══
-// ═══════════════════════════════════════════════════════
-
+// ── Admin initialization ──
 async function initAdmin() {
   try {
-    // ═══ 1. CREATE USERS TABLE IF IT DOESN'T EXIST ═══
     await db.query(`
       CREATE TABLE IF NOT EXISTS public.users (
         id VARCHAR(255) PRIMARY KEY,
@@ -369,37 +346,34 @@ async function initAdmin() {
         updated_at TIMESTAMP DEFAULT NOW()
       );
     `);
-    console.log("✅ Users table ready.");
+    dlog("[init] users table ready");
 
-    // ═══ 2. ADD MISSING COLUMNS TO USERS (safety net) ═══
     const userColumns = [
       ["created_at", "TIMESTAMP DEFAULT NOW()"],
       ["updated_at", "TIMESTAMP DEFAULT NOW()"],
       ["email", "VARCHAR(255)"],
       ["display_name", "VARCHAR(255)"],
       ["last_password_change", "TIMESTAMP"],
-      ["session_version", "INTEGER DEFAULT 1"]
+      ["session_version", "INTEGER DEFAULT 1"],
     ];
     for (const [col, type] of userColumns) {
       try {
         await db.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS ${col} ${type};`);
-      } catch (e) {
-        console.log(`⚠️ Could not add column ${col}:`, e.message);
+      } catch (err) {
+        console.warn(`[init] could not add users column ${col}:`, err.message);
       }
     }
-    console.log("✅ User columns verified.");
+    dlog("[init] user columns verified"); 
 
-    // ═══ 3. TEACHERS & SECTIONS columns ═══
     try {
       await db.query("ALTER TABLE sections ADD COLUMN IF NOT EXISTS shift VARCHAR(3) DEFAULT 'AM';");
       await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;");
       await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMP NULL;");
       await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS hidden_by VARCHAR(255) NULL;");
-    } catch (e) {
-      console.log("⚠️ Some teacher/section columns could not be added:", e.message);
+    } catch (err) {
+      console.warn("[init] could not add teacher/section columns:", err.message);
     }
 
-    // ═══ 4. AUDIT LOGS ═══
     await db.query(`
       CREATE TABLE IF NOT EXISTS audit_logs (
         id SERIAL PRIMARY KEY,
@@ -413,24 +387,8 @@ async function initAdmin() {
     await db.query("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);");
     await db.query("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);");
     await db.query("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);");
-    console.log("✅ Audit logs table ready.");
+    dlog("[init] audit_logs table ready");
 
-    // ═══ 5. CONSENT LOGS ═══
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS consent_logs (
-        id SERIAL PRIMARY KEY,
-        teacher_id VARCHAR(255) NOT NULL,
-        consent_type VARCHAR(100) NOT NULL,
-        consent_version VARCHAR(20) DEFAULT 'v1.0',
-        consent_given_at TIMESTAMP DEFAULT NOW(),
-        ip_address VARCHAR(45),
-        withdrawn_at TIMESTAMP NULL
-      );
-    `);
-    await db.query("CREATE INDEX IF NOT EXISTS idx_consent_teacher ON consent_logs(teacher_id);");
-    console.log("✅ Consent logs table ready.");
-
-    // ═══ 6. USER PROFILE CHANGES ═══
     await db.query(`
       CREATE TABLE IF NOT EXISTS user_profile_changes (
         id SERIAL PRIMARY KEY,
@@ -446,17 +404,20 @@ async function initAdmin() {
     await db.query("CREATE INDEX IF NOT EXISTS idx_profile_changes_user ON user_profile_changes(user_id);");
     await db.query("CREATE INDEX IF NOT EXISTS idx_profile_changes_type ON user_profile_changes(change_type);");
     await db.query("CREATE INDEX IF NOT EXISTS idx_profile_changes_date ON user_profile_changes(changed_at DESC);");
-    console.log("✅ User profile changes table ready.");
+    dlog("[init] user_profile_changes table ready");
 
-    // ═══ 7. Set display_name for existing users ═══
     try {
       await db.query("UPDATE public.users SET display_name = name WHERE display_name IS NULL;");
       await db.query("UPDATE public.users SET session_version = 1 WHERE session_version IS NULL;");
-    } catch (e) {
-      console.log("⚠️ Could not update display_name/session_version:", e.message);
+    } catch (err) {
+      console.warn("[init] could not backfill display_name/session_version:", err.message);
     }
 
-    // ═══ 8. CHECK ADMIN ACCOUNT ═══
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+      dlog("[init] ADMIN_USERNAME/ADMIN_PASSWORD not set — skipping admin seed");
+      return;
+    }
+
     const { rows } = await db.query(
       "SELECT id, password FROM public.users WHERE username = $1",
       [ADMIN_USERNAME]
@@ -466,11 +427,11 @@ async function initAdmin() {
       const adminId = "usr-" + genId();
       const hashed = await bcrypt.hash(ADMIN_PASSWORD, 10);
       await db.query(
-        `INSERT INTO public.users (id, username, password, role, name, display_name, teacher_id, email, session_version) 
+        `INSERT INTO public.users (id, username, password, role, name, display_name, teacher_id, email, session_version)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1)`,
         [adminId, ADMIN_USERNAME, hashed, "admin", ADMIN_NAME, ADMIN_NAME, null, null]
       );
-      console.log(`✅ Admin account created: ${ADMIN_USERNAME}`);
+      dlog(`[init] admin account created: ${ADMIN_USERNAME}`);
       return;
     }
 
@@ -483,40 +444,53 @@ async function initAdmin() {
         "UPDATE public.users SET password = $1 WHERE username = $2",
         [newHash, ADMIN_USERNAME]
       );
-      console.log(isLegacy ? `🔧 Migrated admin password to bcrypt.` : `🔧 Admin password healed.`);
+      dlog(isLegacy
+        ? "[init] migrated admin password to bcrypt"
+        : "[init] admin password healed");
     } else {
-      console.log("✅ Admin account OK.");
+      dlog("[init] admin account verified");
     }
   } catch (err) {
-    console.error("❌ Error initializing admin:", err.message);
+    console.error("[init] admin initialization failed:", err.message);
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ═══ JHS SCHEDULING ENGINE (Grade 7-10 only, AM/PM)         ═══
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// ═══ JHS SCHEDULING ENGINE (FULL DAY)                ═══
+// ═══════════════════════════════════════════════════════
 
+// Official Full Day schedule: 60-min periods, 15-min recess, 90-min lunch
 const JHS_AM_SLOTS = [
-  { time: "06:00-06:50", start: "06:00", end: "06:50", isBreak: false },
-  { time: "06:50-07:40", start: "06:50", end: "07:40", isBreak: false },
-  { time: "07:40-08:30", start: "07:40", end: "08:30", isBreak: false },
-  { time: "08:30-09:00", start: null,    end: null,    isBreak: true  },
-  { time: "09:00-09:50", start: "09:00", end: "09:50", isBreak: false },
-  { time: "09:50-10:40", start: "09:50", end: "10:40", isBreak: false },
-  { time: "10:40-11:30", start: "10:40", end: "11:30", isBreak: false },
+  { time: "06:00-07:00", start: "06:00", end: "07:00", isBreak: false },
+  { time: "07:00-08:00", start: "07:00", end: "08:00", isBreak: false },
+  { time: "08:00-09:00", start: "08:00", end: "09:00", isBreak: false },
+  { time: "09:00-09:15", start: null,    end: null,    isBreak: true  },
+  { time: "09:15-10:15", start: "09:15", end: "10:15", isBreak: false },
+  { time: "10:15-11:15", start: "10:15", end: "11:15", isBreak: false },
+  { time: "11:15-12:15", start: "11:15", end: "12:15", isBreak: false },
 ];
 
 const JHS_PM_SLOTS = [
-  { time: "12:30-13:20", start: "12:30", end: "13:20", isBreak: false },
-  { time: "13:20-14:10", start: "13:20", end: "14:10", isBreak: false },
-  { time: "14:10-15:00", start: "14:10", end: "15:00", isBreak: false },
-  { time: "15:00-15:30", start: null,    end: null,    isBreak: true  },
-  { time: "15:30-16:20", start: "15:30", end: "16:20", isBreak: false },
-  { time: "16:20-17:10", start: "16:20", end: "17:10", isBreak: false },
-  { time: "17:10-18:00", start: "17:10", end: "18:00", isBreak: false },
+  { time: "12:15-13:45", start: null,    end: null,    isBreak: true  },
+  { time: "13:45-14:45", start: "13:45", end: "14:45", isBreak: false },
+  { time: "14:45-15:00", start: null,    end: null,    isBreak: true  },
+  { time: "15:00-16:00", start: "15:00", end: "16:00", isBreak: false },
+  { time: "16:00-17:00", start: "16:00", end: "17:00", isBreak: false },
+  { time: "17:00-18:00", start: "17:00", end: "18:00", isBreak: false },
+  { time: "18:00-19:00", start: "18:00", end: "19:00", isBreak: false },
 ];
 
 const JHS_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+const RESERVED_SLOTS = [
+  { day: "Monday", start: "06:00", end: "07:00" },
+];
+
+function isReservedSlot(day, startTime) {
+  return RESERVED_SLOTS.some(
+    r => r.day === day && r.start === startTime
+  );
+}
 
 function jhsGradeNum(s) {
   const m = String(s || "").match(/\d+/);
@@ -550,7 +524,7 @@ async function generateJHSMaster(payload) {
   });
 
   if (jhsSections.length === 0) {
-    return { sectionsProcessed: 0, teachersUpdated: 0, masterSectionSchedules: {} };
+    return { sectionsProcessed: 0, teachersUpdated: 0, masterSectionSchedules: {}, skippedSections: [] };
   }
 
   const tList = teachers.map(t => {
@@ -563,121 +537,427 @@ async function generateJHSMaster(payload) {
       key: full.toLowerCase().replace(/\s+/g, " ").trim(),
       subjects: safeJsonParse(t.subjects, []).map(jhsAliasSubject),
       targetGrade: jhsGradeNum(t.target_grade || t.targetGrade),
-      workDays: safeJsonParse(t.work_days || t.workDays, []),
     };
   });
 
-  const subjectCatalog = subjects.map(s => ({
-    id: s.id, name: s.name,
-    grade: jhsGradeNum(s.grade_level || s.gradeLevel),
-    alias: jhsAliasSubject(s.name),
-  }));
-
   const DEFAULT_JHS_SUBJECTS = ["Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "MAPEH", "TLE", "Values Education"];
 
-  const usedTeachers = new Set();
-  const usedRooms = new Set();
-  const dailyTeacherCount = {};
-  const masterSectionSchedules = {};
+  // ═══════════════════════════════════════════════════════
+  // ═══ AM at PM SLOTS                                ═══
+  // ═══════════════════════════════════════════════════════
+  const JHS_AM_SLOTS = [
+    { time: "06:00-07:00", start: "06:00", end: "07:00", isBreak: false },
+    { time: "07:00-08:00", start: "07:00", end: "08:00", isBreak: false },
+    { time: "08:00-09:00", start: "08:00", end: "09:00", isBreak: false },
+    { time: "09:00-09:15", start: null,    end: null,    isBreak: true  },
+    { time: "09:15-10:15", start: "09:15", end: "10:15", isBreak: false },
+    { time: "10:15-11:15", start: "10:15", end: "11:15", isBreak: false },
+    { time: "11:15-12:15", start: "11:15", end: "12:15", isBreak: false },
+  ];
 
-  for (const section of jhsSections) {
-    const secName = section.name;
-    const secGrade = jhsGradeNum(section.grade_level || section.gradeLevel || "Grade 7");
+  const JHS_PM_SLOTS = [
+    { time: "12:15-13:45", start: null,    end: null,    isBreak: true  },
+    { time: "13:45-14:45", start: "13:45", end: "14:45", isBreak: false },
+    { time: "14:45-15:00", start: null,    end: null,    isBreak: true  },
+    { time: "15:00-16:00", start: "15:00", end: "16:00", isBreak: false },
+    { time: "16:00-17:00", start: "16:00", end: "17:00", isBreak: false },
+    { time: "17:00-18:00", start: "17:00", end: "18:00", isBreak: false },
+    { time: "18:00-19:00", start: "18:00", end: "19:00", isBreak: false },
+  ];
 
-    let shift = String(overrides[secName] || section.shift || "").toUpperCase();
-    if (shift !== "AM" && shift !== "PM") {
-      shift = Math.random() < 0.5 ? "AM" : "PM";
-      try {
-        await db.query("UPDATE sections SET shift = $1 WHERE id = $2", [shift, section.id]);
-      } catch (e) { /* ignore */ }
-    }
+  const JHS_FULL_DAY_SLOTS = [...JHS_AM_SLOTS, ...JHS_PM_SLOTS];
+  const JHS_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const RESERVED_SLOTS = [{ day: "Monday", start: "06:00", end: "07:00" }];
 
-    const layout = shift === "PM" ? JHS_PM_SLOTS : JHS_AM_SLOTS;
-
-    let subjNames = safeJsonParse(section.subjects);
-    if (subjNames.length === 0) {
-      subjNames = subjectCatalog.filter(c => c.grade === secGrade).map(c => c.name);
-    }
-    if (subjNames.length === 0) subjNames = DEFAULT_JHS_SUBJECTS.slice();
-
-    function teacherForSubject(subjName) {
-      const alias = jhsAliasSubject(subjName);
-      return tList.find(t =>
-        (!t.targetGrade || t.targetGrade === secGrade) &&
-        t.subjects.some(s => s === alias || s.includes(alias) || alias.includes(s))
-      ) || null;
-    }
-
-    const timetable = {};
-    JHS_DAYS.forEach(d => { timetable[d] = {}; });
-
-    const subjCount = {};
-    subjNames.forEach(n => subjCount[n] = 0);
-
-    const target = 3;
-    let subjCursor = 0;
-
-    for (const day of JHS_DAYS) {
-      for (const slot of layout) {
-        if (slot.isBreak) {
-          timetable[day][slot.time] = null;
-          continue;
-        }
-
-        let picked = null;
-        for (let i = 0; i < subjNames.length * 2; i++) {
-          const cand = subjNames[subjCursor % subjNames.length];
-          subjCursor++;
-          if (subjCount[cand] < target) { picked = cand; break; }
-        }
-
-        if (!picked) { timetable[day][slot.time] = null; continue; }
-
-        const teacher = teacherForSubject(picked);
-        if (!teacher) { timetable[day][slot.time] = null; continue; }
-
-        const tKey = `${teacher.id}-${day}-${slot.start}`;
-        if (usedTeachers.has(tKey)) { timetable[day][slot.time] = null; continue; }
-
-        const dKey = `${teacher.id}-${day}`;
-        if ((dailyTeacherCount[dKey] || 0) >= 6) { timetable[day][slot.time] = null; continue; }
-
-        let chosenRoom = null;
-        for (const r of rooms) {
-          const rk = `${r.name}-${day}-${slot.start}`;
-          if (!usedRooms.has(rk)) { chosenRoom = r.name; break; }
-        }
-        if (!chosenRoom && rooms.length > 0) chosenRoom = rooms[0].name;
-
-        timetable[day][slot.time] = {
-          subject: picked,
-          teacher: teacher.fullName,
-          teacherId: teacher.id,
-          room: chosenRoom || "TBD",
-          gradeLevel: secGrade,
-        };
-
-        subjCount[picked]++;
-        usedTeachers.add(tKey);
-        usedRooms.add(`${chosenRoom}-${day}-${slot.start}`);
-        dailyTeacherCount[dKey] = (dailyTeacherCount[dKey] || 0) + 1;
-      }
-    }
-
-    masterSectionSchedules[secName] = {
-      details: section,
-      gradeLevel: `Junior High School - Grade ${secGrade}`,
-      shift,
-      slots: layout.map(s => s.time),
-      timetable,
-    };
+  function isReservedSlot(day, startTime) {
+    return RESERVED_SLOTS.some(r => r.day === day && r.start === startTime);
   }
 
+  function teacherCanTeach(t, subjectAlias, gradeNum) {
+    if (t.targetGrade && t.targetGrade !== gradeNum) return false;
+    return t.subjects.some(s => s === subjectAlias || s.includes(subjectAlias) || subjectAlias.includes(s));
+  }
+
+  const globalTeacherTotalHours = {};
+  const GRADE_LEVELS = [7, 8, 9, 10];
+  const masterSectionSchedules = {};
+  const skippedSections = [];
+
+  // ═══════════════════════════════════════════════════════
+  // ═══ PROCESS GRADE LEVEL BY GRADE LEVEL            ═══
+  // ═══════════════════════════════════════════════════════
+  for (const gradeNum of GRADE_LEVELS) {
+    const gradeSections = jhsSections.filter(s => {
+      const g = jhsGradeNum(s.grade_level || s.gradeLevel);
+      return g === gradeNum;
+    });
+
+    if (gradeSections.length === 0) continue;
+
+    console.log(`[JHS] Processing Grade ${gradeNum}: ${gradeSections.length} sections`);
+
+    const sortedGradeSections = [...gradeSections].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+
+    const usedTeachers = new Set();
+    const usedRooms = new Set();
+    const teacherDailyHours = {};
+    const teacherDailyCount = {};
+
+    const MAX_TEACHING_HOURS_PER_DAY = 6;
+    const MAX_CLASSES_PER_DAY = 6;
+
+    // ═══════════════════════════════════════════════════════
+    // ═══ PROCESS EACH SECTION                          ═══
+    // ═══════════════════════════════════════════════════════
+    for (const section of sortedGradeSections) {
+      const secName = section.name;
+      const secGrade = gradeNum;
+
+      let subjNames = safeJsonParse(section.subjects);
+      if (subjNames.length === 0) {
+        subjNames = DEFAULT_JHS_SUBJECTS.slice();
+      }
+
+      // ═══ PRE-CHECK 1 ═══
+      const subjectAvailability = subjNames.map(subjName => {
+        const alias = jhsAliasSubject(subjName);
+        const qualified = tList.filter(t => teacherCanTeach(t, alias, secGrade));
+        return {
+          subject: subjName,
+          alias,
+          qualifiedCount: qualified.length,
+          hasTeacher: qualified.length > 0,
+        };
+      });
+
+      const missingSubjects = subjectAvailability.filter(s => !s.hasTeacher);
+
+      if (missingSubjects.length > 0) {
+        const errorMsg = `No qualified teacher for: ${missingSubjects.map(m => m.subject).join(', ')}`;
+        console.warn(`[JHS] SKIPPED: ${secName} — ${errorMsg}`);
+        skippedSections.push({
+          section: secName,
+          grade: secGrade,
+          reason: errorMsg,
+          missingSubjects: missingSubjects.map(m => m.subject),
+        });
+        continue;
+      }
+
+      // ═══ PRE-CHECK 2 ═══
+      const slotsPerSubjectPerSection = 6;
+      const slotsPerTeacherPerWeek = MAX_TEACHING_HOURS_PER_DAY * JHS_DAYS.length;
+
+      const subjCapacityIssues = [];
+
+      for (const subjName of subjNames) {
+        const alias = jhsAliasSubject(subjName);
+        const qualifiedTeachers = tList.filter(t => teacherCanTeach(t, alias, secGrade));
+
+        if (qualifiedTeachers.length === 0) continue;
+
+        const subjCapacity = qualifiedTeachers.length * slotsPerTeacherPerWeek;
+
+        if (subjCapacity < slotsPerSubjectPerSection) {
+          subjCapacityIssues.push({
+            subject: subjName,
+            teacherCount: qualifiedTeachers.length,
+            capacity: subjCapacity,
+            needed: slotsPerSubjectPerSection,
+          });
+        }
+      }
+
+      if (subjCapacityIssues.length > 0) {
+        const errorMsg = `Insufficient teacher capacity for: ${subjCapacityIssues.map(i => 
+          `${i.subject} (${i.teacherCount} teacher(s), need ${i.needed} slots, have ${i.capacity})`
+        ).join('; ')}`;
+        console.warn(`[JHS] SKIPPED: ${secName} — ${errorMsg}`);
+        skippedSections.push({
+          section: secName,
+          grade: secGrade,
+          reason: errorMsg,
+          capacityIssues: subjCapacityIssues,
+        });
+        continue;
+      }
+
+      // ═══ PRE-CHECK 3 ═══
+      const allGradeSections = jhsSections.filter(s => {
+        const g = jhsGradeNum(s.grade_level || s.gradeLevel);
+        return g === secGrade;
+      });
+
+      let totalAllSectionsSlots = 0;
+      for (const sec of allGradeSections) {
+        let secSlots = 0;
+        for (const day of JHS_DAYS) {
+          for (const slot of JHS_AM_SLOTS) {
+            if (slot.isBreak) continue;
+            if (slot.start === "06:00") continue;
+            if (isReservedSlot(day, slot.start)) continue;
+            secSlots++;
+          }
+          for (const slot of JHS_PM_SLOTS) {
+            if (slot.isBreak) continue;
+            secSlots++;
+          }
+        }
+        totalAllSectionsSlots += secSlots;
+      }
+
+      const gradeTeachers = tList.filter(t => !t.targetGrade || t.targetGrade === secGrade);
+      const totalGradeCapacity = gradeTeachers.length * slotsPerTeacherPerWeek;
+
+      console.log(`[JHS] Grade ${secGrade}: ${allGradeSections.length} sections, ${totalAllSectionsSlots} slots needed, ${totalGradeCapacity} capacity`);
+
+      if (totalAllSectionsSlots > totalGradeCapacity) {
+        const errorMsg = `Grade ${secGrade} insufficient capacity: ${allGradeSections.length} sections need ${totalAllSectionsSlots} slots, but only ${totalGradeCapacity} slots available (${gradeTeachers.length} teachers)`;
+        console.warn(`[JHS] SKIPPED: ${secName} — ${errorMsg}`);
+        skippedSections.push({
+          section: secName,
+          grade: secGrade,
+          reason: errorMsg,
+          requiredSlots: totalAllSectionsSlots,
+          availableCapacity: totalGradeCapacity,
+          sectionCount: allGradeSections.length,
+          teacherCount: gradeTeachers.length,
+        });
+        continue;
+      }
+
+      console.log(`[JHS] Section "${secName}" passed all pre-checks. Processing...`);
+
+      // ═══ BUILD TIMETABLE ═══
+      const timetable = {};
+      JHS_DAYS.forEach(d => { timetable[d] = {}; });
+
+      function findTeacherForSubject(subjName, day, startTime) {
+        const alias = jhsAliasSubject(subjName);
+        const qualified = tList.filter(t => teacherCanTeach(t, alias, secGrade));
+        if (qualified.length === 0) return null;
+
+        const available = qualified.filter(t => {
+          const tKey = `${t.id}-${day}-${startTime}`;
+          if (usedTeachers.has(tKey)) return false;
+
+          const dKey = `${t.id}-${day}`;
+          const hoursToday = teacherDailyHours[dKey] || 0;
+          const classesToday = teacherDailyCount[dKey] || 0;
+
+          if (hoursToday >= MAX_TEACHING_HOURS_PER_DAY * 60) return false;
+          if (classesToday >= MAX_CLASSES_PER_DAY) return false;
+
+          return true;
+        });
+
+        if (available.length === 0) return null;
+
+        available.sort((a, b) => {
+          const aHours = globalTeacherTotalHours[a.id] || 0;
+          const bHours = globalTeacherTotalHours[b.id] || 0;
+          return aHours - bHours;
+        });
+
+        return available[0];
+      }
+
+      // ═══ AM SHIFT ═══
+      const amSubjCount = {};
+      subjNames.forEach(n => amSubjCount[n] = 0);
+      let amCursor = 0;
+      const amTarget = 3;
+
+      for (const day of JHS_DAYS) {
+        for (const slot of JHS_AM_SLOTS) {
+          if (slot.isBreak) {
+            timetable[day][slot.time] = null;
+            continue;
+          }
+
+          // ═══ MONDAY 06:00-07:00 = Flag Raising (Reserved) ═══
+          // Ito lang ang naka-reserve. Ang Tuesday-Friday 06:00-07:00
+          // ay regular teaching slot — pwede itong i-fill ng subject.
+          if (isReservedSlot(day, slot.start)) {
+            timetable[day][slot.time] = null;
+            continue;
+          }
+
+
+          let picked = null;
+          let attempts = 0;
+          const maxAttempts = subjNames.length * 3;
+
+          while (attempts < maxAttempts) {
+            const cand = subjNames[amCursor % subjNames.length];
+            amCursor++;
+            attempts++;
+            if (amSubjCount[cand] < amTarget) { picked = cand; break; }
+          }
+
+          if (!picked) { timetable[day][slot.time] = null; continue; }
+
+          const teacher = findTeacherForSubject(picked, day, slot.start);
+          if (!teacher) { timetable[day][slot.time] = null; continue; }
+
+          let chosenRoom = null;
+          for (const r of rooms) {
+            const rk = `${r.name}-${day}-${slot.start}`;
+            if (!usedRooms.has(rk)) { chosenRoom = r.name; break; }
+          }
+          if (!chosenRoom && rooms.length > 0) chosenRoom = rooms[0].name;
+
+          timetable[day][slot.time] = {
+            subject: picked,
+            teacher: teacher.fullName,
+            teacherId: teacher.id,
+            room: chosenRoom || "TBD",
+            gradeLevel: secGrade,
+            shift: "AM",
+          };
+
+          amSubjCount[picked]++;
+          usedTeachers.add(`${teacher.id}-${day}-${slot.start}`);
+          usedRooms.add(`${chosenRoom}-${day}-${slot.start}`);
+
+          const dKey = `${teacher.id}-${day}`;
+          teacherDailyHours[dKey] = (teacherDailyHours[dKey] || 0) + 60;
+          teacherDailyCount[dKey] = (teacherDailyCount[dKey] || 0) + 1;
+          globalTeacherTotalHours[teacher.id] = (globalTeacherTotalHours[teacher.id] || 0) + 60;
+        }
+      }
+
+      // ═══ PM SHIFT ═══
+      const pmSubjCount = {};
+      subjNames.forEach(n => pmSubjCount[n] = 0);
+      let pmCursor = 0;
+      const pmTarget = 3;
+
+      for (const day of JHS_DAYS) {
+        for (const slot of JHS_PM_SLOTS) {
+          if (slot.isBreak) {
+            timetable[day][slot.time] = null;
+            continue;
+          }
+
+          let picked = null;
+          let attempts = 0;
+          const maxAttempts = subjNames.length * 3;
+
+          while (attempts < maxAttempts) {
+            const cand = subjNames[pmCursor % subjNames.length];
+            pmCursor++;
+            attempts++;
+            if (pmSubjCount[cand] < pmTarget) { picked = cand; break; }
+          }
+
+          if (!picked) { timetable[day][slot.time] = null; continue; }
+
+          const teacher = findTeacherForSubject(picked, day, slot.start);
+          if (!teacher) { timetable[day][slot.time] = null; continue; }
+
+          let chosenRoom = null;
+          for (const r of rooms) {
+            const rk = `${r.name}-${day}-${slot.start}`;
+            if (!usedRooms.has(rk)) { chosenRoom = r.name; break; }
+          }
+          if (!chosenRoom && rooms.length > 0) chosenRoom = rooms[0].name;
+
+          timetable[day][slot.time] = {
+            subject: picked,
+            teacher: teacher.fullName,
+            teacherId: teacher.id,
+            room: chosenRoom || "TBD",
+            gradeLevel: secGrade,
+            shift: "PM",
+          };
+
+          pmSubjCount[picked]++;
+          usedTeachers.add(`${teacher.id}-${day}-${slot.start}`);
+          usedRooms.add(`${chosenRoom}-${day}-${slot.start}`);
+
+          const dKey = `${teacher.id}-${day}`;
+          teacherDailyHours[dKey] = (teacherDailyHours[dKey] || 0) + 60;
+          teacherDailyCount[dKey] = (teacherDailyCount[dKey] || 0) + 1;
+          globalTeacherTotalHours[teacher.id] = (globalTeacherTotalHours[teacher.id] || 0) + 60;
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // ═══ POST-CHECK: Kumpleto ba ang isang shift?     ═══
+      // ═══════════════════════════════════════════════════════
+
+      let amVacantCount = 0;
+      let amTotalSlots = 0;
+      let pmVacantCount = 0;
+      let pmTotalSlots = 0;
+
+      for (const day of JHS_DAYS) {
+        for (const slot of JHS_AM_SLOTS) {
+          if (slot.isBreak) continue;
+          
+          // ═══ I-EXCLUDE LANG ANG MONDAY 06:00-07:00 (Flag Raising) ═══
+          if (isReservedSlot(day, slot.start)) continue;
+          
+          amTotalSlots++;
+          const slotData = timetable[day]?.[slot.time];
+          if (!slotData || !slotData.teacherId) amVacantCount++;
+        }
+        
+        for (const slot of JHS_PM_SLOTS) {
+          if (slot.isBreak) continue;
+          
+          pmTotalSlots++;
+          const slotData = timetable[day]?.[slot.time];
+          if (!slotData || !slotData.teacherId) pmVacantCount++;
+        }
+      }
+
+      const amFilled = amTotalSlots - amVacantCount;
+      const pmFilled = pmTotalSlots - pmVacantCount;
+
+      // ═══ DYNAMIC THRESHOLD ═══
+      const totalSubjects = subjNames.length;
+      const expectedAmVacant = Math.max(0, amTotalSlots - (totalSubjects * 3));
+      const expectedPmVacant = Math.max(0, pmTotalSlots - (totalSubjects * 3));
+
+      const amComplete = amVacantCount <= expectedAmVacant;
+      const pmComplete = pmVacantCount <= expectedPmVacant;
+
+      console.log(`[JHS] ${secName}: AM ${amFilled}/${amTotalSlots} (${amVacantCount} vacant), PM ${pmFilled}/${pmTotalSlots} (${pmVacantCount} vacant)`);
+
+      // ═══ CONDITION ═══
+      if (!amComplete && !pmComplete) {
+        const errorMsg = `Parehong kulang ang AM at PM shift — AM ${amFilled}/${amTotalSlots}, PM ${pmFilled}/${pmTotalSlots}`;
+        console.warn(`[JHS] SKIPPED: ${secName} — ${errorMsg}`);
+        skippedSections.push({
+          section: secName,
+          grade: secGrade,
+          reason: errorMsg,
+          amFillRate: `${amFilled}/${amTotalSlots}`,
+          pmFillRate: `${pmFilled}/${pmTotalSlots}`,
+        });
+        continue;
+      }
+
+      // I-save ang section
+      masterSectionSchedules[secName] = {
+        details: section,
+        gradeLevel: `Junior High School - Grade ${secGrade}`,
+        shift: "FULL",
+        slots: JHS_FULL_DAY_SLOTS.map(s => s.time),
+        timetable,
+      };
+
+      console.log(`[JHS] Section "${secName}" saved. AM: ${amFilled}/${amTotalSlots}, PM: ${pmFilled}/${pmTotalSlots}`);
+    } // END for (section)
+  } // END for (gradeNum)
+
+  // ═══ SAVE TO DATABASE ═══
   const slotsByTeacher = {};
   Object.values(masterSectionSchedules).forEach(secObj => {
     const secName = secObj.details.name;
     const gradeLevel = secObj.gradeLevel;
-    const shift = secObj.shift;
     Object.entries(secObj.timetable).forEach(([day, times]) => {
       Object.entries(times).forEach(([timeRange, data]) => {
         if (!data || !data.teacherId) return;
@@ -689,7 +969,8 @@ async function generateJHSMaster(payload) {
           day, startTime: start, endTime: end,
           subject: data.subject,
           section: secName, room: data.room,
-          gradeLevel, shift,
+          gradeLevel,
+          shift: data.shift,
           teacherId: data.teacherId,
           teacherName: data.teacher,
           status: "scheduled",
@@ -711,16 +992,14 @@ async function generateJHSMaster(payload) {
   }
 
   return {
-    sectionsProcessed: jhsSections.length,
+    sectionsProcessed: Object.keys(masterSectionSchedules).length,
     teachersUpdated: idsInMaster.size,
     masterSectionSchedules,
+    skippedSections,
   };
 }
 
-// ═══════════════════════════════════════════════════════
-// ═══ MAIN SERVER ROUTER                              ═══
-// ═══════════════════════════════════════════════════════
-
+// ── Main server ──
 const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
   const pathname = parsedUrl.pathname;
@@ -738,20 +1017,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname.startsWith("/api/")) {
-    if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 100, keyPrefix: "api" })) {
-      return;
-    }
+    if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 100, keyPrefix: "api" })) return;
 
-        // ═══ AUTH: LOGIN ═══
+    // ── Login ──
     if (pathname === "/api/auth/login" && req.method === "POST") {
-      // DEV MODE: Relaxed rate limit for testing (50 attempts per 2 minutes)
-      // PRODUCTION MODE: Uncomment the second line and comment out the first
-      const loginLimitOptions = { windowMs: 2 * 60_000, maxRequests: 50, keyPrefix: "login" };
-      // const loginLimitOptions = { windowMs: 15 * 60_000, maxRequests: 5, keyPrefix: "login" }; // Strict production
-      
-      if (!rateLimit(req, res, loginLimitOptions)) {
-        return;
-      }
+      if (!rateLimit(req, res, { windowMs: 2 * 60_000, maxRequests: 50, keyPrefix: "login" })) return;
       try {
         const body = await parseBody(req);
         const username = sanitizeString(body.username, 100);
@@ -788,6 +1058,16 @@ const server = http.createServer(async (req, res) => {
           await logAuditEvent("login_failed", null, req.socket.remoteAddress, { username, reason: "invalid_password" });
           return send(res, 401, { error: "Invalid credentials." });
         }
+        
+        let sessionVersion = user.session_version || 1;
+
+        if (user.role === "admin") {
+          sessionVersion = sessionVersion + 1;
+          await db.query(
+            "UPDATE public.users SET session_version = $1 WHERE id = $2",
+            [sessionVersion, user.id]
+          );
+        }
 
         const token = jwt.sign(
           {
@@ -795,7 +1075,7 @@ const server = http.createServer(async (req, res) => {
             username: user.username,
             role: user.role,
             teacherId: user.teacher_id,
-            sessionVersion: user.session_version || 1,
+            sessionVersion,
           },
           JWT_SECRET,
           { expiresIn: "8h" }
@@ -810,9 +1090,7 @@ const server = http.createServer(async (req, res) => {
           "Path=/",
           "Max-Age=28800",
         ];
-        if (process.env.NODE_ENV === "production") {
-          cookieOptions.push("Secure");
-        }
+        if (process.env.NODE_ENV === "production") cookieOptions.push("Secure");
 
         return send(
           res,
@@ -829,16 +1107,28 @@ const server = http.createServer(async (req, res) => {
           },
           { "Set-Cookie": cookieOptions.join("; ") }
         );
-      } catch (err) {
+      } catch {
         return send(res, 500, { error: "Login failed." });
       }
     }
 
-        // ═══ AUTH: RESET PASSWORD (Username + Master Key) ═══
-    if (pathname === "/api/auth/reset-password" && req.method === "POST") {
-      if (!rateLimit(req, res, { windowMs: 15 * 60_000, maxRequests: 10, keyPrefix: "reset-pw" })) {
-        return;
+    // ── Logout ──
+    if (pathname === "/api/auth/logout" && req.method === "POST") {
+      const auth = getAuth(req);
+      if (auth) {
+        await logAuditEvent("logout", auth.id, req.socket.remoteAddress, {
+          username: auth.username,
+          role: auth.role,
+        });
       }
+      return send(res, 200, { success: true }, {
+        "Set-Cookie": "lectura_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
+      });
+    }
+
+    // ── Reset password ──
+    if (pathname === "/api/auth/reset-password" && req.method === "POST") {
+      if (!rateLimit(req, res, { windowMs: 15 * 60_000, maxRequests: 10, keyPrefix: "reset-pw" })) return;
 
       try {
         const body = await parseBody(req);
@@ -846,62 +1136,35 @@ const server = http.createServer(async (req, res) => {
         const masterKey = typeof body.masterKey === "string" ? body.masterKey : "";
         const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
 
-        // ═══ VALIDATION ═══
-        if (!username) {
-          return send(res, 400, { error: "Username is required." });
-        }
-        if (!masterKey) {
-          return send(res, 400, { error: "Master Security Key is required." });
-        }
-        if (!newPassword) {
-          return send(res, 400, { error: "New password is required." });
-        }
-        if (newPassword.length < 8) {
-          return send(res, 400, { error: "Password must be at least 8 characters." });
-        }
-        if (!/[A-Z]/.test(newPassword)) {
-          return send(res, 400, { error: "Password must contain at least one uppercase letter." });
-        }
-        if (!/[a-z]/.test(newPassword)) {
-          return send(res, 400, { error: "Password must contain at least one lowercase letter." });
-        }
-        if (!/[0-9]/.test(newPassword)) {
-          return send(res, 400, { error: "Password must contain at least one number." });
-        }
+        if (!username) return send(res, 400, { error: "Username is required." });
+        if (!masterKey) return send(res, 400, { error: "Master Security Key is required." });
+        if (!newPassword) return send(res, 400, { error: "New password is required." });
+        if (newPassword.length < 8) return send(res, 400, { error: "Password must be at least 8 characters." });
+        if (!/[A-Z]/.test(newPassword)) return send(res, 400, { error: "Password must contain at least one uppercase letter." });
+        if (!/[a-z]/.test(newPassword)) return send(res, 400, { error: "Password must contain at least one lowercase letter." });
+        if (!/[0-9]/.test(newPassword)) return send(res, 400, { error: "Password must contain at least one number." });
 
-        // ═══ VERIFY MASTER KEY ═══
-        const MASTER_KEY = process.env.MASTER_KEY || "LECTURA_2026";
         if (masterKey !== MASTER_KEY) {
-          await logAuditEvent("reset_password_failed", null, req.socket.remoteAddress, {
-            username,
-            reason: "invalid_master_key"
-          });
+          await logAuditEvent("reset_password_failed", null, req.socket.remoteAddress, { username, reason: "invalid_master_key" });
           return send(res, 401, { error: "Invalid Master Security Key. Please contact your administrator." });
         }
 
-        // ═══ FIND USER BY USERNAME ═══
         const { rows } = await db.query(
           "SELECT id, username FROM public.users WHERE LOWER(username) = LOWER($1)",
           [username]
         );
 
         if (rows.length === 0) {
-          await logAuditEvent("reset_password_failed", null, req.socket.remoteAddress, {
-            username,
-            reason: "user_not_found"
-          });
+          await logAuditEvent("reset_password_failed", null, req.socket.remoteAddress, { username, reason: "user_not_found" });
           return send(res, 404, { error: "Username not found. Please check your username." });
         }
 
         const user = rows[0];
-
-        // ═══ HASH NEW PASSWORD ═══
         const newHashedPassword = await bcrypt.hash(newPassword, 10);
 
-        // ═══ UPDATE PASSWORD + INVALIDATE SESSIONS ═══
         await db.query(
-          `UPDATE public.users 
-           SET password = $1, 
+          `UPDATE public.users
+           SET password = $1,
                last_password_change = NOW(),
                updated_at = NOW(),
                session_version = COALESCE(session_version, 1) + 1
@@ -911,23 +1174,21 @@ const server = http.createServer(async (req, res) => {
 
         await logAuditEvent("reset_password_success", user.id, req.socket.remoteAddress, {
           username: user.username,
-          method: "master_key_reset"
+          method: "master_key_reset",
         });
 
-        console.log(`🔑 Password reset for user: ${user.username} (IP: ${req.socket.remoteAddress})`);
-
+        dlog("[auth] password reset:", user.username);
         return send(res, 200, {
           success: true,
-          message: "Password reset successfully! You can now log in with your new password. All other sessions have been logged out for security.",
+          message: "Password reset successfully. You can now log in with your new password. All other sessions have been logged out.",
         });
-
       } catch (err) {
-        console.error("❌ Reset password error:", err.message);
+        console.error("[auth] reset password error:", err.message);
         return send(res, 500, { error: "Failed to reset password. Please try again." });
       }
     }
 
-    // ── ADMIN PROTECTED ROUTES ──
+    // ── Admin routes ──
     if (pathname.startsWith("/api/admin/")) {
       const auth = await getAuthWithSessionCheck(req);
       if (!auth || auth.role !== "admin") {
@@ -935,39 +1196,28 @@ const server = http.createServer(async (req, res) => {
         return send(res, 403, { error: "Forbidden: Admin privileges required." });
       }
 
-      // ═══ GET /api/admin/profile ═══
       if (pathname === "/api/admin/profile" && req.method === "GET") {
         try {
-          const { rows } = await db.query(
-            "SELECT * FROM public.users WHERE id = $1",
-            [auth.id]
-          );
-          
-          if (rows.length === 0) {
-            return send(res, 404, { error: "Profile not found." });
-          }
-
-          const profile = rows[0];
-
+          const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
+          if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
+          const p = rows[0];
           return send(res, 200, {
-            id: profile.id || "",
-            username: profile.username || "admin",
-            name: profile.name || "Administrator",
-            displayName: profile.display_name || profile.name || "Administrator",
-            email: profile.email || "",
-            role: profile.role || "admin",
-            createdAt: profile.created_at || new Date().toISOString(),
-            updatedAt: profile.updated_at || new Date().toISOString(),
-            lastPasswordChange: profile.last_password_change || null,
+            id: p.id || "",
+            username: p.username || "admin",
+            name: p.name || "Administrator",
+            displayName: p.display_name || p.name || "Administrator",
+            email: p.email || "",
+            role: p.role || "admin",
+            createdAt: p.created_at || new Date().toISOString(),
+            updatedAt: p.updated_at || new Date().toISOString(),
+            lastPasswordChange: p.last_password_change || null,
           });
         } catch (err) {
-          console.error("❌ Get profile error:", err.message);
-          console.error("Stack:", err.stack);
-          return send(res, 500, { error: "Failed to load profile: " + err.message });
+          console.error("[admin] get profile error:", err.message);
+          return send(res, 500, { error: "Failed to load profile." });
         }
       }
 
-      // ═══ PUT /api/admin/profile (display name + email) ═══
       if (pathname === "/api/admin/profile" && req.method === "PUT") {
         if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 10, keyPrefix: "profile-update" })) return;
         try {
@@ -975,18 +1225,14 @@ const server = http.createServer(async (req, res) => {
           const displayName = sanitizeString(body.displayName || body.name, 100);
           const email = body.email ? validateEmail(body.email) : null;
 
-          if (!displayName) {
-            return send(res, 400, { error: "Display name is required." });
-          }
+          if (!displayName) return send(res, 400, { error: "Display name is required." });
 
           const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
           if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
           const existing = rows[0];
 
           await db.query(
-            `UPDATE public.users 
-             SET name = $1, display_name = $2, email = $3, updated_at = NOW()
-             WHERE id = $4`,
+            `UPDATE public.users SET name = $1, display_name = $2, email = $3, updated_at = NOW() WHERE id = $4`,
             [displayName, displayName, email || existing.email, auth.id]
           );
 
@@ -1010,33 +1256,28 @@ const server = http.createServer(async (req, res) => {
             emailChanged: !!(email && email !== existing.email),
           });
 
-          const updated = await db.query(
-            "SELECT * FROM public.users WHERE id = $1",
-            [auth.id]
-          );
-
-          const profile = updated.rows[0];
+          const updated = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
+          const p = updated.rows[0];
           return send(res, 200, {
             success: true,
             profile: {
-              id: profile.id,
-              username: profile.username,
-              name: profile.name,
-              displayName: profile.display_name || profile.name,
-              email: profile.email || "",
-              role: profile.role,
-              createdAt: profile.created_at || new Date().toISOString(),
-              updatedAt: profile.updated_at || new Date().toISOString(),
-              lastPasswordChange: profile.last_password_change || null,
+              id: p.id,
+              username: p.username,
+              name: p.name,
+              displayName: p.display_name || p.name,
+              email: p.email || "",
+              role: p.role,
+              createdAt: p.created_at || new Date().toISOString(),
+              updatedAt: p.updated_at || new Date().toISOString(),
+              lastPasswordChange: p.last_password_change || null,
             },
           });
         } catch (err) {
-          console.error("❌ Update profile error:", err.message);
-          return send(res, 500, { error: "Failed to update profile: " + err.message });
+          console.error("[admin] update profile error:", err.message);
+          return send(res, 500, { error: "Failed to update profile." });
         }
       }
 
-      // ═══ PUT /api/admin/profile/username ═══
       if (pathname === "/api/admin/profile/username" && req.method === "PUT") {
         if (!rateLimit(req, res, { windowMs: 60 * 60_000, maxRequests: 3, keyPrefix: "change-username" })) return;
         try {
@@ -1044,12 +1285,8 @@ const server = http.createServer(async (req, res) => {
           const newUsername = validateUsername(body.newUsername);
           const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
 
-          if (!newUsername) {
-            return send(res, 400, { error: "Invalid username. Use 3-50 characters (letters, numbers, dots, dashes, underscores)." });
-          }
-          if (!currentPassword) {
-            return send(res, 400, { error: "Current password is required." });
-          }
+          if (!newUsername) return send(res, 400, { error: "Invalid username. Use 3-50 characters (letters, numbers, dots, dashes, underscores)." });
+          if (!currentPassword) return send(res, 400, { error: "Current password is required." });
 
           const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
           if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
@@ -1093,12 +1330,11 @@ const server = http.createServer(async (req, res) => {
             username: newUsername,
           });
         } catch (err) {
-          console.error("❌ Change username error:", err.message);
-          return send(res, 500, { error: "Failed to change username: " + err.message });
+          console.error("[admin] change username error:", err.message);
+          return send(res, 500, { error: "Failed to change username." });
         }
       }
 
-      // ═══ PUT /api/admin/profile/password ═══
       if (pathname === "/api/admin/profile/password" && req.method === "PUT") {
         if (!rateLimit(req, res, { windowMs: 60 * 60_000, maxRequests: 5, keyPrefix: "change-password" })) return;
         try {
@@ -1106,22 +1342,11 @@ const server = http.createServer(async (req, res) => {
           const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
           const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
 
-          if (!currentPassword || !newPassword) {
-            return send(res, 400, { error: "Current password and new password are required." });
-          }
-
-          if (newPassword.length < 8) {
-            return send(res, 400, { error: "Password must be at least 8 characters." });
-          }
-          if (!/[A-Z]/.test(newPassword)) {
-            return send(res, 400, { error: "Password must contain at least one uppercase letter." });
-          }
-          if (!/[a-z]/.test(newPassword)) {
-            return send(res, 400, { error: "Password must contain at least one lowercase letter." });
-          }
-          if (!/[0-9]/.test(newPassword)) {
-            return send(res, 400, { error: "Password must contain at least one number." });
-          }
+          if (!currentPassword || !newPassword) return send(res, 400, { error: "Current password and new password are required." });
+          if (newPassword.length < 8) return send(res, 400, { error: "Password must be at least 8 characters." });
+          if (!/[A-Z]/.test(newPassword)) return send(res, 400, { error: "Password must contain at least one uppercase letter." });
+          if (!/[a-z]/.test(newPassword)) return send(res, 400, { error: "Password must contain at least one lowercase letter." });
+          if (!/[0-9]/.test(newPassword)) return send(res, 400, { error: "Password must contain at least one number." });
 
           const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
           if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
@@ -1134,16 +1359,14 @@ const server = http.createServer(async (req, res) => {
           }
 
           const samePassword = await bcrypt.compare(newPassword, existing.password);
-          if (samePassword) {
-            return send(res, 400, { error: "New password must be different from current password." });
-          }
+          if (samePassword) return send(res, 400, { error: "New password must be different from current password." });
 
           const newHashedPassword = await bcrypt.hash(newPassword, 10);
 
           await db.query(
-            `UPDATE public.users 
-             SET password = $1, 
-                 last_password_change = NOW(), 
+            `UPDATE public.users
+             SET password = $1,
+                 last_password_change = NOW(),
                  updated_at = NOW(),
                  session_version = COALESCE(session_version, 1) + 1
              WHERE id = $2`,
@@ -1156,26 +1379,23 @@ const server = http.createServer(async (req, res) => {
             [auth.id, req.socket.remoteAddress, req.headers["user-agent"] || ""]
           );
 
-          await logAuditEvent("change_password", auth.id, req.socket.remoteAddress, {
-            sessionVersionIncremented: true,
-          });
+          await logAuditEvent("change_password", auth.id, req.socket.remoteAddress, { sessionVersionIncremented: true });
 
           return send(res, 200, {
             success: true,
-            message: "Password changed successfully. All other sessions have been logged out for security.",
+            message: "Password changed successfully. All other sessions have been logged out.",
           });
         } catch (err) {
-          console.error("❌ Change password error:", err.message);
-          return send(res, 500, { error: "Failed to change password: " + err.message });
+          console.error("[admin] change password error:", err.message);
+          return send(res, 500, { error: "Failed to change password." });
         }
       }
 
-      // ═══ GET /api/admin/profile/history ═══
       if (pathname === "/api/admin/profile/history" && req.method === "GET") {
         try {
           const { rows } = await db.query(
             `SELECT id, change_type, old_value, new_value, ip_address, changed_at
-             FROM user_profile_changes 
+             FROM user_profile_changes
              WHERE user_id = $1
              ORDER BY changed_at DESC
              LIMIT 50`,
@@ -1183,16 +1403,75 @@ const server = http.createServer(async (req, res) => {
           );
           return send(res, 200, { history: rows });
         } catch (err) {
-          console.error("❌ Get profile history error:", err.message);
+          console.error("[admin] get profile history error:", err.message);
           return send(res, 500, { error: "Failed to load history." });
         }
       }
 
-      // ═══ POST /api/admin/generate-jhs-master ═══
-      if (pathname === "/api/admin/generate-jhs-master" && req.method === "POST") {
-        if (!rateLimit(req, res, { windowMs: 30 * 60_000, maxRequests: 5, keyPrefix: "gen-jhs" })) {
-          return;
+      if (pathname === "/api/admin/audit-log" && req.method === "GET") {
+        try {
+          const limit = Math.min(parseInt(query.limit, 10) || 50, 200);
+          const offset = Math.max(parseInt(query.offset, 10) || 0, 0);
+          const actionFilter = query.action ? sanitizeString(query.action, 50) : null;
+          const userIdFilter = query.userId ? sanitizeString(query.userId, 100) : null;
+
+          const conditions = [];
+          const params = [];
+
+          if (actionFilter) {
+            params.push(actionFilter);
+            conditions.push(`al.action = $${params.length}`);
+          }
+          if (userIdFilter) {
+            params.push(userIdFilter);
+            conditions.push(`al.user_id = $${params.length}`);
+          }
+
+          const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+          params.push(limit);
+          const limitIdx = params.length;
+          params.push(offset);
+          const offsetIdx = params.length;
+
+          const { rows } = await db.query(
+            `SELECT
+               al.id,
+               al.action,
+               al.user_id       AS "userId",
+               al.ip_address    AS "ipAddress",
+               al.details,
+               al.created_at    AS "createdAt",
+               u.username,
+               u.role,
+               COALESCE(u.display_name, u.name) AS "displayName"
+             FROM audit_logs al
+             LEFT JOIN public.users u ON u.id = al.user_id
+             ${whereClause}
+             ORDER BY al.created_at DESC
+             LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+            params
+          );
+
+          const { rows: countRows } = await db.query(
+            `SELECT COUNT(*)::int AS total FROM audit_logs al ${whereClause}`,
+            params.slice(0, params.length - 2)
+          );
+
+          return send(res, 200, {
+            total: countRows[0].total,
+            limit,
+            offset,
+            entries: rows,
+          });
+        } catch (err) {
+          console.error("[admin] audit log read error:", err.message);
+          return send(res, 500, { error: "Failed to load audit log." });
         }
+      }
+
+      if (pathname === "/api/admin/generate-jhs-master" && req.method === "POST") {
+        if (!rateLimit(req, res, { windowMs: 30 * 60_000, maxRequests: 5, keyPrefix: "gen-jhs" })) return;
         try {
           const body = await parseBody(req);
           const result = await generateJHSMaster(body);
@@ -1200,15 +1479,15 @@ const server = http.createServer(async (req, res) => {
             sections: result.sectionsProcessed,
             teachers: result.teachersUpdated,
           });
-          console.log(`✅ JHS master saved: ${result.sectionsProcessed} sections, ${result.teachersUpdated} teachers`);
+          dlog(`[jhs] generated: ${result.sectionsProcessed} sections, ${result.teachersUpdated} teachers`);
           return send(res, 200, { success: true, ...result });
         } catch (err) {
-          console.error("❌ JHS generation failed:", err);
+          console.error("[jhs] generation failed:", err);
           return send(res, 500, { error: err.message });
         }
       }
 
-      // ═══ SUBJECTS ═══
+      // ── Subjects ──
       if (pathname === "/api/admin/subjects" && req.method === "GET") {
         try {
           const { rows } = await db.query("SELECT * FROM subjects ORDER BY id DESC");
@@ -1253,22 +1532,61 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      if (pathname === "/api/admin/subjects/batch-delete" && req.method === "DELETE") {
+        try {
+          const body = await parseBody(req);
+          const names = Array.isArray(body.subjectNames) ? body.subjectNames.filter(Boolean) : [];
+          if (names.length === 0) {
+            return send(res, 400, { error: "No subjects provided." });
+          }
+
+          const lowered = names.map(n => String(n).trim().toLowerCase());
+          const result = await db.query(
+            `DELETE FROM subjects WHERE LOWER(TRIM(name)) = ANY($1::text[])`,
+            [lowered]
+          );
+
+          await logAuditEvent("batch_delete_subjects", auth.id, req.socket.remoteAddress, {
+            count: result.rowCount,
+            names,
+          });
+
+          return send(res, 200, { success: true, deleted: result.rowCount });
+        } catch (err) {
+          console.error("[admin] batch delete subjects error:", err.message);
+          return send(res, 500, { error: "Failed to delete subjects." });
+        }
+      }
+
       if (pathname.startsWith("/api/admin/subjects/") && req.method === "DELETE") {
         try {
-          const subjectId = pathname.split("/").pop();
-          const result = await db.query("DELETE FROM subjects WHERE id = $1", [subjectId]);
+          const identifier = decodeURIComponent(pathname.split("/").pop());
+          const isNumeric = /^\d+$/.test(identifier);
+
+          const result = isNumeric
+            ? await db.query("DELETE FROM subjects WHERE id = $1 RETURNING id", [identifier])
+            : await db.query(
+                "DELETE FROM subjects WHERE LOWER(TRIM(name)) = LOWER($1) RETURNING id",
+                [identifier]
+              );
+
           if (result.rowCount === 0) return send(res, 404, { error: "Subject not found." });
-          await logAuditEvent("delete_subject", auth.id, req.socket.remoteAddress, { subjectId });
+
+          await logAuditEvent("delete_subject", auth.id, req.socket.remoteAddress, {
+            identifier,
+            by: isNumeric ? "id" : "name",
+          });
+
           return send(res, 200, { success: true });
         } catch (err) {
           return send(res, 500, { error: err.message });
         }
       }
 
-      // ═══ SECTIONS ═══
+      // ── Sections ──
       if (pathname === "/api/admin/sections" && req.method === "GET") {
         try {
-          const queryText = `
+          const { rows } = await db.query(`
             SELECT
               s.id, s.name, s.students,
               s.grade_level AS "gradeLevel",
@@ -1279,8 +1597,7 @@ const server = http.createServer(async (req, res) => {
             FROM sections s
             LEFT JOIN rooms r ON CAST(s.room_id AS VARCHAR) = CAST(r.id AS VARCHAR)
             ORDER BY s.name ASC
-          `;
-          const { rows } = await db.query(queryText);
+          `);
           return send(res, 200, rows);
         } catch (err) {
           return send(res, 500, { error: err.message });
@@ -1306,6 +1623,25 @@ const server = http.createServer(async (req, res) => {
           );
           if (existing.rows.length > 0) return send(res, 400, { error: "This section already exists." });
 
+          if (roomId) {
+            const roomConflict = await db.query(
+              `SELECT s.name AS section_name, s.grade_level, r.name AS room_name
+              FROM sections s
+              LEFT JOIN rooms r ON CAST(s.room_id AS VARCHAR) = CAST(r.id AS VARCHAR)
+              WHERE s.room_id = $1
+                AND LOWER(TRIM(s.grade_level)) = LOWER(TRIM($2))`,
+              [roomId, gradeLevel]
+            );
+
+            if (roomConflict.rows.length > 0) {
+              const conflict = roomConflict.rows[0];
+              return send(res, 400, {
+                error: `Room "${conflict.room_name}" is already assigned to section "${conflict.section_name}" in ${gradeLevel}. Please choose a different room.`,
+                code: "ROOM_CONFLICT",
+              });
+            }
+          }
+
           await db.query(
             "INSERT INTO sections (name, students, grade_level, room_id, shift) VALUES ($1, $2, $3, $4, $5)",
             [sectionName, students, gradeLevel, roomId, shift]
@@ -1327,17 +1663,30 @@ const server = http.createServer(async (req, res) => {
 
       if (pathname.startsWith("/api/admin/sections/") && req.method === "DELETE") {
         try {
-          const sectionId = pathname.split("/").pop();
-          const result = await db.query("DELETE FROM sections WHERE id = $1", [sectionId]);
+          const identifier = decodeURIComponent(pathname.split("/").pop());
+          const isNumeric = /^\d+$/.test(identifier);
+
+          const result = isNumeric
+            ? await db.query("DELETE FROM sections WHERE id = $1 RETURNING id", [identifier])
+            : await db.query(
+                "DELETE FROM sections WHERE LOWER(TRIM(name)) = LOWER($1) RETURNING id",
+                [identifier]
+              );
+
           if (result.rowCount === 0) return send(res, 404, { error: "Section not found." });
-          await logAuditEvent("delete_section", auth.id, req.socket.remoteAddress, { sectionId });
+
+          await logAuditEvent("delete_section", auth.id, req.socket.remoteAddress, {
+            identifier,
+            by: isNumeric ? "id" : "name",
+          });
+
           return send(res, 200, { success: true });
         } catch (err) {
           return send(res, 500, { error: err.message });
         }
       }
 
-      // ═══ ROOMS ═══
+      // ── Rooms ──
       if (pathname === "/api/admin/rooms" && req.method === "GET") {
         try {
           const { rows } = await db.query("SELECT * FROM rooms ORDER BY id DESC");
@@ -1396,7 +1745,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══ TEACHERS ═══
+      // ── Teachers ──
       if (pathname === "/api/admin/teachers" && req.method === "GET") {
         try {
           const includeHidden = query.includeHidden === "true";
@@ -1457,9 +1806,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (pathname === "/api/admin/teachers" && req.method === "POST") {
-        if (!rateLimit(req, res, { windowMs: 60 * 60_000, maxRequests: 10, keyPrefix: "teacher-create" })) {
-          return;
-        }
+        if (!rateLimit(req, res, { windowMs: 60 * 60_000, maxRequests: 10, keyPrefix: "teacher-create" })) return;
         try {
           const body = await parseBody(req);
           const firstName = validateName(body.firstName);
@@ -1475,7 +1822,7 @@ const server = http.createServer(async (req, res) => {
             [firstName, lastName]
           );
           if (nameCheck.rows.length > 0) {
-            return send(res, 400, { error: `Teacher "${firstName} ${lastName}" is already registered!` });
+            return send(res, 400, { error: `Teacher "${firstName} ${lastName}" is already registered.` });
           }
 
           let baseUsername = (firstName.toLowerCase() + "." + lastName.toLowerCase()).replace(/\s+/g, "");
@@ -1496,18 +1843,18 @@ const server = http.createServer(async (req, res) => {
 
           function sanitizeTime(timeStr) {
             if (!timeStr || timeStr.trim() === "") return "08:00";
-            let t = timeStr.trim().toLowerCase();
-            let isPM = t.includes("pm");
-            let isAM = t.includes("am");
-            let nums = t.replace(/[^0-9:]/g, "").split(":");
+            const t = timeStr.trim().toLowerCase();
+            const isPM = t.includes("pm");
+            const isAM = t.includes("am");
+            const nums = t.replace(/[^0-9:]/g, "").split(":");
             let h = parseInt(nums[0], 10);
-            let m = nums[1] ? parseInt(nums[1], 10) : 0;
+            const m = nums[1] ? parseInt(nums[1], 10) : 0;
             if (isPM && h !== 12) h += 12;
             if (isAM && h === 12) h = 0;
             return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
           }
 
-          let availabilityArray = safeJsonParse(body.availability, []);
+          const availabilityArray = safeJsonParse(body.availability, []);
           const formattedAvailability = availabilityArray.map(item => ({
             day: sanitizeString(item.day, 20) || "Monday",
             from: sanitizeTime(item.from),
@@ -1520,8 +1867,7 @@ const server = http.createServer(async (req, res) => {
               work_days, start_time, end_time, availability, employee_id, is_active, created_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, NOW()) RETURNING *`,
             [
-              firstName, lastName, email,
-              subjectsJSON, targetGrade, workDaysJSON,
+              firstName, lastName, email, subjectsJSON, targetGrade, workDaysJSON,
               sanitizeTime(body.startTime), sanitizeTime(body.endTime),
               JSON.stringify(formattedAvailability), employeeId,
             ]
@@ -1542,29 +1888,35 @@ const server = http.createServer(async (req, res) => {
             name: `${firstName} ${lastName}`,
           });
 
-          try {
-            await db.query(
-              `INSERT INTO consent_logs (
-                teacher_id, consent_type, consent_version, consent_given_at, ip_address
-              ) VALUES ($1, $2, $3, NOW(), $4)`,
-              [teacherIdStr, "account_creation", "v1.0", req.socket.remoteAddress || "unknown"]
-            );
-          } catch (consentErr) {
-            console.error("⚠️ Consent logging failed:", consentErr.message);
-          }
-
-          if (email && email.includes("@")) {
-            sendCredentialsEmail(email, `${firstName} ${lastName}`, username, password, {});
+          let emailSent = false;
+          if (email) {
+            try {
+              await sendCredentialsEmail({
+                to: email,
+                name: `${firstName} ${lastName}`,
+                username,
+                password,
+              });
+              emailSent = true;
+              await logAuditEvent("send_credentials_email", auth.id, req.socket.remoteAddress, { teacherEmail: email });
+            } catch (mailErr) {
+              console.error("[mail] failed to send credentials:", mailErr.message);
+              await logAuditEvent("send_credentials_email_failed", auth.id, req.socket.remoteAddress, {
+                teacherEmail: email,
+                error: mailErr.message,
+              });
+            }
           }
 
           return send(res, 201, {
             success: true,
             teacher: newTeacher,
             credentials: { username, password },
+            emailSent,
             schedule: { teacherId: newTeacher.id, slots: [] },
           });
         } catch (err) {
-          console.error("❌ Teacher registration error:", err);
+          console.error("[teacher] registration error:", err);
           return send(res, 500, { error: "Failed to create teacher account." });
         }
       }
@@ -1623,7 +1975,6 @@ const server = http.createServer(async (req, res) => {
           );
 
           await logAuditEvent("hide_teacher", auth.id, req.socket.remoteAddress, { teacherId });
-
           return send(res, 200, { success: true, message: "Teacher hidden successfully." });
         } catch (err) {
           return send(res, 500, { error: err.message });
@@ -1645,7 +1996,6 @@ const server = http.createServer(async (req, res) => {
           );
 
           await logAuditEvent("unhide_teacher", auth.id, req.socket.remoteAddress, { teacherId });
-
           return send(res, 200, { success: true, message: "Teacher restored successfully." });
         } catch (err) {
           return send(res, 500, { error: err.message });
@@ -1658,16 +2008,14 @@ const server = http.createServer(async (req, res) => {
           await db.query("DELETE FROM teachers WHERE id = $1", [id]);
           await db.query("DELETE FROM public.users WHERE teacher_id = $1 OR id = $1", [String(id)]);
           await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
-
           await logAuditEvent("delete_teacher", auth.id, req.socket.remoteAddress, { teacherId: id });
-
           return send(res, 200, { success: true });
         } catch (err) {
           return send(res, 500, { error: err.message });
         }
       }
 
-      // ═══ SCHEDULES ═══
+      // ── Schedules ──
       if (pathname === "/api/admin/schedules" && req.method === "GET") {
         try {
           const { rows: schedules } = await db.query("SELECT * FROM schedules");
@@ -1755,16 +2103,12 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (pathname === "/api/admin/schedules/swap" && req.method === "POST") {
-        if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 30, keyPrefix: "swap" })) {
-          return;
-        }
+        if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 30, keyPrefix: "swap" })) return;
         try {
           const body = await parseBody(req);
           const { cellA, cellB, mode } = body;
 
-          if (!cellA || !cellA.slotId) {
-            return send(res, 400, { error: "cellA.slotId is required." });
-          }
+          if (!cellA || !cellA.slotId) return send(res, 400, { error: "cellA.slotId is required." });
 
           const getTeacherName = async (tid) => {
             const { rows } = await db.query(
@@ -1784,9 +2128,7 @@ const server = http.createServer(async (req, res) => {
               "SELECT * FROM schedules WHERE teacher_id = $1",
               [String(cellA.teacherId)]
             );
-            if (rowsA.length === 0) {
-              return send(res, 404, { error: `Teacher has no schedule.` });
-            }
+            if (rowsA.length === 0) return send(res, 404, { error: "Teacher has no schedule." });
 
             const tName = await getTeacherName(cellA.teacherId);
 
@@ -1797,9 +2139,7 @@ const server = http.createServer(async (req, res) => {
             }));
 
             const idxA = slotsA.findIndex(s => String(s.id) === String(cellA.slotId));
-            if (idxA === -1) {
-              return send(res, 404, { error: "Source slot ID not found." });
-            }
+            if (idxA === -1) return send(res, 404, { error: "Source slot ID not found." });
 
             const originalSlot = { ...slotsA[idxA] };
             slotsA[idxA] = {
@@ -1819,11 +2159,7 @@ const server = http.createServer(async (req, res) => {
               to: `${cellA.targetDay} ${cellA.targetStartTime}`,
             });
 
-            return send(res, 200, {
-              success: true,
-              mode: "move",
-              message: "Moved successfully.",
-            });
+            return send(res, 200, { success: true, mode: "move", message: "Moved successfully." });
           }
 
           if (!cellB.slotId || !cellB.teacherId) {
@@ -1923,36 +2259,15 @@ const server = http.createServer(async (req, res) => {
             slotB: cellB.slotId,
           });
 
-          return send(res, 200, {
-            success: true,
-            mode: "swap",
-            message: "Swap successful.",
-          });
+          return send(res, 200, { success: true, mode: "swap", message: "Swap successful." });
         } catch (err) {
-          console.error("❌ Swap/Move failed:", err);
-          return send(res, 500, { error: err.message });
-        }
-      }
-
-      if (pathname.match(/^\/api\/admin\/schedules\/regenerate\/[^/]+$/) && req.method === "POST") {
-        try {
-          const id = pathname.split("/").pop();
-          const { rows } = await db.query("SELECT * FROM teachers WHERE id = $1", [id]);
-          if (rows.length === 0) return send(res, 404, { error: "Teacher not found" });
-          const newSlots = await generateSchedule(rows[0]);
-          await db.query("DELETE FROM schedules WHERE teacher_id = $1", [String(id)]);
-          await db.query(
-            "INSERT INTO schedules (teacher_id, slots, generated_at) VALUES ($1, $2, NOW())",
-            [String(id), JSON.stringify(newSlots)]
-          );
-          return send(res, 200, { teacherId: id, slots: newSlots });
-        } catch (err) {
+          console.error("[swap] failed:", err);
           return send(res, 500, { error: err.message });
         }
       }
     }
 
-    // ═══ Global Timetable ═══
+    // ── Global timetable ──
     if (pathname === "/api/timetable" && req.method === "GET") {
       try {
         const auth = getAuth(req);
@@ -1966,8 +2281,12 @@ const server = http.createServer(async (req, res) => {
           const name = `${t.first_name} ${t.last_name}`;
           safeJsonParse(s.slots, []).forEach(slot => {
             out.push({
-              id: slot.id, instructor: name,
-              subject: slot.subject, section: slot.section, room: slot.room, day: slot.day,
+              id: slot.id,
+              instructor: name,
+              subject: slot.subject,
+              section: slot.section,
+              room: slot.room,
+              day: slot.day,
               timeSlot: `${slot.startTime} to ${slot.endTime}`,
             });
           });
@@ -1978,10 +2297,202 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // ═══ TEACHER-ONLY ROUTES ═══
+    // ── Teacher routes ──
     if (pathname.startsWith("/api/teacher/")) {
-      const auth = getAuth(req);
+      const auth = await getAuthWithSessionCheck(req);
       if (!auth || auth.role !== "teacher") return send(res, 403, { error: "Forbidden" });
+
+      if (pathname === "/api/teacher/profile" && req.method === "GET") {
+        try {
+          const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
+          if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
+          const p = rows[0];
+          return send(res, 200, {
+            id: p.id || "",
+            username: p.username || "",
+            name: p.name || "",
+            displayName: p.display_name || p.name || "",
+            email: p.email || "",
+            role: p.role || "teacher",
+            teacherId: p.teacher_id || null,
+            createdAt: p.created_at || new Date().toISOString(),
+            updatedAt: p.updated_at || new Date().toISOString(),
+            lastPasswordChange: p.last_password_change || null,
+          });
+        } catch (err) {
+          console.error("[teacher] get profile error:", err.message);
+          return send(res, 500, { error: "Failed to load profile." });
+        }
+      }
+
+      if (pathname === "/api/teacher/profile" && req.method === "PUT") {
+        if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 10, keyPrefix: "teacher-profile-update" })) return;
+        try {
+          const body = await parseBody(req);
+          const displayName = sanitizeString(body.displayName || body.name, 100);
+          const email = body.email ? validateEmail(body.email) : null;
+
+          if (!displayName) return send(res, 400, { error: "Display name is required." });
+
+          const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
+          if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
+          const existing = rows[0];
+
+          await db.query(
+            `UPDATE public.users
+             SET name = $1, display_name = $2, email = $3, updated_at = NOW()
+             WHERE id = $4`,
+            [displayName, displayName, email || existing.email, auth.id]
+          );
+
+          if (displayName !== (existing.display_name || existing.name)) {
+            await db.query(
+              `INSERT INTO user_profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent)
+               VALUES ($1, 'display_name', $2, $3, $4, $5)`,
+              [auth.id, existing.display_name || existing.name, displayName, req.socket.remoteAddress, req.headers["user-agent"] || ""]
+            );
+          }
+          if (email && email !== existing.email) {
+            await db.query(
+              `INSERT INTO user_profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent)
+               VALUES ($1, 'email', $2, $3, $4, $5)`,
+              [auth.id, existing.email || "", email, req.socket.remoteAddress, req.headers["user-agent"] || ""]
+            );
+          }
+
+          await logAuditEvent("update_profile", auth.id, req.socket.remoteAddress, {
+            displayName,
+            emailChanged: !!(email && email !== existing.email),
+            role: "teacher",
+          });
+
+          const updated = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
+          const p = updated.rows[0];
+          return send(res, 200, {
+            success: true,
+            profile: {
+              id: p.id,
+              username: p.username,
+              name: p.name,
+              displayName: p.display_name || p.name,
+              email: p.email || "",
+              role: p.role,
+              createdAt: p.created_at || new Date().toISOString(),
+              updatedAt: p.updated_at || new Date().toISOString(),
+              lastPasswordChange: p.last_password_change || null,
+            },
+          });
+        } catch (err) {
+          console.error("[teacher] update profile error:", err.message);
+          return send(res, 500, { error: "Failed to update profile." });
+        }
+      }
+
+      if (pathname === "/api/teacher/profile/password" && req.method === "PUT") {
+        if (!rateLimit(req, res, { windowMs: 60 * 60_000, maxRequests: 5, keyPrefix: "teacher-change-password" })) return;
+        try {
+          const body = await parseBody(req);
+          const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
+          const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
+
+          if (!currentPassword || !newPassword) return send(res, 400, { error: "Current password and new password are required." });
+          if (newPassword.length < 8) return send(res, 400, { error: "Password must be at least 8 characters." });
+          if (!/[A-Z]/.test(newPassword)) return send(res, 400, { error: "Password must contain at least one uppercase letter." });
+          if (!/[a-z]/.test(newPassword)) return send(res, 400, { error: "Password must contain at least one lowercase letter." });
+          if (!/[0-9]/.test(newPassword)) return send(res, 400, { error: "Password must contain at least one number." });
+
+          const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
+          if (rows.length === 0) return send(res, 404, { error: "Profile not found." });
+          const existing = rows[0];
+
+          const passwordValid = await bcrypt.compare(currentPassword, existing.password);
+          if (!passwordValid) {
+            await logAuditEvent("change_password_failed", auth.id, req.socket.remoteAddress, { reason: "invalid_password", role: "teacher" });
+            return send(res, 401, { error: "Current password is incorrect." });
+          }
+
+          const samePassword = await bcrypt.compare(newPassword, existing.password);
+          if (samePassword) return send(res, 400, { error: "New password must be different from current password." });
+
+          const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+          await db.query(
+            `UPDATE public.users
+             SET password = $1,
+                 last_password_change = NOW(),
+                 updated_at = NOW(),
+                 session_version = COALESCE(session_version, 1) + 1
+             WHERE id = $2`,
+            [newHashedPassword, auth.id]
+          );
+
+          await db.query(
+            `INSERT INTO user_profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent)
+             VALUES ($1, 'password', '***', '***', $2, $3)`,
+            [auth.id, req.socket.remoteAddress, req.headers["user-agent"] || ""]
+          );
+
+          await logAuditEvent("change_password", auth.id, req.socket.remoteAddress, {
+            sessionVersionIncremented: true,
+            role: "teacher",
+          });
+
+          return send(res, 200, {
+            success: true,
+            message: "Password changed successfully. All other sessions have been logged out.",
+          });
+        } catch (err) {
+          console.error("[teacher] change password error:", err.message);
+          return send(res, 500, { error: "Failed to change password." });
+        }
+      }
+
+      if (pathname === "/api/teacher/profile/history" && req.method === "GET") {
+        try {
+          const { rows: profileChanges } = await db.query(
+            `SELECT
+               'profile_change' AS source,
+               change_type,
+               old_value,
+               new_value,
+               ip_address,
+               user_agent,
+               changed_at AS timestamp
+             FROM user_profile_changes
+             WHERE user_id = $1`,
+            [auth.id]
+          );
+
+          const { rows: auditEvents } = await db.query(
+            `SELECT
+               'audit' AS source,
+               action AS change_type,
+               NULL AS old_value,
+               NULL AS new_value,
+               ip_address,
+               NULL AS user_agent,
+               created_at AS timestamp
+             FROM audit_logs
+             WHERE user_id = $1
+               AND action IN (
+                 'login_success', 'login_failed',
+                 'change_password', 'change_password_failed',
+                 'reset_password_success', 'reset_password_failed',
+                 'update_profile'
+               )`,
+            [auth.id]
+          );
+
+          const merged = [...profileChanges, ...auditEvents]
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, 50);
+
+          return send(res, 200, { history: merged });
+        } catch (err) {
+          console.error("[teacher] get profile history error:", err.message);
+          return send(res, 500, { error: "Failed to load history." });
+        }
+      }
 
       if (pathname === "/api/teacher/schedule" && req.method === "GET") {
         try {
@@ -2005,9 +2516,7 @@ const server = http.createServer(async (req, res) => {
             }
           }
 
-          if (!targetTeacherId) {
-            return send(res, 404, { error: "No teacher profile associated." });
-          }
+          if (!targetTeacherId) return send(res, 404, { error: "No teacher profile associated." });
 
           const { rows: teacherRows } = await db.query(
             "SELECT * FROM teachers WHERE id = $1",
@@ -2027,17 +2536,12 @@ const server = http.createServer(async (req, res) => {
             });
           });
 
-          const scheduleObj = {
-            teacher_id: targetTeacherId,
-            slots: mySlots,
-          };
-
           return send(res, 200, {
-            schedule: scheduleObj,
+            schedule: { teacher_id: targetTeacherId, slots: mySlots },
             teacher: teacherRows[0] || null,
           });
         } catch (err) {
-          console.error("❌ Teacher schedule error:", err);
+          console.error("[teacher] schedule error:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -2089,20 +2593,15 @@ const server = http.createServer(async (req, res) => {
             sectionList
           );
 
-          return send(res, 200, {
-            students: students,
-            sections: sectionList,
-          });
+          return send(res, 200, { students, sections: sectionList });
         } catch (err) {
-          console.error("❌ Get students error:", err);
+          console.error("[teacher] get students error:", err);
           return send(res, 500, { error: err.message });
         }
       }
 
       if (pathname === "/api/teacher/students" && req.method === "POST") {
-        if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 20, keyPrefix: "student-create" })) {
-          return;
-        }
+        if (!rateLimit(req, res, { windowMs: 60_000, maxRequests: 20, keyPrefix: "student-create" })) return;
         try {
           const body = await parseBody(req);
           const name = sanitizeString(body.name, 100);
@@ -2122,7 +2621,7 @@ const server = http.createServer(async (req, res) => {
 
           return send(res, 201, { success: true, student: result.rows[0] });
         } catch (err) {
-          console.error("❌ Add student error:", err);
+          console.error("[teacher] add student error:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -2136,9 +2635,7 @@ const server = http.createServer(async (req, res) => {
             "SELECT * FROM students WHERE id = $1",
             [studentId]
           );
-          if (studentRows.length === 0) {
-            return send(res, 404, { error: "Student not found." });
-          }
+          if (studentRows.length === 0) return send(res, 404, { error: "Student not found." });
 
           const existing = studentRows[0];
           const name = body.name !== undefined ? sanitizeString(body.name, 100) : existing.name;
@@ -2154,7 +2651,7 @@ const server = http.createServer(async (req, res) => {
           const updated = await db.query("SELECT * FROM students WHERE id = $1", [studentId]);
           return send(res, 200, { success: true, student: updated.rows[0] });
         } catch (err) {
-          console.error("❌ Update student error:", err);
+          console.error("[teacher] update student error:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -2163,12 +2660,10 @@ const server = http.createServer(async (req, res) => {
         try {
           const studentId = pathname.split("/").pop();
           const result = await db.query("DELETE FROM students WHERE id = $1", [studentId]);
-          if (result.rowCount === 0) {
-            return send(res, 404, { error: "Student not found." });
-          }
+          if (result.rowCount === 0) return send(res, 404, { error: "Student not found." });
           return send(res, 200, { success: true });
         } catch (err) {
-          console.error("❌ Delete student error:", err);
+          console.error("[teacher] delete student error:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -2187,7 +2682,7 @@ const server = http.createServer(async (req, res) => {
             maxStudents: r.capacity || r.max_capacity || 0,
           })));
         } catch (err) {
-          console.error("❌ Error fetching teacher rooms:", err);
+          console.error("[teacher] rooms error:", err);
           return send(res, 500, { error: err.message });
         }
       }
@@ -2196,11 +2691,11 @@ const server = http.createServer(async (req, res) => {
     return send(res, 404, { error: "API route not found" });
   }
 
-  // ═══ STATIC FILES ROUTER ═══
+  // ── Static files ──
   const frontendBase = path.resolve(__dirname, "../frontend");
 
   if (pathname === "/" || pathname === "/login.html") {
-    res.writeHead(302, { Location: "/shared/login.html" });
+    res.writeHead(302, { Location: "/auth/login.html" });
     return res.end();
   }
 
@@ -2219,27 +2714,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  // ✅ Print URL IMMEDIATELY so you always see it, even if DB is slow
-  console.log(`\n${"═".repeat(60)}`);
-  console.log(`🚀  Lectura Scheduler is running!`);
-  console.log(`${"═".repeat(60)}`);
-  console.log(`🌐  Open this URL in your browser:`);
-  console.log(`    👉  http://localhost:${PORT}`);
-  console.log(`\n🔐  Admin Login:`);
-  console.log(`    Username: ${ADMIN_USERNAME}`);
-  console.log(`${"═".repeat(60)}\n`);
+  console.log(`[server] ready: http://localhost:${PORT}`);
 
-  // ✅ Then run DB initialization AFTER printing the URL
-  initAdmin().catch((err) => {
-    console.error("❌ initAdmin failed:", err.message);
-  });
-});
-
-// ═══ Startup DB ping (for logging only) ═══
-db.query("SELECT NOW()", (err, res) => {
-  if (err) {
-    console.error("❌ Supabase Connection Failed:", err.message);
-  } else {
-    console.log("✅ Successfully connected to Supabase PostgreSQL at:", res.rows[0].now);
-  }
+  db.initDatabase()
+    .then(() => initAdmin())
+    .catch((err) => console.error("[init] startup error:", err.message));
 });

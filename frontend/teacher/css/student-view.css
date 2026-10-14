@@ -140,17 +140,18 @@ body {
     min-height: 56px;
 }
 
-/* ═══ Logo ═══ */
 .sidebar .logo {
     display: flex;
     align-items: center;
     gap: 12px;
-    height: 100%;
     white-space: nowrap;
     overflow: hidden;
     max-width: 200px;
-    /* ✅ FIX: Only max-width transition — no opacity to prevent blink */
-    transition: max-width var(--sidebar-transition);
+    height: 100%;
+    padding-top: 0;
+    /* ✅ Smooth fade in/out of the logo (opacity + max-width both transition) */
+    transition: max-width var(--sidebar-transition),
+                opacity var(--sidebar-transition);
 }
 
 .sidebar .logo img {
@@ -396,7 +397,7 @@ body {
     right: 0;
     width: 60vw;
     height: 100vh;
-    background-image: url('/shared/img/makiling_logo.png');
+    background-image: url('/auth/makiling_logo.png');
     background-repeat: no-repeat;
     background-position: center right;
     background-size: 50vh;

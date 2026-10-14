@@ -1,176 +1,282 @@
-// Helper function to extract Authorization headers with JWT fallback
-function getAuthHeaders() {
-    const token = localStorage.getItem('token') || localStorage.getItem('jwt') || '';
-    const headers = { 'Content-Type': 'application/json' };
-    if (token && token !== 'null' && token !== 'undefined' && token !== '') {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let roomsCache = [];
+let pendingDeleteRoomId = null;
+let pendingDeleteRoomName = '';
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
-// Dynamic auto-fading toast notification
-function showToastMessage(msg) {
+function showToastMessage(message, type = 'success') {
     let toast = document.getElementById('toast-notification');
-    
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'toast-notification';
-        toast.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 6px; background: #00d2ff; color: #000; font-weight: bold; z-index: 9999; font-size: 0.85rem;';
+        toast.className = 'toast-popup';
         document.body.appendChild(toast);
     }
-    
-    toast.innerText = msg;
-    toast.style.display = 'block';
 
-    setTimeout(() => {
-        toast.style.display = 'none';
-    }, 2000);
+    const icon = type === 'success'
+        ? '<i class="fa-solid fa-circle-check"></i>'
+        : '<i class="fa-solid fa-circle-exclamation"></i>';
+
+    toast.innerHTML = `${icon}<span>${escapeHtml(message)}</span>`;
+    toast.classList.toggle('error', type === 'error');
+    toast.classList.add('show');
+
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2500);
 }
 
-/**
- * Fetches rooms and paints them into the container list
- */
+// ═══════════════════════════════════════════════════════════════
+// RENDER ROOMS
+// ═══════════════════════════════════════════════════════════════
 async function renderRoomsUIList() {
-    const listContainer = document.getElementById('rooms-list-container') || 
-                          document.getElementById('rooms-list') || 
-                          document.querySelector('.rooms-display-area');
-
+    const listContainer = document.getElementById('rooms-list');
     if (!listContainer) return;
+
+    listContainer.innerHTML = `
+        <div class="rooms-loading">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            Loading facilities...
+        </div>
+    `;
 
     try {
         const response = await fetch('/api/admin/rooms', {
-            headers: getAuthHeaders()
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store'
         });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch rooms.`);
-
-        const responseData = await response.json();
-        const savedRooms = Array.isArray(responseData) ? responseData : (responseData.rooms || []);
-        
-        if (savedRooms.length === 0) {
-            listContainer.innerHTML = `<div style="color: #64748b; padding: 15px; text-align: center; font-size: 0.85rem;">No rooms configured yet.</div>`;
+        if (response.status === 401 || response.status === 403) {
+            window.location.href = '/auth/login.html';
             return;
         }
-        
-        listContainer.innerHTML = "";
-        
-        savedRooms.forEach((room) => {
-            const itemDiv = document.createElement('div');
-            itemDiv.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.5); padding: 10px 14px; margin-bottom: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);";
-            
-            const roomName = room.roomName || room.name || room.roomNumber || room.designation || 'Unnamed Room';
-            const capacity = room.capacity || room.maxCapacity || room.seatingCapacity || 0;
-            const roomId = room._id || room.id || roomName;
-            
-            itemDiv.innerHTML = `
-                <div>
-                    <div style="font-weight: bold; color: #ffffff; font-size: 0.9rem;">🏠 ${roomName}</div>
-                    <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">
-                        <span>👥 Max Capacity: <strong style="color: #00d2ff;">${capacity} pax</strong></span>
-                    </div>
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const responseData = await response.json();
+        const savedRooms = Array.isArray(responseData)
+            ? responseData
+            : (responseData.rooms || []);
+
+        roomsCache = savedRooms;
+
+        if (savedRooms.length === 0) {
+            listContainer.innerHTML = `
+                <div class="rooms-empty">
+                    <i class="fa-solid fa-door-closed"></i>
+                    <p>No rooms configured yet.</p>
+                    <small>Register your first facility on the left.</small>
                 </div>
-                <button onclick="deleteRoomItem('${encodeURIComponent(roomId)}')" style="background: transparent; border: none; cursor: pointer; opacity: 0.8; font-size: 0.9rem;" title="Remove Facility">🗑️</button>
             `;
-            listContainer.appendChild(itemDiv);
-        });
+            return;
+        }
+
+        listContainer.innerHTML = savedRooms.map((room) => {
+            const roomName = room.roomName || room.name || room.roomNumber || 'Unnamed Room';
+            const capacity = room.capacity || room.maxCapacity || 0;
+            const roomId = room.id || room._id || roomName;
+
+            return `
+                <div class="room-card-item">
+                    <div class="room-details-meta">
+                        <div class="room-title-text">
+                            <i class="fa-solid fa-door-open"></i>
+                            ${escapeHtml(roomName)}
+                        </div>
+                        <span class="room-capacity-badge">
+                            <i class="fa-solid fa-users"></i>
+                            ${escapeHtml(capacity)} pax
+                        </span>
+                    </div>
+                    <button type="button"
+                            class="btn-delete-row-action"
+                            title="Remove facility"
+                            onclick="openDeleteRoomModal('${encodeURIComponent(roomId)}', '${encodeURIComponent(roomName)}')">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+
     } catch (error) {
         console.error("Error rendering rooms:", error);
-        listContainer.innerHTML = `<div style="color: #ff5f5f; padding: 15px; text-align: center; font-size: 0.85rem;">⚠️ Failed to load rooms from server.</div>`;
+        listContainer.innerHTML = `
+            <div class="rooms-error">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>Failed to load rooms from server.</p>
+                <small>${escapeHtml(error.message)}</small>
+            </div>
+        `;
     }
 }
 
-/**
- * Handles adding a room when clicking the REGISTER ROOM button
- */
+// ═══════════════════════════════════════════════════════════════
+// ADD ROOM
+// ═══════════════════════════════════════════════════════════════
 async function addNewRoom(event) {
     if (event) event.preventDefault();
 
-    const roomNameField = document.getElementById('roomName') || document.getElementById('room-name');
-    const roomCapacityField = document.getElementById('roomCapacity') || document.getElementById('room-capacity');
+    const nameField = document.getElementById('room-name');
+    const capacityField = document.getElementById('room-capacity');
 
-    if (!roomNameField) {
-        console.error("Layout Error: HTML input for room name is missing.");
-        return;
-    }
+    if (!nameField) return;
 
-    const nameValue = roomNameField.value.trim();
-    const capacityValue = roomCapacityField ? parseInt(roomCapacityField.value, 10) : 40;
+    const nameValue = nameField.value.trim();
+    const capacityValue = capacityField ? parseInt(capacityField.value, 10) : 0;
 
     if (!nameValue) {
-        alert("⚠️ Validation Error: Please provide a valid Room Name.");
+        showToastMessage('Please provide a room name.', 'error');
+        nameField.focus();
         return;
     }
 
-    const newlyConfiguredRoom = {
-        name: nameValue,
-        roomName: nameValue,
-        roomNumber: nameValue,
-        capacity: isNaN(capacityValue) || capacityValue <= 0 ? 40 : capacityValue,
-        maxCapacity: isNaN(capacityValue) || capacityValue <= 0 ? 40 : capacityValue
-    };
+    if (isNaN(capacityValue) || capacityValue <= 0) {
+        showToastMessage('Capacity must be a positive number.', 'error');
+        capacityField?.focus();
+        return;
+    }
+
+    const submitBtn = document.getElementById('btn-register-room');
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
         const response = await fetch('/api/admin/rooms', {
             method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(newlyConfiguredRoom)
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: nameValue,
+                roomName: nameValue,
+                capacity: capacityValue
+            })
         });
 
-        if (!response.ok) throw new Error("Failed to save room.");
-
-        roomNameField.value = "";
-        if (roomCapacityField) roomCapacityField.value = "";
-
-        showToastMessage("✅ Room registered successfully!");
-        renderRoomsUIList();
-    } catch (error) {
-        console.error("Error adding room:", error);
-        alert("⚠️ Database Error: Could not save the room facility.");
-    }
-}
-
-/**
- * Deletes a room by ID
- */
-async function deleteRoomItem(encodedId) {
-    const id = decodeURIComponent(encodedId);
-    if (!confirm("Are you sure you want to delete this room?")) return;
-
-    try {
-        const response = await fetch(`/api/admin/rooms/${encodeURIComponent(id)}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
-        });
+        const result = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(`Failed to delete room: ${response.status} ${errorData}`);
+            throw new Error(result.error || 'Failed to save room.');
         }
 
-        showToastMessage("Deleted room.");
-        renderRoomsUIList();
+        nameField.value = '';
+        if (capacityField) capacityField.value = '';
+        nameField.focus();
+
+        showToastMessage('Room registered successfully.', 'success');
+        await renderRoomsUIList();
+
     } catch (error) {
-        console.error("Error deleting room:", error);
-        alert(`⚠️ Database Error: Failed to remove room.`);
+        console.error("Error adding room:", error);
+        showToastMessage(error.message || 'Could not save the room.', 'error');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
     }
 }
 
-// Global export for HTML inline triggers
-window.addNewRoom = addNewRoom;
-window.deleteRoomItem = deleteRoomItem;
-window.renderRoomsUIList = renderRoomsUIList;
+// ═══════════════════════════════════════════════════════════════
+// DELETE MODAL
+// ═══════════════════════════════════════════════════════════════
+function injectDeleteRoomModal() {
+    if (document.getElementById('delete-room-modal')) return;
 
-// Event listeners setup
-document.addEventListener('DOMContentLoaded', function() {
+    const modalHTML = `
+        <div id="delete-room-modal" class="room-modal-overlay">
+            <div class="room-modal-box">
+                <div class="room-modal-icon">
+                    <i class="fa-solid fa-trash"></i>
+                </div>
+                <h2 class="room-modal-title">Remove this facility?</h2>
+                <p class="room-modal-text">
+                    <strong id="delete-room-name"></strong> will be permanently removed from the facilities catalog.
+                </p>
+                <ul class="room-modal-notes">
+                    <li><i class="fa-solid fa-triangle-exclamation"></i> Sections assigned to this room will become unassigned.</li>
+                    <li><i class="fa-solid fa-triangle-exclamation"></i> This action cannot be undone.</li>
+                </ul>
+                <div class="room-modal-actions">
+                    <button type="button" class="room-modal-cancel" onclick="closeDeleteRoomModal()">Cancel</button>
+                    <button type="button" class="room-modal-confirm" onclick="confirmDeleteRoom()">Yes, Remove Facility</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function openDeleteRoomModal(encodedId, encodedName) {
+    pendingDeleteRoomId = decodeURIComponent(encodedId);
+    pendingDeleteRoomName = decodeURIComponent(encodedName);
+
+    const nameEl = document.getElementById('delete-room-name');
+    if (nameEl) nameEl.textContent = pendingDeleteRoomName;
+
+    document.getElementById('delete-room-modal')?.classList.add('active');
+}
+
+function closeDeleteRoomModal() {
+    pendingDeleteRoomId = null;
+    pendingDeleteRoomName = '';
+    document.getElementById('delete-room-modal')?.classList.remove('active');
+}
+
+async function confirmDeleteRoom() {
+    if (!pendingDeleteRoomId) return;
+    const roomId = pendingDeleteRoomId;
+    const roomName = pendingDeleteRoomName;
+    closeDeleteRoomModal();
+
+    try {
+        const response = await fetch(`/api/admin/rooms/${encodeURIComponent(roomId)}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to delete room.');
+        }
+
+        showToastMessage(`"${roomName}" removed.`, 'success');
+        await renderRoomsUIList();
+
+    } catch (error) {
+        console.error("Error deleting room:", error);
+        showToastMessage(error.message || 'Could not remove the room.', 'error');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    injectDeleteRoomModal();
     renderRoomsUIList();
-    
+
     const roomForm = document.getElementById('room-form');
     if (roomForm) {
         roomForm.addEventListener('submit', addNewRoom);
     }
+});
 
-    const addBtn = document.getElementById('add-room-btn') || document.querySelector('.btn-add-room');
-    if (addBtn) {
-        addBtn.addEventListener('click', addNewRoom);
-    }
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDeleteRoomModal();
 });

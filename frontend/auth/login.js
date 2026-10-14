@@ -1,3 +1,18 @@
+// ═══════════════════════════════════════════════════════
+// COFFEE LOADING OVERLAY HELPERS
+// ═══════════════════════════════════════════════════════
+function showCoffeeLoader(text) {
+    const overlay = document.getElementById('coffee-loading');
+    const label = document.getElementById('coffee-loading-text');
+    if (label && text) label.textContent = text;
+    if (overlay) overlay.classList.remove('hidden');
+}
+
+function hideCoffeeLoader() {
+    const overlay = document.getElementById('coffee-loading');
+    if (overlay) overlay.classList.add('hidden');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // ═══════════════════════════════════════════════════════
     // 1. LOGOUT TOAST
@@ -43,6 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
+            showCoffeeLoader('Signing in…');
+
             try {
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
@@ -66,11 +83,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         localStorage.removeItem('teacherId');
                     }
 
+                    // Redirect based on role
                     if (user.role === 'admin') {
                         window.location.href = '/admin/pages/Addteacher.html';
+                        return;
                     } else if (user.role === 'teacher') {
                         window.location.href = '/teacher/pages/index.html';
+                        return;
                     } else {
+                        hideCoffeeLoader();
                         console.error('Login succeeded but role is unrecognized:', user.role);
                         if (errorMsg) {
                             errorMsg.textContent = 'Login succeeded but your account role is unrecognized.';
@@ -80,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 } else {
+                    hideCoffeeLoader();
                     if (errorMsg) {
                         errorMsg.textContent = data.error || 'Invalid credentials.';
                         errorMsg.classList.remove('hidden');
@@ -88,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             } catch (error) {
+                hideCoffeeLoader();
                 console.error('Error during login:', error);
                 alert('Server is not responding. Check if server.js is running!');
             }
@@ -95,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ═══════════════════════════════════════════════════════
-    // 4. FORGOT PASSWORD MODAL — USERNAME-BASED RESET
+    // 4. FORGOT PASSWORD MODAL
     // ═══════════════════════════════════════════════════════
     const modal = document.getElementById('forgot-modal');
     const forgotBtn = document.getElementById('forgot-pw-btn');
@@ -103,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBtn = document.getElementById('reset-password-btn');
     const resetMessage = document.getElementById('reset-message');
 
-    // Input fields
     const resetUsernameInput = document.getElementById('reset-username-input');
     const resetMasterKey = document.getElementById('reset-master-key');
     const resetNewPassword = document.getElementById('reset-new-password');
@@ -128,7 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Reset form helper
     const resetModalForm = () => {
         if (resetUsernameInput) resetUsernameInput.value = '';
         if (resetMasterKey) resetMasterKey.value = '';
@@ -139,7 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
             resetMessage.textContent = '';
         }
 
-        // ✅ Reset all password fields to hidden
         const passwordInputs = [
             document.getElementById('reset-master-key'),
             document.getElementById('reset-new-password'),
@@ -149,13 +169,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (input) input.setAttribute('type', 'password');
         });
 
-        // ✅ Reset all eye buttons to default state
         document.querySelectorAll('.pw-toggle-eye').forEach(btn => {
             btn.classList.remove('visible');
         });
     };
 
-    // Show message helper
     function showResetMessage(msg, type = 'error') {
         if (!resetMessage) return;
         resetMessage.style.display = 'block';
@@ -176,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Open modal
     if (forgotBtn && modal) {
         forgotBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -185,7 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Close modal
     if (closeBtn && modal) {
         closeBtn.addEventListener('click', () => {
             modal.style.display = 'none';
@@ -193,7 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Close on overlay click
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
@@ -211,45 +226,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const newPassword = resetNewPassword ? resetNewPassword.value : '';
             const confirmPassword = resetConfirmPassword ? resetConfirmPassword.value : '';
 
-            // ═══ VALIDATION ═══
-            if (!username) {
-                showResetMessage('Please enter your username.');
-                return;
-            }
-            if (!masterKey) {
-                showResetMessage('Please enter the Master Security Key.');
-                return;
-            }
-            if (!newPassword) {
-                showResetMessage('Please enter a new password.');
-                return;
-            }
-            if (newPassword.length < 8) {
-                showResetMessage('Password must be at least 8 characters.');
-                return;
-            }
-            if (!/[A-Z]/.test(newPassword)) {
-                showResetMessage('Password must contain at least one uppercase letter.');
-                return;
-            }
-            if (!/[a-z]/.test(newPassword)) {
-                showResetMessage('Password must contain at least one lowercase letter.');
-                return;
-            }
-            if (!/[0-9]/.test(newPassword)) {
-                showResetMessage('Password must contain at least one number.');
-                return;
-            }
-            if (newPassword !== confirmPassword) {
-                showResetMessage('Passwords do not match.');
-                return;
-            }
+            if (!username) return showResetMessage('Please enter your username.');
+            if (!masterKey) return showResetMessage('Please enter the Master Security Key.');
+            if (!newPassword) return showResetMessage('Please enter a new password.');
+            if (newPassword.length < 8) return showResetMessage('Password must be at least 8 characters.');
+            if (!/[A-Z]/.test(newPassword)) return showResetMessage('Password must contain at least one uppercase letter.');
+            if (!/[a-z]/.test(newPassword)) return showResetMessage('Password must contain at least one lowercase letter.');
+            if (!/[0-9]/.test(newPassword)) return showResetMessage('Password must contain at least one number.');
+            if (newPassword !== confirmPassword) return showResetMessage('Passwords do not match.');
 
-            // ═══ SUBMIT ═══
             const originalText = resetBtn.innerText;
             resetBtn.innerText = 'Resetting...';
             resetBtn.disabled = true;
             if (resetMessage) resetMessage.style.display = 'none';
+
+            showCoffeeLoader('Resetting password…');
 
             try {
                 const res = await fetch('/api/auth/reset-password', {
@@ -261,19 +252,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (res.ok) {
-                    // ✅ Ipakita muna yung success message
+                    // Hide coffee overlay, but keep modal open to show success
+                    hideCoffeeLoader();
+
                     showResetMessage(
                         data.message || 'Password reset successfully! You can now log in with your new password.',
                         'success'
                     );
 
-                    // ✅ Clear lang yung input fields (huwag i-touch yung message)
                     if (resetUsernameInput) resetUsernameInput.value = '';
                     if (resetMasterKey) resetMasterKey.value = '';
                     if (resetNewPassword) resetNewPassword.value = '';
                     if (resetConfirmPassword) resetConfirmPassword.value = '';
 
-                    // ✅ Reset eye toggle states
                     const passwordInputs = [
                         document.getElementById('reset-master-key'),
                         document.getElementById('reset-new-password'),
@@ -286,7 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.classList.remove('visible');
                     });
 
-                    // ✅ Auto-close modal after 3 seconds (kasabay yung message)
                     setTimeout(() => {
                         modal.style.display = 'none';
                         if (resetMessage) {
@@ -296,9 +286,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 3000);
 
                 } else {
+                    hideCoffeeLoader();
                     showResetMessage(data.error || 'Failed to reset password.');
                 }
             } catch (err) {
+                hideCoffeeLoader();
                 console.error('Reset password error:', err);
                 showResetMessage('Network error. Please try again.');
             } finally {

@@ -453,7 +453,7 @@ async function handleFormSubmit(e) {
         const token = localStorage.getItem('token');
         if (!token) {
             showTopToast("Please login first!", "error");
-            window.location.href = '/shared/login.html';
+            window.location.href = '/auth/login.html';
             return;
         }
 

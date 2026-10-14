@@ -1,12 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════════
-   MAKILING INTEGRATED SCHOOL — TEACHER PAGES SHARED STYLES
+   MAKILING INTEGRATED SCHOOL — TEACHER PAGES auth STYLES
    Used by: teacher/index.html, my-schedule.html, rooms-view.html,
             student-view.html
-   Contains: Page-specific components shared across all teacher pages
+   Contains: Page-specific components auth across all teacher pages
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════════
-   1. PAGE HEADER (shared across all teacher pages)
+   1. PAGE HEADER (auth across all teacher pages)
    ═══════════════════════════════════════════════════════════════════ */
 .page-header {
     display: flex;

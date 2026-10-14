@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Makiling IS | Profile Settings</title>
-    <link rel="icon" type="image/png" href="/shared/img/makiling_logo.png">
+    <link rel="icon" type="image/png" href="/auth/makiling_logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/Addteacher.css">
     <link rel="stylesheet" href="../css/profile.css">
@@ -16,57 +17,57 @@
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
             <div class="logo">
-                <img src="/shared/img/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
+                <img src="/auth/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
                 <div class="logo-text">
                     <span class="logo-line-1">Makiling</span>
                     <span class="logo-line-2">Integrated School</span>
                 </div>
             </div>
             <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
-                <span class="toggle-icon">◀</span>
+                <span class="toggle-icon"><i class="fa-solid fa-chevron-left"></i></span>
             </button>
         </div>
 
         <nav class="nav-links-wrapper">
             <button onclick="window.location.href='Addteacher.html'" class="nav-item">
-                <span class="nav-icon">👤</span>
+                <span class="nav-icon"><i class="fa-solid fa-user-plus"></i></span>
                 <span class="nav-label">Teachers</span>
             </button>
             <button onclick="window.location.href='teacher-list.html'" class="nav-item">
-                <span class="nav-icon">📋</span>
+                <span class="nav-icon"><i class="fa-solid fa-list"></i></span>
                 <span class="nav-label">Teacher List</span>
             </button>
             <button onclick="window.location.href='subject.html'" class="nav-item">
-                <span class="nav-icon">📚</span>
+                <span class="nav-icon"><i class="fa-solid fa-book"></i></span>
                 <span class="nav-label">Manage Subjects</span>
             </button>
             <button onclick="window.location.href='rooms.html'" class="nav-item">
-                <span class="nav-icon">🏠</span>
+                <span class="nav-icon"><i class="fa-solid fa-door-open"></i></span>
                 <span class="nav-label">Rooms</span>
             </button>
             <button onclick="window.location.href='sections.html'" class="nav-item">
-                <span class="nav-icon">📅</span>
+                <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span class="nav-label">Sections</span>
             </button>
             <button onclick="window.location.href='generate.html'" class="nav-item">
-                <span class="nav-icon">⚡</span>
+                <span class="nav-icon"><i class="fa-solid fa-bolt"></i></span>
                 <span class="nav-label">Generate Timetable</span>
             </button>
-            
+
             <button onclick="window.location.href='profile.html'" class="nav-item active">
-                <span class="nav-icon">⚙️</span>
+                <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
                 <span class="nav-label">Profile Settings</span>
             </button>
         </nav>
 
-        <a href="../../shared/logout.html" class="nav-item logout-btn">
-            <span class="nav-icon">🚪</span>
+        <button type="button" id="logout-btn" class="nav-item logout-btn">
+            <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
             <span class="nav-label">Logout</span>
-        </a>
+        </button>
     </aside>
 
     <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
-        <span>▶</span>
+        <span><i class="fa-solid fa-chevron-right"></i></span>
     </button>
 
     <!-- ═══ MAIN CONTENT ═══ -->
@@ -129,9 +130,15 @@
         <div class="profile-tab-content" id="tab-security">
             <!-- Change Username -->
             <div class="form-card">
-                <h3 class="form-section-title">🔑 Login Username</h3>
+                <h3 class="form-section-title">
+                    <i class="fa-solid fa-key"></i>
+                    Login Username
+                </h3>
                 <p class="form-section-desc">Your current login username is: <strong id="current-username-display">loading...</strong></p>
-                <p class="form-warning">⚠️ Changing your username will require you to use the new username on your next login.</p>
+                <p class="form-warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Changing your username will require you to use the new username on your next login.
+                </p>
 
                 <form id="username-form">
                     <div class="form-grid">
@@ -155,7 +162,10 @@
 
             <!-- Change Password -->
             <div class="form-card">
-                <h3 class="form-section-title">🔒 Password</h3>
+                <h3 class="form-section-title">
+                    <i class="fa-solid fa-lock"></i>
+                    Password
+                </h3>
                 <p class="form-section-desc">Last changed: <strong id="last-password-change">Never</strong></p>
 
                 <form id="password-form">
@@ -185,7 +195,8 @@
                     </div>
 
                     <div class="form-warning">
-                        ⚠️ <strong>Security Notice:</strong> Changing your password will log you out from all other devices for your protection.
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <strong>Security Notice:</strong> Changing your password will log you out from all other devices for your protection.
                     </div>
 
                     <div class="form-actions">
@@ -195,18 +206,82 @@
             </div>
         </div>
 
-        <!-- ═══ TAB: HISTORY ═══ -->
+        <!-- ═══ TAB: ACTIVITY LOG (system-wide) ═══ -->
         <div class="profile-tab-content" id="tab-history">
             <div class="form-card">
-                <h3 class="form-section-title">📜 Recent Profile Changes</h3>
-                <p class="form-section-desc">The last 50 changes to your account. This is for security auditing purposes.</p>
-                <div id="history-list" class="history-list">
-                    <div class="loading-state">Loading activity history...</div>
+                <h3 class="form-section-title">System Activity Log</h3>
+                <p class="form-section-desc">
+                    All events across the system — teacher logins, logouts, admin actions, and more.
+                </p>
+
+                <div class="audit-filters">
+                    <label>
+                        Filter by event
+                        <select id="auditActionFilter">
+                            <option value="">All events</option>
+                            <option value="login_success">Logins</option>
+                            <option value="logout">Logouts</option>
+                            <option value="login_failed">Failed logins</option>
+                            <option value="create_teacher">Teacher created</option>
+                            <option value="update_teacher">Teacher updated</option>
+                            <option value="delete_teacher">Teacher deleted</option>
+                            <option value="hide_teacher">Teacher hidden</option>
+                            <option value="unhide_teacher">Teacher restored</option>
+                            <option value="create_section">Section created</option>
+                            <option value="delete_section">Section deleted</option>
+                            <option value="create_room">Room created</option>
+                            <option value="delete_room">Room deleted</option>
+                            <option value="create_subject">Subject created</option>
+                            <option value="delete_subject">Subject deleted</option>
+                            <option value="generate_jhs_master">Schedule generated</option>
+                            <option value="save_master_schedule">Master schedule saved</option>
+                            <option value="swap_slots">Slot swap</option>
+                            <option value="move_slot">Slot moved</option>
+                            <option value="change_password">Password changed</option>
+                            <option value="reset_password_success">Password reset</option>
+                            <option value="update_profile">Profile updated</option>
+                            <option value="change_username">Username changed</option>
+                            <option value="unauthorized_access">Unauthorized access</option>
+                        </select>
+                    </label>
+                    <button id="auditRefreshBtn" type="button" class="btn-secondary">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        Refresh
+                    </button>
+                </div>
+
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Date &amp; Time</th>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Event</th>
+                            <th>Details</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditTableBody">
+                        <tr><td colspan="6" class="empty">Loading…</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="audit-pagination">
+                    <button id="auditPrevBtn" type="button" disabled>
+                        <i class="fa-solid fa-chevron-left"></i>
+                        Previous
+                    </button>
+                    <span id="auditPageInfo">0–0 of 0</span>
+                    <button id="auditNextBtn" type="button" disabled>
+                        Next
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
                 </div>
             </div>
         </div>
     </main>
 
+    <script src="/auth/logout.js" defer></script>
     <script src="../js/profile.js"></script>
 </body>
 </html>
