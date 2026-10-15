@@ -130,7 +130,6 @@ body {
     margin-bottom: 1rem;
     padding: 0 0.25rem;
     gap: 12px;
-    height: auto;
     min-height: 56px;
     box-sizing: border-box;
 }
@@ -139,21 +138,21 @@ body {
     justify-content: center;
     padding: 0;
     gap: 0;
-    height: 56px;
     min-height: 56px;
 }
 
-/* ═══ Logo ═══ */
+/* ═══ Logo Block ═══ */
 .sidebar .logo {
     display: flex;
     align-items: center;
     gap: 12px;
-    height: 100%;
     white-space: nowrap;
     overflow: hidden;
     max-width: 200px;
-    /* ✅ FIX: Only max-width transition — no opacity to prevent blink */
-    transition: max-width var(--sidebar-transition);
+    height: 100%;
+    padding-top: 0;
+    transition: max-width var(--sidebar-transition),
+                opacity var(--sidebar-transition);
 }
 
 .sidebar .logo img {
@@ -177,7 +176,6 @@ body {
     line-height: 1;
     gap: 2px;
     overflow: hidden;
-    /* ✅ No transition to prevent blink */
 }
 
 .logo-line-1 {
@@ -376,7 +374,7 @@ body {
 .main-content {
     flex: 1;
     margin-left: var(--sidebar-width);
-    padding: 2.5rem 3rem;
+    padding: 1.5rem 1.5rem;
     box-sizing: border-box;
     overflow-y: auto;
     overflow-x: hidden;
@@ -386,7 +384,6 @@ body {
     will-change: margin-left;
     min-width: 0;
     width: auto;
-    /* ✅ LIGHT BACKGROUND */
     background: linear-gradient(135deg, #f0f9f4 0%, #e8f5e9 50%, #f1f8e9 100%);
     color: #0f172a;
     position: relative;
@@ -500,47 +497,56 @@ body {
     box-shadow: 0 8px 24px rgba(12, 47, 107, 0.1);
 }
 
+/* ═══════════════════════════════════════════════════════
+   TIMETABLE TABLE — Clean black borders (matches admin)
+   ═══════════════════════════════════════════════════════ */
 .timetable-table {
     width: 100%;
     border-collapse: collapse;
     text-align: center;
     table-layout: fixed;
+    border: 1.5px solid #000;
 }
 
 .timetable-table th,
 .timetable-table td {
-    border: 1px solid #94a3b8;
-    padding: 6px 6px;
+    border: 1px solid #000;
+    padding: 6px 4px;
     vertical-align: middle;
     font-family: 'Poppins', 'Inter', sans-serif;
     box-sizing: border-box;
-    font-size: 0.9rem;
+    font-size: 0.78rem;
     line-height: 1.2;
     overflow: hidden;
-    height: 50px;
+    height: auto;
+    min-height: 50px;
 }
 
 .timetable-table th {
     background: linear-gradient(135deg, #354d2a, #4a6b3a);
     color: #ffffff !important;
     text-transform: uppercase;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     letter-spacing: 0.5px;
-    font-weight: 700;
-    height: 42px;
-    padding: 8px 6px;
+    font-weight: 800;
+    padding: 10px 6px;
+    height: auto;
 }
 
+/* ═══ Time Column ═══ */
+.timetable-table .time-cell,
 .time-cell {
-    background: #f1f5f9;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #000000 !important;
-    width: 100px;
-    padding: 4px 6px;
+    background: #f8fafc !important;
+    color: #0c2f6b !important;
+    font-weight: 800 !important;
+    font-size: 0.78rem !important;
+    white-space: nowrap !important;
+    padding: 6px 8px !important;
+    width: 20% !important;
+    border-right: 1px solid #000 !important;
 }
 
-/* ═══ Schedule Card (subject tiles — keep colorful) ═══ */
+/* ═══ Schedule Card (legacy) ═══ */
 .schedule-card {
     border-radius: 4px;
     text-align: center;
@@ -573,66 +579,81 @@ body {
     border-left: 2px solid #16a34a;
 }
 
-/* ═══ Subject Cell Classes ═══ */
-.slot-subject {
-    font-size: 1rem;
-    font-weight: 800;
-    line-height: 1.15;
-    text-transform: uppercase;
-    color: #000;
+/* ═══ Subject Cell Content ═══ */
+.timetable-table .slot-subject {
+    font-size: 0.82rem !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    color: #000 !important;
+    text-transform: uppercase !important;
     margin-bottom: 2px;
-}
-.slot-section {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #334155;
-    line-height: 1.15;
-}
-.slot-room {
-    font-size: 0.72rem;
-    color: #475569;
-    line-height: 1.15;
+    letter-spacing: 0.02em;
 }
 
-/* ═══ Break Rows — Compact ═══ */
+.timetable-table .slot-section {
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    line-height: 1.15 !important;
+}
+
+.timetable-table .slot-room {
+    font-size: 0.65rem !important;
+    color: #475569 !important;
+    line-height: 1.15 !important;
+    margin-top: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BREAK ROWS (Recess / Lunch) — Match admin view
+   ═══════════════════════════════════════════════════════ */
 tr.break-row-tr {
-    height: 8px !important;
-    max-height: 8px !important;
+    height: auto !important;
 }
 
-tr.break-row-tr td,
-td.break-row {
-    height: 8px !important;
-    max-height: 8px !important;
-    min-height: 8px !important;
-    padding: 0 !important;
-    line-height: 0 !important;
-    font-size: 0 !important;
-    border: none !important;
+tr.break-row-tr td.time-cell {
     background: #f8fafc !important;
-    overflow: hidden !important;
+    color: #0c2f6b !important;
+    font-weight: 700 !important;
+    border-right: 1px solid #000 !important;
 }
 
-.timetable-table tr:has(td.break-row) {
-    height: 8px !important;
-    max-height: 8px !important;
+td.break-cell {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    font-weight: 800 !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 3px !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+    padding: 10px !important;
+    border: 1px solid #000 !important;
+    height: auto !important;
+    vertical-align: middle !important;
 }
 
-.timetable-table tr:has(td.break-row) td {
-    height: 8px !important;
-    max-height: 8px !important;
-    padding: 0 !important;
-    line-height: 0 !important;
-    font-size: 0 !important;
+/* ═══════════════════════════════════════════════════════
+   FLAG RAISING CELL — Monday 6AM only
+   ═══════════════════════════════════════════════════════ */
+td.flag-raising-cell {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    font-weight: 700 !important;
+    padding: 6px !important;
+    border: 1px solid #000 !important;
 }
 
-/* ═══ Vacant Cells & Memo Buttons ═══ */
+/* ═══════════════════════════════════════════════════════
+   VACANT CELLS & MEMO BUTTONS
+   ═══════════════════════════════════════════════════════ */
 .vacant-cell-fill {
-    background-color: #f8fafc !important;
+    background-color: transparent !important;
     color: #64748b !important;
     padding: 0 !important;
-    border-radius: 4px !important;
-    border: 1px dashed #cbd5e1 !important;
+    border: none !important;
+    border-radius: 0 !important;
     position: relative !important;
     display: flex !important;
     flex-direction: column !important;
@@ -640,16 +661,19 @@ td.break-row {
     justify-content: center !important;
     width: 100% !important;
     height: 100% !important;
+    min-height: 40px;
     box-sizing: border-box !important;
     margin: 0 auto !important;
 }
 
-.vacant-cell-text {
+.vacant-cell-text,
+.vacant-text {
     display: block;
-    font-size: 0.72rem;
-    color: #94a3b8 !important;
+    font-size: 0.72rem !important;
+    color: #000000 !important;
     font-family: 'Poppins', sans-serif;
-    font-weight: 500;
+    font-weight: 500 !important;
+    font-style: italic !important;
     pointer-events: none;
 }
 
@@ -688,7 +712,7 @@ td.break-row {
 
 .saved-cell-note {
     font-family: 'Inter', sans-serif !important;
-    font-size: 0.72rem !important;
+    font-size: 0.68rem !important;
     color: #0f172a !important;
     font-weight: 600 !important;
     width: 100%;
@@ -696,7 +720,8 @@ td.break-row {
     white-space: normal;
     text-align: center;
     text-transform: none;
-    line-height: 1.15;
+    line-height: 1.2;
+    padding: 2px;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -815,115 +840,49 @@ td.break-row {
 }
 
 /* ═══════════════════════════════════════════════════════
-   MOBILE RESPONSIVE
+   PRINT ZONE — hidden on screen, visible in print
    ═══════════════════════════════════════════════════════ */
-@media (max-width: 700px) {
-    .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-        border-right: none;
-        border-bottom: 1px solid var(--glass-border);
-        padding: 1rem;
-    }
-
-    .sidebar.collapsed {
-        width: 100%;
-        padding: 1rem;
-    }
-
-    .sidebar.collapsed .nav-label,
-    .sidebar.collapsed .logo {
-        opacity: 1;
-        max-width: none;
-        pointer-events: auto;
-    }
-
-    .sidebar-toggle,
-    .sidebar-expand-btn {
-        display: none;
-    }
-
-    .sidebar.collapsed .sidebar-top {
-        flex-direction: row;
-        justify-content: space-between;
-        padding: 0 0.25rem;
-    }
-
-    .sidebar.collapsed .nav-item {
-        justify-content: flex-start;
-        padding: 8px 12px;
-    }
-
-    .sidebar.collapsed .nav-icon {
-        margin-right: 8px;
-    }
-
-    .nav-links-wrapper {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    .nav-item {
-        width: auto;
-        flex: 1 1 auto;
-        padding: 8px 12px;
-        font-size: 0.8rem;
-        margin: 0;
-    }
-
-    .logout-btn {
-        margin-top: 8px !important;
-        border-top: none !important;
-        border-radius: 8px !important;
-        padding-top: 8px !important;
-    }
-
-    .main-content,
-    .main-content.sidebar-collapsed {
-        margin-left: 0 !important;
-        padding: 1.5rem 1rem;
-        height: auto !important;
-        max-height: none !important;
-        min-height: 100vh;
-    }
-
-    .main-content h1,
-    #instructor-title {
-        font-size: 1.2rem;
-    }
-
-    .timetable-controls {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .btn-group {
-        width: 100%;
-    }
-
-    .btn-action {
-        flex: 1;
-        justify-content: center;
-        font-size: 0.8rem;
-        padding: 8px 12px;
-    }
+#print-zone {
+    display: none;
 }
 
-/* ═══════════════════════════════════════════════════════
-   PRINT STYLES
-   ═══════════════════════════════════════════════════════ */
 @media print {
+    @page {
+        size: letter landscape;
+        margin: 0.2in 0.25in 0.2in 0.25in;
+    }
+
+    @page {
+        @top-left { content: none !important; }
+        @top-center { content: none !important; }
+        @top-right { content: none !important; }
+        @bottom-left { content: none !important; }
+        @bottom-center { content: none !important; }
+        @bottom-right { content: none !important; }
+    }
+
+    body * { visibility: hidden !important; }
+    #print-zone, #print-zone * { visibility: visible !important; }
+
     .add-note-btn,
     .vacant-modal-overlay,
     .sidebar,
     .sidebar-expand-btn,
-    .timetable-controls {
+    .timetable-controls,
+    .main-content > header,
+    .no-print {
         display: none !important;
         opacity: 0 !important;
         height: 0 !important;
         width: 0 !important;
+    }
+
+    html, body {
+        height: auto !important;
+        overflow: visible !important;
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
     .main-content {
@@ -932,15 +891,283 @@ td.break-row {
         background: #ffffff !important;
         min-height: auto !important;
         max-height: none !important;
+        overflow: visible !important;
     }
 
-    body, table, td, th, .schedule-card, strong, span, .saved-cell-note {
-        font-family: 'Poppins', 'Inter', sans-serif !important;
-        color: #000000 !important;
+    .main-content::before { display: none !important; }
+
+    /* ═══ PRINT ZONE ═══ */
+    #print-zone {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        height: 7.7in !important;
+        max-height: 7.7in !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        padding: 0;
+        background: #ffffff;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
     }
 
-    .schedule-card strong {
+    /* ── Force images to print ── */
+    #print-zone img {
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        max-width: 100% !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* ── Print header ── */
+    .print-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-bottom: 4px !important;
+        margin-bottom: 4px !important;
+        border-bottom: none !important;
+        flex-shrink: 0 !important;
+    }
+
+    .print-header-left {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+    }
+
+    .print-header-logo {
+        width: 48px !important;
+        height: 48px !important;
+        object-fit: contain !important;
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .print-header-school-name {
+        font-family: 'Cinzel', 'Times New Roman', serif !important;
+        font-size: 18pt !important;
         font-weight: 700 !important;
-        letter-spacing: 0.5px;
+        color: #000 !important;
+        line-height: 1.05 !important;
+    }
+
+    .print-header-school-address {
+        font-size: 9.5pt !important;
+        color: #333 !important;
+        font-style: italic !important;
+        margin-top: 2px !important;
+    }
+
+    .print-header-right { text-align: right !important; }
+
+    .print-header-teacher-name {
+        font-family: 'Cinzel', 'Inter', serif !important;
+        font-size: 16pt !important;
+        font-weight: 800 !important;
+        color: #000 !important;
+        text-transform: uppercase !important;
+        line-height: 1.1 !important;
+    }
+
+    .print-header-dept {
+        font-size: 9.5pt !important;
+        color: #333 !important;
+        margin-top: 2px !important;
+        font-style: italic !important;
+    }
+
+    .print-header-sy {
+        font-size: 9.5pt !important;
+        font-weight: 600 !important;
+        color: #333 !important;
+        margin-top: 1px !important;
+    }
+
+    /* ═══ TABLE CONTAINER ═══ */
+    #print-zone .timetable-wrapper {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* ═══ PRINT TABLE — WITH outer border ═══ */
+    #print-zone .timetable-table {
+        width: 100% !important;
+        height: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: fixed !important;
+        border: 1pt solid #000 !important;
+        border-spacing: 0 !important;
+        page-break-inside: avoid !important;
+    }
+
+    #print-zone .timetable-table thead {
+        display: table-header-group !important;
+    }
+
+    #print-zone .timetable-table tbody {
+        height: 100% !important;
+    }
+
+    /* ═══ CELLS ═══ */
+    #print-zone .timetable-table th,
+    #print-zone .timetable-table td {
+        border: 0.75pt solid #000 !important;
+        border-collapse: collapse !important;
+        padding: 5px 4px !important;
+        font-size: 9.5pt !important;
+        color: #000 !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+        word-wrap: break-word !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        font-family: 'Times New Roman', 'Poppins', sans-serif !important;
+        background-clip: padding-box !important;
+        line-height: 1.15 !important;
+    }
+
+    /* ═══ Remove cell borders that touch the outer table edge ═══ */
+    #print-zone .timetable-table tr > th:first-child,
+    #print-zone .timetable-table tr > td:first-child {
+        border-left: none !important;
+    }
+
+    #print-zone .timetable-table tr > th:last-child,
+    #print-zone .timetable-table tr > td:last-child {
+        border-right: none !important;
+    }
+
+    #print-zone .timetable-table > thead > tr:first-child > th {
+        border-top: none !important;
+    }
+
+    #print-zone .timetable-table > tbody > tr:last-child > td {
+        border-bottom: none !important;
+    }
+
+    /* ═══ HEADER CELLS ═══ */
+    #print-zone .timetable-table th {
+        background: #e2e8f0 !important;
+        font-weight: 900 !important;
+        font-size: 10pt !important;
+        text-transform: uppercase !important;
+        padding: 6px 4px !important;
+    }
+
+    /* ═══ TIME COLUMN ═══ */
+    #print-zone .timetable-table .time-cell {
+        background: #f8fafc !important;
+        font-weight: 900 !important;
+        font-size: 9pt !important;
+        white-space: nowrap !important;
+        width: 18% !important;
+        padding: 5px 4px !important;
+        color: #000 !important;
+    }
+
+    /* ═══ SUBJECT TEXT ═══ */
+    #print-zone .timetable-table .slot-subject {
+        font-size: 9.5pt !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        color: #000 !important;
+        line-height: 1.1 !important;
+    }
+
+    #print-zone .timetable-table .slot-section {
+        font-size: 8pt !important;
+        font-weight: 700 !important;
+        color: #333 !important;
+        line-height: 1.1 !important;
+    }
+
+    #print-zone .timetable-table .slot-room {
+        font-size: 7.5pt !important;
+        color: #555 !important;
+        line-height: 1.1 !important;
+    }
+
+    /* ═══ BREAK CELLS ═══ */
+    #print-zone .timetable-table .break-cell {
+        background: #f1f5f9 !important;
+        font-weight: 800 !important;
+        font-size: 9pt !important;
+        letter-spacing: 2px !important;
+        color: #475569 !important;
+        padding: 5px !important;
+    }
+
+    /* ═══ FLAG RAISING CELL ═══ */
+    #print-zone .timetable-table .flag-raising-cell {
+        background: #fef3c7 !important;
+        color: #92400e !important;
+        font-size: 9pt !important;
+    }
+
+    /* ═══ VACANT CELLS — hide text, keep cell border ═══ */
+    #print-zone .timetable-table .vacant-cell-fill {
+        background: #ffffff !important;
+        border: none !important;
+        min-height: auto !important;
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    #print-zone .timetable-table .vacant-text {
+        display: none !important;
+        visibility: hidden !important;
+        font-size: 0 !important;
+    }
+
+    #print-zone .timetable-table .add-note-btn {
+        display: none !important;
+    }
+
+    /* ═══ PRINT FOOTER ═══ */
+    .print-footer {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-end !important;
+        margin-top: 6px !important;
+        padding-top: 4px !important;
+        font-size: 9pt !important;
+        color: #555 !important;
+        font-style: italic !important;
+        flex-shrink: 0 !important;
+    }
+
+    .print-footer-left { text-align: left !important; }
+    .print-footer-right { text-align: right !important; }
+
+    .print-footer-principal {
+        font-family: 'Cinzel', 'Times New Roman', serif !important;
+        font-weight: 700 !important;
+        font-size: 10.5pt !important;
+        color: #000 !important;
+        margin-bottom: 2px !important;
+        font-style: normal !important;
+    }
+
+    .print-footer-principal-title {
+        font-size: 9pt !important;
+        color: #333 !important;
+        font-style: italic !important;
     }
 }

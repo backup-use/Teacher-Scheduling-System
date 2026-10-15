@@ -466,25 +466,7 @@
     font-weight: 700;
 }
 
-/* ═══ MOBILE RESPONSIVE ═══ */
-@media (max-width: 700px) {
-    #main-content .form-grid {
-        grid-template-columns: 1fr;
-    }
 
-    #main-content .input-group.full-width {
-        grid-column: span 1;
-    }
-
-    .profile-overview-card {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .profile-tabs {
-        flex-direction: column;
-    }
-}
 
 /* ═══════════════════════════════════════════════════════
    LOGO TEXT (2-line brand display)

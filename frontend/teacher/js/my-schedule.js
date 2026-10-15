@@ -1,3 +1,8 @@
+/* ═══════════════════════════════════════════════════════
+   MAKILING INTEGRATED SCHOOL — TEACHER SCHEDULE VIEWER
+   Displays teacher's own timetable from admin-generated schedule
+   ═══════════════════════════════════════════════════════ */
+
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("userRole");
@@ -14,49 +19,65 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // ═══ SUBJECT COLORS — matches admin view ═══
   const subjectColorMap = {
-    "ARALING PANLIPUNAN": "#fef08a", ENGLISH: "#dbeafe", FILIPINO: "#e0e7ff",
-    MAPEH: "#f3e8ff", MATHEMATICS: "#ffe4e6", SCIENCE: "#dcfce7",
-    TLE: "#ffedd5", "VALUES EDUCATION": "#fef9c3", ESP: "#fef9c3",
+    "ARALING PANLIPUNAN": "#dbeafe",   // light blue
+    "ENGLISH": "#93c5fd",              // blue
+    "FILIPINO": "#e9d5ff",             // purple
+    "MAPEH": "#f5d0fe",                // pink
+    "MATHEMATICS": "#fbcfe8",          // rose
+    "SCIENCE": "#fde68a",              // orange/yellow
+    "TLE": "#fef08a",                  // yellow
+    "VALUES EDUCATION": "#fde047",     // amber
+    "ESP": "#fde047",
   };
 
   function getSubjectColor(subjectName) {
     if (!subjectName) return "#ffffff";
-    return subjectColorMap[subjectName.trim().toUpperCase()] || "#e2e8f0";
+    const key = subjectName.trim().toUpperCase();
+    return subjectColorMap[key] || "#e2e8f0";
   }
 
   function escapeHTML(str) {
-    if (!str) return "";
-    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   const instructorTitleEl = document.getElementById("instructor-title");
-  if (instructorTitleEl) instructorTitleEl.textContent = `INSTRUCTOR: ${userName.toUpperCase()}`;
-
-  // ── Set instructor name for PRINT header ──
-  const wrapper = document.querySelector(".timetable-wrapper");
-  if (wrapper) {
-    wrapper.setAttribute("data-instructor", userName.toUpperCase());
+  if (instructorTitleEl) {
+    instructorTitleEl.textContent = `INSTRUCTOR: ${userName.toUpperCase()}`;
   }
 
-  // ── FULL DAY SLOTS (internal 24-hour) ──
+  // ═══ FULL DAY SLOTS — matches admin JHS generator ═══
   const FULL_DAY_SLOTS = [
-    "06:00-06:50", "06:50-07:40", "07:40-08:30",
-    "08:30-09:00",
-    "09:00-09:50", "09:50-10:40", "10:40-11:30",
-    "11:30-12:30",
-    "12:30-13:20", "13:20-14:10", "14:10-15:00",
-    "15:00-15:30",
-    "15:30-16:20", "16:20-17:10", "17:10-18:00",
+    "06:00-07:00",
+    "07:00-08:00",
+    "08:00-09:00",
+    "09:00-09:15",   // RECESS
+    "09:15-10:15",
+    "10:15-11:15",
+    "11:15-12:15",
+    "12:15-13:45",   // LUNCH BREAK
+    "13:45-14:45",
+    "14:45-15:00",   // RECESS
+    "15:00-16:00",
+    "16:00-17:00",
+    "17:00-18:00",
     "18:00-19:00",
   ];
-  const BREAK_SLOTS = new Set([
-    "08:30-09:00",
-    "11:30-12:30",
-    "15:00-15:30",
-    "18:00-19:00",
-  ]);
+
+  const BREAK_SLOT_LABELS = {
+    "09:00-09:15": "RECESS",
+    "12:15-13:45": "LUNCH BREAK",
+    "14:45-15:00": "RECESS",
+  };
+
+  const FLAG_RAISING_SLOT = "06:00-07:00";
 
   const targetDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -91,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return clean;
   }
 
-  // ── 12-HOUR DISPLAY HELPERS ──
+  // ═══ 12-HOUR DISPLAY HELPERS ═══
   function to12Hour(time24) {
     if (!time24) return "";
     const m = String(time24).match(/^(\d{1,2}):(\d{2})/);
@@ -110,14 +131,13 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${to12Hour(start)} - ${to12Hour(end)}`;
   }
 
-  // ── Minimal CSS injection ──
+  // ═══ Minimal CSS injection (screen only) ═══
   if (!document.getElementById("admin-tight-layout-rules")) {
     const adminStyles = document.createElement("style");
     adminStyles.id = "admin-tight-layout-rules";
     adminStyles.innerHTML = `
       #instructor-title { color: #0c2f6b !important; }
       .subtitle, p { color: #94a3b8 !important; }
-      .break-row { background: #f8fafc !important; }
       .vacant-cell-fill {
         display: flex !important;
         align-items: center !important;
@@ -130,7 +150,237 @@ document.addEventListener("DOMContentLoaded", () => {
     document.head.appendChild(adminStyles);
   }
 
-  // Modal
+  // ═══ Print-only CSS ═══
+  if (!document.getElementById("teacher-print-styles")) {
+    const printStyles = document.createElement("style");
+    printStyles.id = "teacher-print-styles";
+    printStyles.media = "print";
+    printStyles.innerHTML = `
+      @page {
+        size: letter landscape;
+        margin: 0.35in 0.4in 0.4in 0.4in;
+      }
+
+      /* Hide everything except print area */
+      body * { visibility: hidden !important; }
+      #print-zone, #print-zone * { visibility: visible !important; }
+
+      .sidebar,
+      .sidebar-expand-btn,
+      .timetable-controls,
+      .main-content > header,
+      #vacant-note-modal,
+      .add-note-btn,
+      .no-print {
+        display: none !important;
+      }
+
+      body {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      #print-zone {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 0 !important;
+      }
+
+      /* Print header */
+      .print-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-bottom: 8px !important;
+        margin-bottom: 10px !important;
+        border-bottom: none !important;
+      }
+
+      .print-header-left {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+      }
+
+      .print-header-logo {
+        width: 60px !important;
+        height: 60px !important;
+        object-fit: contain !important;
+      }
+
+      .print-header-school-name {
+        font-family: 'Cinzel', serif !important;
+        font-size: 22pt !important;
+        font-weight: 700 !important;
+        color: #000 !important;
+        line-height: 1.05 !important;
+      }
+
+      .print-header-school-address {
+        font-size: 11pt !important;
+        color: #333 !important;
+        font-style: italic !important;
+        margin-top: 3px !important;
+      }
+
+      .print-header-right {
+        text-align: right !important;
+      }
+
+      .print-header-teacher-name {
+        font-family: 'Cinzel', 'Inter', serif !important;
+        font-size: 20pt !important;
+        font-weight: 800 !important;
+        color: #000 !important;
+        text-transform: uppercase !important;
+        line-height: 1.1 !important;
+      }
+
+      .print-header-dept {
+        font-size: 11pt !important;
+        color: #333 !important;
+        margin-top: 3px !important;
+        font-style: italic !important;
+      }
+
+      .print-header-sy {
+        font-size: 11pt !important;
+        font-weight: 600 !important;
+        color: #333 !important;
+        margin-top: 2px !important;
+      }
+
+      /* Print table */
+      .timetable-wrapper {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+      }
+
+      .timetable-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: fixed !important;
+        border: 1.5pt solid #000 !important;
+      }
+
+      .timetable-table thead {
+        display: table-header-group !important;
+      }
+
+      .timetable-table th,
+      .timetable-table td {
+        border: 1pt solid #000 !important;
+        padding: 4px 3px !important;
+        font-size: 9pt !important;
+        color: #000 !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+        word-wrap: break-word !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .timetable-table th {
+        background: #e2e8f0 !important;
+        font-weight: 900 !important;
+        font-size: 10pt !important;
+        text-transform: uppercase !important;
+        height: 26px !important;
+        padding: 6px 3px !important;
+      }
+
+      .timetable-table .time-cell {
+        background: #f8fafc !important;
+        font-weight: 900 !important;
+        font-size: 9pt !important;
+        white-space: nowrap !important;
+        width: 20% !important;
+        padding: 4px 3px !important;
+      }
+
+      .timetable-table .slot-subject {
+        font-size: 9.5pt !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        color: #000 !important;
+      }
+
+      .timetable-table .slot-section {
+        font-size: 8pt !important;
+        font-weight: 700 !important;
+        color: #333 !important;
+      }
+
+      .timetable-table .slot-room {
+        font-size: 7.5pt !important;
+        color: #555 !important;
+      }
+
+      .timetable-table .break-cell {
+        background: #f1f5f9 !important;
+        font-weight: 800 !important;
+        font-size: 9pt !important;
+        letter-spacing: 2px !important;
+        color: #475569 !important;
+        padding: 6px !important;
+      }
+
+      .timetable-table .flag-raising-cell {
+        background: #fef3c7 !important;
+        color: #92400e !important;
+      }
+
+      .timetable-table .vacant-cell-fill {
+        background: #ffffff !important;
+        border: none !important;
+      }
+
+      .timetable-table .vacant-text {
+        color: #000000 !important;
+        font-style: italic !important;
+        font-size: 8pt !important;
+      }
+
+      /* Print footer */
+      .print-footer {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-end !important;
+        margin-top: 12px !important;
+        font-size: 9pt !important;
+        color: #555 !important;
+        font-style: italic !important;
+      }
+
+      .print-footer-left {
+        text-align: left !important;
+      }
+
+      .print-footer-right {
+        text-align: right !important;
+      }
+
+      .print-footer-principal {
+        font-family: 'Cinzel', serif !important;
+        font-weight: 700 !important;
+        font-size: 11pt !important;
+        color: #000 !important;
+        margin-bottom: 2px !important;
+      }
+
+      .print-footer-principal-title {
+        font-size: 9pt !important;
+        color: #333 !important;
+      }
+    `;
+    document.head.appendChild(printStyles);
+  }
+
+  // ═══ Modal ═══
   if (!document.getElementById("vacant-note-modal")) {
     document.body.insertAdjacentHTML("beforeend", `
       <div id="vacant-note-modal" class="vacant-modal-overlay">
@@ -172,6 +422,9 @@ document.addEventListener("DOMContentLoaded", () => {
     loadTeacherTimetable();
   });
 
+  // ═══════════════════════════════════════════════════════
+  // ═══ MAIN: LOAD TEACHER TIMETABLE                  ═══
+  // ═══════════════════════════════════════════════════════
   async function loadTeacherTimetable() {
     const tbody = document.getElementById("timetable-rows");
     if (!tbody) return;
@@ -181,13 +434,20 @@ document.addEventListener("DOMContentLoaded", () => {
     let loadedFromApi = false;
 
     try {
-      const response = await fetch(`/api/teacher/schedule?userName=${encodeURIComponent(userName)}`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      });
+      const response = await fetch(
+        `/api/teacher/schedule?userName=${encodeURIComponent(userName)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
+
         let slots = [];
         if (Array.isArray(data)) slots = data;
         else if (Array.isArray(data.slots)) slots = data.slots;
@@ -198,11 +458,19 @@ document.addEventListener("DOMContentLoaded", () => {
           loadedFromApi = true;
 
           slots.forEach((slot) => {
-            const teacherInSlot = slot.instructor || slot.teacher || slot.teacherName || userName;
-            if (matchTeacherName(teacherInSlot, userName)) {
+            const teacherInSlot = slot.teacherName || slot.instructor || slot.teacher || userName;
+            const slotTeacherId = slot.teacherId;
+            const matchById = slotTeacherId != null && String(slotTeacherId) === String(data?.schedule?.teacher_id);
+            const matchByName = matchTeacherName(teacherInSlot, userName);
+
+            if (matchById || matchByName) {
               const day = normalizeDay(slot.day);
-              const rawTime = slot.timeSlot || slot.time ||
-                (slot.startTime && slot.endTime ? `${slot.startTime} - ${slot.endTime}` : "");
+              let rawTime = "";
+              if (slot.startTime && slot.endTime) rawTime = `${slot.startTime} - ${slot.endTime}`;
+              else if (slot.timeSlot) rawTime = slot.timeSlot;
+              else if (slot.time) rawTime = slot.time;
+              else if (slot.timeRange) rawTime = slot.timeRange;
+
               const timeSlot = normalizeTimeSlot(rawTime);
 
               if (!myClassesMap[day]) myClassesMap[day] = {};
@@ -241,77 +509,190 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Render FULL DAY grid
+    // ═══════════════════════════════════════════════════════
+    // ═══ RENDER FULL DAY GRID                          ═══
+    // ═══════════════════════════════════════════════════════
     FULL_DAY_SLOTS.forEach((timeSlot) => {
       const tr = document.createElement("tr");
-      const isBreak = BREAK_SLOTS.has(timeSlot);
+      const isBreak = Object.prototype.hasOwnProperty.call(BREAK_SLOT_LABELS, timeSlot);
+      const breakLabel = BREAK_SLOT_LABELS[timeSlot];
 
-      if (isBreak) {
-        tr.className = "break-row-tr";
-      }
+      if (isBreak) tr.className = "break-row-tr";
 
+      // Time cell — always show time
       const timeCell = document.createElement("td");
       timeCell.className = "time-cell";
-      timeCell.textContent = isBreak ? "" : formatTimeSlotDisplay(timeSlot);
+      timeCell.textContent = formatTimeSlotDisplay(timeSlot);
       tr.appendChild(timeCell);
 
       if (isBreak) {
         const breakTd = document.createElement("td");
         breakTd.colSpan = targetDays.length;
-        breakTd.className = "break-row";
-        breakTd.textContent = "";
-        breakTd.style.height = "8px";
-        breakTd.style.maxHeight = "8px";
-        breakTd.style.padding = "0";
+        breakTd.className = "break-cell";
+        breakTd.textContent = breakLabel;
         tr.appendChild(breakTd);
-      } else {
-        targetDays.forEach((day) => {
-          const td = document.createElement("td");
-          const normalizedCurrentSlot = normalizeTimeSlot(timeSlot);
-
-          let resolvedDayKey = day;
-          if (!myClassesMap[day]) {
-            const found = Object.keys(myClassesMap).find(k => k.toLowerCase() === day.toLowerCase());
-            if (found) resolvedDayKey = found;
-          }
-
-          const slotData = myClassesMap[resolvedDayKey]?.[normalizedCurrentSlot];
-
-          if (slotData) {
-            td.style.backgroundColor = getSubjectColor(slotData.subject);
-            td.style.color = "#000000";
-            td.innerHTML = `
-              <div class="slot-subject">${escapeHTML(slotData.subject)}</div>
-              <div class="slot-section">${escapeHTML(slotData.section || "")}</div>
-              <div class="slot-room">(${escapeHTML(slotData.room || "")})</div>
-            `;
-          } else {
-            const storageKey = `note_${userName}_${day}_${timeSlot}`;
-            const savedNote = localStorage.getItem(storageKey) || "";
-            const cellMarkup = savedNote ? `<div class="saved-cell-note">${escapeHTML(savedNote)}</div>` : `<span class="vacant-text">-- Vacant --</span>`;
-            td.innerHTML = `<div class="vacant-cell-fill">${cellMarkup}<button class="add-note-btn" title="Add Memo">+</button></div>`;
-            td.querySelector(".add-note-btn")?.addEventListener("click", () => window.openVacantNoteModal(day, timeSlot));
-          }
-          tr.appendChild(td);
-        });
+        tbody.appendChild(tr);
+        return;
       }
+
+      targetDays.forEach((day) => {
+        const td = document.createElement("td");
+        const normalizedCurrentSlot = normalizeTimeSlot(timeSlot);
+
+        // Flag Raising on Monday 6AM
+        if (day === "Monday" && timeSlot === FLAG_RAISING_SLOT) {
+          td.className = "flag-raising-cell";
+          td.innerHTML = `
+            <div style="font-size:0.82rem;font-weight:800;line-height:1.2;">Flag Raising</div>
+            <div style="font-size:0.68rem;font-weight:600;margin-top:2px;">Ceremony</div>
+          `;
+          tr.appendChild(td);
+          return;
+        }
+
+        let resolvedDayKey = day;
+        if (!myClassesMap[day]) {
+          const found = Object.keys(myClassesMap).find(k => k.toLowerCase() === day.toLowerCase());
+          if (found) resolvedDayKey = found;
+        }
+
+        const slotData = myClassesMap[resolvedDayKey]?.[normalizedCurrentSlot];
+
+        if (slotData) {
+          td.style.backgroundColor = getSubjectColor(slotData.subject);
+          td.style.color = "#000000";
+          td.innerHTML = `
+            <div class="slot-subject">${escapeHTML(slotData.subject)}</div>
+            <div class="slot-section">${escapeHTML(slotData.section || "")}</div>
+            <div class="slot-room">(${escapeHTML(slotData.room || "")})</div>
+          `;
+        } else {
+          const storageKey = `note_${userName}_${day}_${timeSlot}`;
+          const savedNote = localStorage.getItem(storageKey) || "";
+          const cellMarkup = savedNote
+            ? `<div class="saved-cell-note">${escapeHTML(savedNote)}</div>`
+            : `<span class="vacant-text">-- Vacant --</span>`;
+
+          td.innerHTML = `
+            <div class="vacant-cell-fill">
+              ${cellMarkup}
+              <button class="add-note-btn" title="Add Memo">+</button>
+            </div>
+          `;
+          td.querySelector(".add-note-btn")?.addEventListener("click", () =>
+            window.openVacantNoteModal(day, timeSlot)
+          );
+        }
+
+        tr.appendChild(td);
+      });
 
       tbody.appendChild(tr);
     });
   }
 
+  // ═══════════════════════════════════════════════════════
+  // ═══ PRINT — builds a hidden print zone with header/footer ═══
+  // ═══════════════════════════════════════════════════════
+  function buildPrintZone() {
+    // Remove old print zone
+    const old = document.getElementById("print-zone");
+    if (old) old.remove();
+
+    // Grab the rendered table
+    const table = document.querySelector(".timetable-table");
+    if (!table) {
+      alert("Timetable not loaded yet. Please wait and try again.");
+      return null;
+    }
+
+    // Generated timestamp
+    const now = new Date();
+    const timestamp = now.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Build print zone
+    const zone = document.createElement("div");
+    zone.id = "print-zone";
+    zone.innerHTML = `
+      <div class="print-header">
+        <div class="print-header-left">
+          <img src="/auth/makiling_logo.png" alt="MIS Logo" class="print-header-logo">
+          <div>
+            <div class="print-header-school-name">Makiling Integrated School</div>
+            <div class="print-header-school-address">Brgy. Makiling, Calamba City, Laguna</div>
+          </div>
+        </div>
+        <div class="print-header-right">
+          <div class="print-header-teacher-name">${escapeHTML(userName.toUpperCase())}</div>
+          <div class="print-header-dept">Junior High School</div>
+          <div class="print-header-sy">S.Y. 2026-2027</div>
+        </div>
+      </div>
+
+      ${table.outerHTML}
+
+      <div class="print-footer">
+        <div class="print-footer-left">
+          <div class="print-footer-principal">Ronaldo M. Canta, Ph.D.</div>
+          <div class="print-footer-principal-title">Principal III</div>
+        </div>
+        <div class="print-footer-right">
+          Generated on: ${timestamp}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(zone);
+    return zone;
+  }
+
+  function triggerPrint() {
+    const zone = buildPrintZone();
+    if (!zone) return;
+
+    // Small delay to let browser paint the print zone
+    setTimeout(() => {
+      window.print();
+      // Cleanup after print
+      setTimeout(() => {
+        const z = document.getElementById("print-zone");
+        if (z) z.remove();
+      }, 500);
+    }, 100);
+  }
+
   const printBtn = document.getElementById("print-schedule-btn");
-  if (printBtn) printBtn.addEventListener("click", () => { printBtn.blur(); window.print(); });
+  if (printBtn) {
+    printBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      printBtn.blur();
+      triggerPrint();
+    });
+  }
 
   const pdfBtn = document.getElementById("download-pdf-btn");
-  if (pdfBtn) pdfBtn.addEventListener("click", () => { pdfBtn.blur(); window.print(); });
+  if (pdfBtn) {
+    pdfBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      pdfBtn.blur();
+      triggerPrint();
+    });
+  }
 
   const logoutBtn = document.getElementById("btn-logout");
-  if (logoutBtn) logoutBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    localStorage.clear();
-    window.location.href = "/index.html?logout=success";
-  });
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.clear();
+      window.location.href = "/index.html?logout=success";
+    });
+  }
 
   loadTeacherTimetable();
 });

@@ -382,7 +382,7 @@ body {
 .main-content {
     flex: 1;
     margin-left: var(--sidebar-width);
-    padding: 2.5rem 3rem;
+    padding: 1.5rem 1.5rem;
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -625,7 +625,7 @@ body {
 
 .today-class-item {
     display: grid;
-    grid-template-columns: 150px 1fr;
+    grid-template-columns: 160px 1fr;
     gap: 16px;
     align-items: center;
     background: rgba(240, 249, 244, 0.8);
@@ -898,109 +898,3 @@ body {
     letter-spacing: 0.8px;
 }
 
-/* ═══════════════════════════════════════════════════════
-   MOBILE RESPONSIVE
-   ═══════════════════════════════════════════════════════ */
-@media (max-width: 700px) {
-    .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-        border-right: none;
-        border-bottom: 1px solid var(--glass-border);
-        padding: 1.25rem;
-    }
-
-    .sidebar.collapsed {
-        width: 100%;
-    }
-
-    .sidebar.collapsed .nav-label,
-    .sidebar.collapsed .logo {
-        opacity: 1;
-        max-width: none;
-        pointer-events: auto;
-    }
-
-    .sidebar-toggle,
-    .sidebar-expand-btn {
-        display: none;
-    }
-
-    .nav-links-wrapper {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    .nav-item {
-        width: auto;
-        flex: 1 1 auto;
-        padding: 8px 12px;
-        font-size: 0.8rem;
-    }
-
-    .logout-btn {
-        margin-top: 12px !important;
-        border-top: none !important;
-        border-radius: 10px;
-        padding-top: 12px !important;
-    }
-
-    .main-content,
-    .main-content.sidebar-collapsed {
-        margin-left: 0 !important;
-        padding: 1.5rem 1rem;
-    }
-
-    .welcome-header {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 1.25rem;
-    }
-
-    .welcome-text-block h1 {
-        font-size: 1.2rem;
-    }
-
-    .welcome-badge {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .today-schedule-card {
-        padding: 1.25rem;
-    }
-
-    .today-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-
-    .today-date {
-        width: 100%;
-        text-align: center;
-    }
-
-    .today-class-item {
-        grid-template-columns: 1fr;
-        gap: 10px;
-        padding: 12px 14px;
-    }
-
-    .class-time-block {
-        border-right: none;
-        border-bottom: 1px solid rgba(34, 197, 94, 0.25);
-        padding-right: 0;
-        padding-bottom: 8px;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .today-total {
-        gap: 12px;
-        font-size: 0.78rem;
-    }
-}

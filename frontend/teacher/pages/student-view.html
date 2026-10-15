@@ -1,155 +1,277 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Makiling IS | Student List</title>
-    <link rel="icon" type="image/png" href="/auth/makiling_logo.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../css/student-view.css">
-</head>
-<body>
-    <!-- ═══ SIDEBAR ═══ -->
+    <link rel="icon" type="image/png" href="/auth/makiling_logo.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- ✅ Font Awesome Free Icons (was missing here before!) -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+      referrerpolicy="no-referrer"
+    />
+
+    <link rel="stylesheet" href="../css/student-view.css" />
+  </head>
+
+  <body>
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="app-sidebar">
-        <div class="sidebar-top">
-            <div class="logo">
-                <img src="/auth/makiling_logo.png" alt="Makiling IS Logo" width="40" height="40">
-                <div class="logo-text">
-                    <span class="logo-line-1">Makiling</span>
-                    <span class="logo-line-2">Integrated School</span>
-                </div>
-            </div>
-            <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
-                <span class="toggle-icon">◀</span>
-            </button>
+      <div class="sidebar-top">
+        <div class="logo">
+          <img
+            src="/auth/makiling_logo.png"
+            alt="Makiling IS Logo"
+            width="40"
+            height="40"
+          />
+          <div class="logo-text">
+            <span class="logo-line-1">Makiling</span>
+            <span class="logo-line-2">Integrated School</span>
+          </div>
         </div>
 
-        <nav class="nav-links-wrapper">
-            <button onclick="window.location.href='index.html'" class="nav-item">
-                <span class="nav-icon">📊</span>
-                <span class="nav-label">Dashboard Home</span>
-            </button>
-            <button onclick="window.location.href='my-schedule.html'" class="nav-item">
-                <span class="nav-icon">📅</span>
-                <span class="nav-label">My Timetable</span>
-            </button>
-            <button onclick="window.location.href='rooms-view.html'" class="nav-item">
-                <span class="nav-icon">🏫</span>
-                <span class="nav-label">View Rooms</span>
-            </button>
-            <button onclick="window.location.href='student-view.html'" class="nav-item active">
-                <span class="nav-icon">👥</span>
-                <span class="nav-label">Student List</span>
-            </button>
-            <button onclick="window.location.href='profile.html'" class="nav-item">
-                <span class="nav-icon">⚙️</span>
-                <span class="nav-label">Profile Settings</span>
-            </button>
-        </nav>
-
-        <button type="button" id="logout-btn" class="nav-item logout-btn">
-            <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
-            <span class="nav-label">Logout</span>
+        <button
+          type="button"
+          class="sidebar-toggle"
+          id="sidebar-toggle"
+          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
+          aria-expanded="true"
+          aria-controls="app-sidebar"
+        >
+          <i
+            class="fa-solid fa-chevron-left toggle-icon"
+            aria-hidden="true"
+          ></i>
         </button>
+      </div>
+
+      <!-- TEACHER NAVIGATION -->
+      <nav class="nav-links-wrapper" aria-label="Teacher navigation">
+        <button
+          type="button"
+          onclick="window.location.href = 'index.html'"
+          class="nav-item"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-house" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">Dashboard Home</span>
+        </button>
+
+        <button
+          type="button"
+          onclick="window.location.href = 'my-schedule.html'"
+          class="nav-item"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">My Timetable</span>
+        </button>
+
+        <button
+          type="button"
+          onclick="window.location.href = 'rooms-view.html'"
+          class="nav-item"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-door-open" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">View Rooms</span>
+        </button>
+
+        <!-- ✅ ACTIVE: Student List -->
+        <button
+          type="button"
+          onclick="window.location.href = 'student-view.html'"
+          class="nav-item active"
+          aria-current="page"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-users" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">Student List</span>
+        </button>
+
+        <button
+          type="button"
+          onclick="window.location.href = 'profile.html'"
+          class="nav-item"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-gear" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">Profile Settings</span>
+        </button>
+      </nav>
+
+      <!-- LOGOUT -->
+      <button type="button" id="logout-btn" class="nav-item logout-btn">
+        <span class="nav-icon">
+          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+        </span>
+        <span class="nav-label">Logout</span>
+      </button>
     </aside>
 
-    <!-- Expand button (lalabas kapag collapsed) -->
-    <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
-        <span>▶</span>
+    <!-- EXPAND SIDEBAR BUTTON -->
+    <button
+      type="button"
+      class="sidebar-expand-btn"
+      id="sidebar-expand-btn"
+      title="Expand sidebar"
+      aria-label="Expand sidebar"
+      aria-controls="app-sidebar"
+      aria-expanded="false"
+    >
+      <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
     </button>
 
     <!-- ═══ MAIN CONTENT ═══ -->
     <main class="main-content" id="main-content">
-        <div class="page-header">
-            <div class="page-header-text">
-                <h1>👥 Student List</h1>
-                <p>Manage students in each section you teach.</p>
-            </div>
-            <button class="btn-primary" id="btn-add-student">
-                ➕ Add Student
-            </button>
+      <div class="page-header">
+        <div class="page-header-text">
+          <h1>👥 Student List</h1>
+          <p>Manage students in each section you teach.</p>
         </div>
+        <button class="btn-primary" id="btn-add-student">
+          ➕ Add Student
+        </button>
+      </div>
 
-        <div id="sections-container" class="sections-grid">
-            <div class="loading-state">
-                <div class="loading-spinner"></div>
-                <p>Loading your sections...</p>
-            </div>
+      <div id="sections-container" class="sections-grid">
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>Loading your sections...</p>
         </div>
+      </div>
     </main>
 
     <!-- ═══ Add Student Modal ═══ -->
     <div class="modal-overlay" id="add-student-modal">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h2>➕ Add New Student</h2>
-                <button class="modal-close" id="btn-close-add-modal">✕</button>
-            </div>
-            <div class="modal-body">
-                <label for="add-student-name">Student Full Name *</label>
-                <input type="text" id="add-student-name" placeholder="e.g. Juan Dela Cruz" required>
-
-                <label for="add-student-section">Section *</label>
-                <select id="add-student-section" required>
-                    <option value="">-- Select Section --</option>
-                </select>
-
-                <label for="add-student-id">Student ID (Optional)</label>
-                <input type="text" id="add-student-id" placeholder="e.g. 2024-001">
-
-                <label for="add-student-notes">Notes (Optional)</label>
-                <textarea id="add-student-notes" placeholder="Additional details..." rows="3"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" id="btn-cancel-add">Cancel</button>
-                <button class="btn-primary" id="btn-confirm-add">Add Student</button>
-            </div>
+      <div class="modal-box">
+        <div class="modal-header">
+          <h2>➕ Add New Student</h2>
+          <button class="modal-close" id="btn-close-add-modal">✕</button>
         </div>
+        <div class="modal-body">
+          <label for="add-student-name">Student Full Name *</label>
+          <input
+            type="text"
+            id="add-student-name"
+            placeholder="e.g. Juan Dela Cruz"
+            required
+          />
+
+          <label for="add-student-section">Section *</label>
+          <select id="add-student-section" required>
+            <option value="">-- Select Section --</option>
+          </select>
+
+          <label for="add-student-id">Student ID (Optional)</label>
+          <input
+            type="text"
+            id="add-student-id"
+            placeholder="e.g. 2024-001"
+          />
+
+          <label for="add-student-notes">Notes (Optional)</label>
+          <textarea
+            id="add-student-notes"
+            placeholder="Additional details..."
+            rows="3"
+          ></textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="btn-cancel-add">Cancel</button>
+          <button class="btn-primary" id="btn-confirm-add">Add Student</button>
+        </div>
+      </div>
     </div>
 
-    <!-- ═══ Sidebar Toggle Script ═══ -->
+    <!-- ═══ Sidebar Toggle Script (FIXED: uses class toggling) ═══ -->
     <script>
-        (function initSidebarToggle() {
-            const sidebar = document.getElementById('app-sidebar');
-            const mainContent = document.getElementById('main-content');
-            const toggleBtn = document.getElementById('sidebar-toggle');
-            const expandBtn = document.getElementById('sidebar-expand-btn');
+      (function initSidebarToggle() {
+        const sidebar = document.getElementById("app-sidebar");
+        const mainContent = document.getElementById("main-content");
+        const toggleBtn = document.getElementById("sidebar-toggle");
+        const expandBtn = document.getElementById("sidebar-expand-btn");
 
-            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
-            if (isCollapsed) {
-                sidebar.classList.add('collapsed');
-                mainContent.classList.add('sidebar-collapsed');
-                expandBtn.classList.add('visible');
-                const icon = toggleBtn.querySelector('.toggle-icon');
-                if (icon) icon.textContent = '▶';
-            }
+        if (!sidebar || !mainContent || !toggleBtn || !expandBtn) return;
 
-            let isAnimating = false;
+        const toggleIcon = toggleBtn.querySelector(".toggle-icon");
 
-            function toggleSidebar() {
-                if (isAnimating) return;
-                isAnimating = true;
+        let isCollapsed = false;
+        try {
+          isCollapsed =
+            localStorage.getItem("sidebar-collapsed") === "true";
+        } catch (e) {
+          console.warn("Unable to restore sidebar preference.", e);
+        }
 
-                requestAnimationFrame(() => {
-                    const nowCollapsed = sidebar.classList.toggle('collapsed');
-                    mainContent.classList.toggle('sidebar-collapsed', nowCollapsed);
-                    expandBtn.classList.toggle('visible', nowCollapsed);
-                    localStorage.setItem('sidebar-collapsed', nowCollapsed);
+        function applySidebarState(collapsed) {
+          sidebar.classList.toggle("collapsed", collapsed);
+          mainContent.classList.toggle("sidebar-collapsed", collapsed);
+          expandBtn.classList.toggle("visible", collapsed);
 
-                    const icon = toggleBtn.querySelector('.toggle-icon');
-                    if (icon) icon.textContent = nowCollapsed ? '▶' : '◀';
+          toggleBtn.setAttribute("aria-expanded", String(!collapsed));
+          expandBtn.setAttribute("aria-expanded", String(collapsed));
 
-                    setTimeout(() => { isAnimating = false; }, 350);
-                });
-            }
+          toggleBtn.setAttribute(
+            "aria-label",
+            collapsed ? "Expand sidebar" : "Collapse sidebar"
+          );
+          toggleBtn.setAttribute(
+            "title",
+            collapsed ? "Expand sidebar" : "Collapse sidebar"
+          );
 
-            toggleBtn.addEventListener('click', toggleSidebar);
-            expandBtn.addEventListener('click', toggleSidebar);
-        })();
+          // ✅ FIX: Toggle Font Awesome classes instead of textContent
+          if (toggleIcon) {
+            toggleIcon.classList.toggle("fa-chevron-left", !collapsed);
+            toggleIcon.classList.toggle("fa-chevron-right", collapsed);
+          }
+
+          try {
+            localStorage.setItem("sidebar-collapsed", String(collapsed));
+          } catch (e) {
+            console.warn("Unable to save sidebar preference.", e);
+          }
+        }
+
+        applySidebarState(isCollapsed);
+
+        let isAnimating = false;
+
+        function toggleSidebar() {
+          if (isAnimating) return;
+          isAnimating = true;
+
+          isCollapsed = !sidebar.classList.contains("collapsed");
+          applySidebarState(isCollapsed);
+
+          window.setTimeout(() => {
+            isAnimating = false;
+          }, 350);
+        }
+
+        toggleBtn.addEventListener("click", toggleSidebar);
+        expandBtn.addEventListener("click", toggleSidebar);
+      })();
     </script>
+
     <script src="/auth/logout.js" defer></script>
     <script src="../js/student-view.js"></script>
-</body>
+  </body>
 </html>

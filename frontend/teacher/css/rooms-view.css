@@ -128,7 +128,6 @@ body {
     margin-bottom: 1rem;
     padding: 0 0.25rem;
     gap: 12px;
-    height: auto;
     min-height: 56px;
     box-sizing: border-box;
 }
@@ -137,11 +136,10 @@ body {
     justify-content: center;
     padding: 0;
     gap: 0;
-    height: 56px;
     min-height: 56px;
 }
 
-/* ═══ Logo ═══ */
+/* ═══ Logo Block ═══ */
 .sidebar .logo {
     display: flex;
     align-items: center;
@@ -376,7 +374,7 @@ body {
 .main-content {
     flex: 1;
     margin-left: var(--sidebar-width);
-    padding: 2.5rem 3rem;
+    padding: 1.5rem 1.5rem;
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 100vh;
@@ -560,96 +558,3 @@ body {
     font-size: 0.9rem;
 }
 
-/* ═══════════════════════════════════════════════════════
-   MOBILE RESPONSIVE
-   ═══════════════════════════════════════════════════════ */
-@media (max-width: 900px) {
-    .main-content {
-        padding: 2rem;
-    }
-}
-
-@media (max-width: 700px) {
-    .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-        border-right: none;
-        border-bottom: 1px solid var(--glass-border);
-        padding: 1rem;
-    }
-
-    .sidebar.collapsed {
-        width: 100%;
-        padding: 1rem;
-    }
-
-    .sidebar.collapsed .nav-label,
-    .sidebar.collapsed .logo {
-        opacity: 1;
-        max-width: none;
-        pointer-events: auto;
-    }
-
-    .sidebar-toggle,
-    .sidebar-expand-btn {
-        display: none;
-    }
-
-    .sidebar.collapsed .sidebar-top {
-        flex-direction: row;
-        justify-content: space-between;
-        padding: 0 0.25rem;
-    }
-
-    .sidebar.collapsed .nav-item {
-        justify-content: flex-start;
-        padding: 8px 12px;
-    }
-
-    .sidebar.collapsed .nav-icon {
-        margin-right: 8px;
-    }
-
-    .nav-links-wrapper {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 6px;
-        padding: 0;
-    }
-
-    .nav-item {
-        width: auto;
-        flex: 1 1 auto;
-        padding: 8px 12px;
-        font-size: 0.8rem;
-        margin: 0;
-    }
-
-    .logout-btn {
-        margin-top: 8px !important;
-        border-top: none !important;
-        border-radius: 8px !important;
-        padding-top: 8px !important;
-    }
-
-    .main-content,
-    .main-content.sidebar-collapsed {
-        margin-left: 0 !important;
-        padding: 1.5rem 1rem;
-    }
-
-    .rooms-header h1 {
-        font-size: 1.3rem;
-    }
-
-    .rooms-table th,
-    .rooms-table td {
-        padding: 0.75rem 0.6rem;
-        font-size: 0.85rem;
-    }
-
-    .rooms-table th {
-        font-size: 0.7rem;
-    }
-}

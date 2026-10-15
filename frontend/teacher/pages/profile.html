@@ -1,179 +1,379 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Makiling IS | Profile Settings</title>
-    <link rel="icon" type="image/png" href="/auth/makiling_logo.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../css/index.css">
-    <link rel="stylesheet" href="../css/profile.css">
-</head>
-<body>
-    <!-- ═══ SIDEBAR ═══ -->
+    <link rel="icon" type="image/png" href="/auth/makiling_logo.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Font Awesome Free Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+      referrerpolicy="no-referrer"
+    />
+
+    <link rel="stylesheet" href="../css/index.css" />
+    <link rel="stylesheet" href="../css/profile.css" />
+  </head>
+
+  <body>
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="app-sidebar">
-        <div class="sidebar-top">
-            <div class="logo">
-                <img src="/auth/makiling_logo.png" alt="Makiling IS Logo" width="36" height="36">
-                <div class="logo-text">
-                    <span class="logo-line-1">Makiling</span>
-                    <span class="logo-line-2">Integrated School</span>
-                </div>
-            </div>
-            <button class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
-                <span class="toggle-icon">◀</span>
-            </button>
+      <div class="sidebar-top">
+        <div class="logo">
+          <img
+            src="/auth/makiling_logo.png"
+            alt="Makiling IS Logo"
+            width="40"
+            height="40"
+          />
+          <div class="logo-text">
+            <span class="logo-line-1">Makiling</span>
+            <span class="logo-line-2">Integrated School</span>
+          </div>
         </div>
 
-        <nav class="nav-links-wrapper">
-            <button onclick="window.location.href='index.html'" class="nav-item">
-                <span class="nav-icon">🏠</span>
-                <span class="nav-label">Dashboard Home</span>
-            </button>
-            <button onclick="window.location.href='my-schedule.html'" class="nav-item">
-                <span class="nav-icon">📅</span>
-                <span class="nav-label">My Timetable</span>
-            </button>
-            <button onclick="window.location.href='rooms-view.html'" class="nav-item">
-                <span class="nav-icon">🚪</span>
-                <span class="nav-label">View Rooms</span>
-            </button>
-            <button onclick="window.location.href='student-view.html'" class="nav-item">
-                <span class="nav-icon">👥</span>
-                <span class="nav-label">Student List</span>
-            </button>
-            
-            <button onclick="window.location.href='profile.html'" class="nav-item active">
-                <span class="nav-icon">⚙️</span>
-                <span class="nav-label">Profile Settings</span>
-            </button>
-        </nav>
-
-        <button type="button" id="logout-btn" class="nav-item logout-btn">
-            <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
-            <span class="nav-label">Logout</span>
+        <button
+          type="button"
+          class="sidebar-toggle"
+          id="sidebar-toggle"
+          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
+          aria-expanded="true"
+          aria-controls="app-sidebar"
+        >
+          <i
+            class="fa-solid fa-chevron-left toggle-icon"
+            aria-hidden="true"
+          ></i>
         </button>
+      </div>
+
+      <!-- TEACHER NAVIGATION -->
+      <nav class="nav-links-wrapper" aria-label="Teacher navigation">
+        <button
+          type="button"
+          onclick="window.location.href = 'index.html'"
+          class="nav-item"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-house" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">Dashboard Home</span>
+        </button>
+
+        <button
+          type="button"
+          onclick="window.location.href = 'my-schedule.html'"
+          class="nav-item"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">My Timetable</span>
+        </button>
+
+        <button
+          type="button"
+          onclick="window.location.href = 'rooms-view.html'"
+          class="nav-item"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-door-open" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">View Rooms</span>
+        </button>
+
+        <button
+          type="button"
+          onclick="window.location.href = 'student-view.html'"
+          class="nav-item"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-users" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">Student List</span>
+        </button>
+
+        <!-- ACTIVE: Profile Settings -->
+        <button
+          type="button"
+          onclick="window.location.href = 'profile.html'"
+          class="nav-item active"
+          aria-current="page"
+        >
+          <span class="nav-icon">
+            <i class="fa-solid fa-gear" aria-hidden="true"></i>
+          </span>
+          <span class="nav-label">Profile Settings</span>
+        </button>
+      </nav>
+
+      <!-- LOGOUT -->
+      <button type="button" id="logout-btn" class="nav-item logout-btn">
+        <span class="nav-icon">
+          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+        </span>
+        <span class="nav-label">Logout</span>
+      </button>
     </aside>
 
-    <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
-        <span>▶</span>
+    <!-- EXPAND SIDEBAR BUTTON -->
+    <button
+      type="button"
+      class="sidebar-expand-btn"
+      id="sidebar-expand-btn"
+      title="Expand sidebar"
+      aria-label="Expand sidebar"
+      aria-controls="app-sidebar"
+      aria-expanded="false"
+    >
+      <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
     </button>
 
     <!-- ═══ MAIN CONTENT ═══ -->
     <main class="main-content" id="main-content">
-        <header class="page-header">
-            <div>
-                <h1>Profile Settings</h1>
-                <p>Manage your account information, security, and preferences.</p>
-            </div>
-        </header>
-
-        <!-- ═══ PROFILE OVERVIEW CARD ═══ -->
-        <div class="profile-overview-card">
-            <div class="profile-avatar" id="profile-avatar">
-                <span>?</span>
-            </div>
-            <div class="profile-info">
-                <h2 id="profile-display-name">Loading...</h2>
-                <p id="profile-role-badge" class="role-badge">Loading...</p>
-                <p class="profile-meta" id="profile-meta">Loading...</p>
-            </div>
+      <header class="page-header">
+        <div>
+          <h1>Profile Settings</h1>
+          <p>Manage your account information, security, and preferences.</p>
         </div>
+      </header>
 
-        <!-- ═══ TABS ═══ -->
-        <div class="profile-tabs">
-            <button class="profile-tab active" data-tab="general">General</button>
-            <button class="profile-tab" data-tab="security">Security</button>
-            <button class="profile-tab" data-tab="history">Activity Log</button>
+      <!-- ═══ PROFILE OVERVIEW CARD ═══ -->
+      <div class="profile-overview-card">
+        <div class="profile-avatar" id="profile-avatar">
+          <span>?</span>
         </div>
+        <div class="profile-info">
+          <h2 id="profile-display-name">Loading...</h2>
+          <p id="profile-role-badge" class="role-badge">Loading...</p>
+          <p class="profile-meta" id="profile-meta">Loading...</p>
+        </div>
+      </div>
 
-        <!-- ═══ TAB: GENERAL ═══ -->
-        <div class="profile-tab-content active" id="tab-general">
-            <div class="form-card">
-                <h3 class="form-section-title">Display Information</h3>
-                <p class="form-section-desc">This is how you appear in the system. Your login username is managed by the administrator.</p>
+      <!-- ═══ TABS ═══ -->
+      <div class="profile-tabs">
+        <button class="profile-tab active" data-tab="general">General</button>
+        <button class="profile-tab" data-tab="security">Security</button>
+        <button class="profile-tab" data-tab="history">Activity Log</button>
+      </div>
 
-                <form id="general-form">
-                    <div class="form-grid">
-                        <div class="input-group full-width">
-                            <label for="display-name">Display Name</label>
-                            <input type="text" id="display-name" placeholder="Enter your display name" required>
-                            <small class="input-hint">This name appears on your dashboard and in reports.</small>
-                        </div>
+      <!-- ═══ TAB: GENERAL ═══ -->
+      <div class="profile-tab-content active" id="tab-general">
+        <div class="form-card">
+          <h3 class="form-section-title">Display Information</h3>
+          <p class="form-section-desc">
+            This is how you appear in the system. Your login username is
+            managed by the administrator.
+          </p>
 
-                        <div class="input-group full-width">
-                            <label for="email">Email Address</label>
-                            <input type="email" id="email" placeholder="your.email@school.edu">
-                            <small class="input-hint">Used for password recovery and important notifications.</small>
-                        </div>
-                    </div>
+          <form id="general-form">
+            <div class="form-grid">
+              <div class="input-group full-width">
+                <label for="display-name">Display Name</label>
+                <input
+                  type="text"
+                  id="display-name"
+                  placeholder="Enter your display name"
+                  required
+                />
+                <small class="input-hint"
+                  >This name appears on your dashboard and in reports.</small
+                >
+              </div>
 
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary">Save Changes</button>
-                    </div>
-                </form>
+              <div class="input-group full-width">
+                <label for="email">Email Address</label>
+                <input
+                  type="email"
+                  id="email"
+                  placeholder="your.email@school.edu"
+                />
+                <small class="input-hint"
+                  >Used for password recovery and important
+                  notifications.</small
+                >
+              </div>
             </div>
-        </div>
 
-        <!-- ═══ TAB: SECURITY ═══ -->
-        <div class="profile-tab-content" id="tab-security">
-            <!-- Change Password Only (Teachers cannot change username) -->
-            <div class="form-card">
-                <h3 class="form-section-title">🔒 Password</h3>
-                <p class="form-section-desc">Last changed: <strong id="last-password-change">Never</strong></p>
-                <p class="form-section-desc">Your login username is: <strong id="current-username-display">loading...</strong> (managed by administrator)</p>
-
-                <form id="password-form">
-                    <div class="form-grid">
-                        <div class="input-group full-width">
-                            <label for="current-password">Current Password</label>
-                            <input type="password" id="current-password" placeholder="Enter current password" required>
-                        </div>
-
-                        <div class="input-group full-width">
-                            <label for="new-password">New Password</label>
-                            <input type="password" id="new-password" placeholder="Enter new password" required minlength="8">
-                            <div class="password-strength">
-                                <div class="strength-bar">
-                                    <div class="strength-fill" id="strength-fill"></div>
-                                </div>
-                                <span class="strength-text" id="strength-text">Enter a password</span>
-                            </div>
-                            <small class="input-hint">At least 8 characters with uppercase, lowercase, and a number.</small>
-                        </div>
-
-                        <div class="input-group full-width">
-                            <label for="confirm-password">Confirm New Password</label>
-                            <input type="password" id="confirm-password" placeholder="Re-enter new password" required minlength="8">
-                            <small class="input-hint" id="match-hint"></small>
-                        </div>
-                    </div>
-
-                    <div class="form-warning">
-                        ⚠️ <strong>Security Notice:</strong> Changing your password will log you out from all other devices for your protection.
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary">Change Password</button>
-                    </div>
-                </form>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Save Changes</button>
             </div>
+          </form>
         </div>
+      </div>
 
-        <!-- ═══ TAB: HISTORY ═══ -->
-        <div class="profile-tab-content" id="tab-history">
-            <div class="form-card">
-                <h3 class="form-section-title">📜 Recent Activity</h3>
-                <p class="form-section-desc">The last 50 events on your account (logins, profile changes, password updates). For security auditing purposes.</p>
-                <div id="history-list" class="history-list">
-                    <div class="loading-state">Loading activity history...</div>
+      <!-- ═══ TAB: SECURITY ═══ -->
+      <div class="profile-tab-content" id="tab-security">
+        <div class="form-card">
+          <h3 class="form-section-title">🔒 Password</h3>
+          <p class="form-section-desc">
+            Last changed: <strong id="last-password-change">Never</strong>
+          </p>
+          <p class="form-section-desc">
+            Your login username is:
+            <strong id="current-username-display">loading...</strong> (managed
+            by administrator)
+          </p>
+
+          <form id="password-form">
+            <div class="form-grid">
+              <div class="input-group full-width">
+                <label for="current-password">Current Password</label>
+                <input
+                  type="password"
+                  id="current-password"
+                  placeholder="Enter current password"
+                  required
+                />
+              </div>
+
+              <div class="input-group full-width">
+                <label for="new-password">New Password</label>
+                <input
+                  type="password"
+                  id="new-password"
+                  placeholder="Enter new password"
+                  required
+                  minlength="8"
+                />
+                <div class="password-strength">
+                  <div class="strength-bar">
+                    <div class="strength-fill" id="strength-fill"></div>
+                  </div>
+                  <span class="strength-text" id="strength-text"
+                    >Enter a password</span
+                  >
                 </div>
+                <small class="input-hint"
+                  >At least 8 characters with uppercase, lowercase, and a
+                  number.</small
+                >
+              </div>
+
+              <div class="input-group full-width">
+                <label for="confirm-password">Confirm New Password</label>
+                <input
+                  type="password"
+                  id="confirm-password"
+                  placeholder="Re-enter new password"
+                  required
+                  minlength="8"
+                />
+                <small class="input-hint" id="match-hint"></small>
+              </div>
             </div>
+
+            <div class="form-warning">
+              ⚠️ <strong>Security Notice:</strong> Changing your password will
+              log you out from all other devices for your protection.
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">
+                Change Password
+              </button>
+            </div>
+          </form>
         </div>
+      </div>
+
+      <!-- ═══ TAB: HISTORY ═══ -->
+      <div class="profile-tab-content" id="tab-history">
+        <div class="form-card">
+          <h3 class="form-section-title">📜 Recent Account Changes</h3>
+          <p class="form-section-desc">
+            The last 50 changes made to your account — profile updates,
+            email changes, and password changes. Login and logout activity
+            is tracked separately by the administrator.
+          </p>
+          <div id="history-list" class="history-list">
+            <div class="loading-state">Loading activity history...</div>
+          </div>
+        </div>
+      </div>
     </main>
+
+    <!-- ═══ Sidebar Toggle Script ═══ -->
+    <script>
+      (function initSidebarToggle() {
+        const sidebar = document.getElementById("app-sidebar");
+        const mainContent = document.getElementById("main-content");
+        const toggleBtn = document.getElementById("sidebar-toggle");
+        const expandBtn = document.getElementById("sidebar-expand-btn");
+
+        if (!sidebar || !mainContent || !toggleBtn || !expandBtn) return;
+
+        const toggleIcon = toggleBtn.querySelector(".toggle-icon");
+
+        let isCollapsed = false;
+        try {
+          isCollapsed =
+            localStorage.getItem("sidebar-collapsed") === "true";
+        } catch (e) {
+          console.warn("Unable to restore sidebar preference.", e);
+        }
+
+        function applySidebarState(collapsed) {
+          sidebar.classList.toggle("collapsed", collapsed);
+          mainContent.classList.toggle("sidebar-collapsed", collapsed);
+          expandBtn.classList.toggle("visible", collapsed);
+
+          toggleBtn.setAttribute("aria-expanded", String(!collapsed));
+          expandBtn.setAttribute("aria-expanded", String(collapsed));
+
+          toggleBtn.setAttribute(
+            "aria-label",
+            collapsed ? "Expand sidebar" : "Collapse sidebar"
+          );
+          toggleBtn.setAttribute(
+            "title",
+            collapsed ? "Expand sidebar" : "Collapse sidebar"
+          );
+
+          if (toggleIcon) {
+            toggleIcon.classList.toggle("fa-chevron-left", !collapsed);
+            toggleIcon.classList.toggle("fa-chevron-right", collapsed);
+          }
+
+          try {
+            localStorage.setItem("sidebar-collapsed", String(collapsed));
+          } catch (e) {
+            console.warn("Unable to save sidebar preference.", e);
+          }
+        }
+
+        applySidebarState(isCollapsed);
+
+        let isAnimating = false;
+
+        function toggleSidebar() {
+          if (isAnimating) return;
+          isAnimating = true;
+
+          isCollapsed = !sidebar.classList.contains("collapsed");
+          applySidebarState(isCollapsed);
+
+          window.setTimeout(() => {
+            isAnimating = false;
+          }, 350);
+        }
+
+        toggleBtn.addEventListener("click", toggleSidebar);
+        expandBtn.addEventListener("click", toggleSidebar);
+      })();
+    </script>
+
     <script src="/auth/logout.js" defer></script>
     <script src="../js/profile.js"></script>
-</body>
+  </body>
 </html>

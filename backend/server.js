@@ -131,6 +131,26 @@ function validateUsername(username) {
   return cleaned;
 }
 
+// ── User-agent parser (for device labels in activity log) ──
+function parseUserAgentServer(ua) {
+  if (!ua) return "Unknown Device";
+  if (/Edg\//.test(ua))     return "Edge";
+  if (/Chrome\//.test(ua))  return "Chrome";
+  if (/Firefox\//.test(ua)) return "Firefox";
+  if (/Safari\//.test(ua))  return "Safari";
+  return "Unknown Browser";
+}
+
+// ── Name matching helper (for schedule lookup) ──
+function normalizeTeacherName(name) {
+  if (!name) return "";
+  return String(name)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // ── Mail transport ──
 const mailer = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -147,7 +167,7 @@ async function sendCredentialsEmail({ to, name, username, password }) {
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
-      <h2 style="color: #111827;">Your Lectura Scheduler account</h2>
+      <h2 style="color: #111827;">Your MIS Scheduler account</h2>
       <p>Hi ${name},</p>
       <p>An administrator created an account for you. Use the credentials below to sign in:</p>
       <table style="border-collapse: collapse; margin: 16px 0;">
@@ -175,7 +195,7 @@ async function sendCredentialsEmail({ to, name, username, password }) {
 
   const text =
     `Hi ${name},\n\n` +
-    `Your Lectura Scheduler account:\n` +
+    `Your MIS Scheduler account:\n` +
     `Username: ${username}\n` +
     `Password: ${password}\n\n` +
     `Sign in: ${loginUrl}\n\n` +
@@ -184,7 +204,7 @@ async function sendCredentialsEmail({ to, name, username, password }) {
   await mailer.sendMail({
     from: process.env.SMTP_FROM,
     to,
-    subject: "Your Lectura Scheduler account",
+    subject: "Your MIS Scheduler account",
     text,
     html,
   });
@@ -363,7 +383,7 @@ async function initAdmin() {
         console.warn(`[init] could not add users column ${col}:`, err.message);
       }
     }
-    dlog("[init] user columns verified"); 
+    dlog("[init] user columns verified");
 
     try {
       await db.query("ALTER TABLE sections ADD COLUMN IF NOT EXISTS shift VARCHAR(3) DEFAULT 'AM';");
@@ -459,7 +479,6 @@ async function initAdmin() {
 // ═══ JHS SCHEDULING ENGINE (FULL DAY)                ═══
 // ═══════════════════════════════════════════════════════
 
-// Official Full Day schedule: 60-min periods, 15-min recess, 90-min lunch
 const JHS_AM_SLOTS = [
   { time: "06:00-07:00", start: "06:00", end: "07:00", isBreak: false },
   { time: "07:00-08:00", start: "07:00", end: "08:00", isBreak: false },
@@ -542,37 +561,6 @@ async function generateJHSMaster(payload) {
 
   const DEFAULT_JHS_SUBJECTS = ["Mathematics", "Science", "English", "Filipino", "Araling Panlipunan", "MAPEH", "TLE", "Values Education"];
 
-  // ═══════════════════════════════════════════════════════
-  // ═══ AM at PM SLOTS                                ═══
-  // ═══════════════════════════════════════════════════════
-  const JHS_AM_SLOTS = [
-    { time: "06:00-07:00", start: "06:00", end: "07:00", isBreak: false },
-    { time: "07:00-08:00", start: "07:00", end: "08:00", isBreak: false },
-    { time: "08:00-09:00", start: "08:00", end: "09:00", isBreak: false },
-    { time: "09:00-09:15", start: null,    end: null,    isBreak: true  },
-    { time: "09:15-10:15", start: "09:15", end: "10:15", isBreak: false },
-    { time: "10:15-11:15", start: "10:15", end: "11:15", isBreak: false },
-    { time: "11:15-12:15", start: "11:15", end: "12:15", isBreak: false },
-  ];
-
-  const JHS_PM_SLOTS = [
-    { time: "12:15-13:45", start: null,    end: null,    isBreak: true  },
-    { time: "13:45-14:45", start: "13:45", end: "14:45", isBreak: false },
-    { time: "14:45-15:00", start: null,    end: null,    isBreak: true  },
-    { time: "15:00-16:00", start: "15:00", end: "16:00", isBreak: false },
-    { time: "16:00-17:00", start: "16:00", end: "17:00", isBreak: false },
-    { time: "17:00-18:00", start: "17:00", end: "18:00", isBreak: false },
-    { time: "18:00-19:00", start: "18:00", end: "19:00", isBreak: false },
-  ];
-
-  const JHS_FULL_DAY_SLOTS = [...JHS_AM_SLOTS, ...JHS_PM_SLOTS];
-  const JHS_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  const RESERVED_SLOTS = [{ day: "Monday", start: "06:00", end: "07:00" }];
-
-  function isReservedSlot(day, startTime) {
-    return RESERVED_SLOTS.some(r => r.day === day && r.start === startTime);
-  }
-
   function teacherCanTeach(t, subjectAlias, gradeNum) {
     if (t.targetGrade && t.targetGrade !== gradeNum) return false;
     return t.subjects.some(s => s === subjectAlias || s.includes(subjectAlias) || subjectAlias.includes(s));
@@ -583,9 +571,6 @@ async function generateJHSMaster(payload) {
   const masterSectionSchedules = {};
   const skippedSections = [];
 
-  // ═══════════════════════════════════════════════════════
-  // ═══ PROCESS GRADE LEVEL BY GRADE LEVEL            ═══
-  // ═══════════════════════════════════════════════════════
   for (const gradeNum of GRADE_LEVELS) {
     const gradeSections = jhsSections.filter(s => {
       const g = jhsGradeNum(s.grade_level || s.gradeLevel);
@@ -606,9 +591,6 @@ async function generateJHSMaster(payload) {
     const MAX_TEACHING_HOURS_PER_DAY = 6;
     const MAX_CLASSES_PER_DAY = 6;
 
-    // ═══════════════════════════════════════════════════════
-    // ═══ PROCESS EACH SECTION                          ═══
-    // ═══════════════════════════════════════════════════════
     for (const section of sortedGradeSections) {
       const secName = section.name;
       const secGrade = gradeNum;
@@ -618,7 +600,6 @@ async function generateJHSMaster(payload) {
         subjNames = DEFAULT_JHS_SUBJECTS.slice();
       }
 
-      // ═══ PRE-CHECK 1 ═══
       const subjectAvailability = subjNames.map(subjName => {
         const alias = jhsAliasSubject(subjName);
         const qualified = tList.filter(t => teacherCanTeach(t, alias, secGrade));
@@ -644,7 +625,6 @@ async function generateJHSMaster(payload) {
         continue;
       }
 
-      // ═══ PRE-CHECK 2 ═══
       const slotsPerSubjectPerSection = 6;
       const slotsPerTeacherPerWeek = MAX_TEACHING_HOURS_PER_DAY * JHS_DAYS.length;
 
@@ -669,7 +649,7 @@ async function generateJHSMaster(payload) {
       }
 
       if (subjCapacityIssues.length > 0) {
-        const errorMsg = `Insufficient teacher capacity for: ${subjCapacityIssues.map(i => 
+        const errorMsg = `Insufficient teacher capacity for: ${subjCapacityIssues.map(i =>
           `${i.subject} (${i.teacherCount} teacher(s), need ${i.needed} slots, have ${i.capacity})`
         ).join('; ')}`;
         console.warn(`[JHS] SKIPPED: ${secName} — ${errorMsg}`);
@@ -682,7 +662,6 @@ async function generateJHSMaster(payload) {
         continue;
       }
 
-      // ═══ PRE-CHECK 3 ═══
       const allGradeSections = jhsSections.filter(s => {
         const g = jhsGradeNum(s.grade_level || s.gradeLevel);
         return g === secGrade;
@@ -728,7 +707,6 @@ async function generateJHSMaster(payload) {
 
       console.log(`[JHS] Section "${secName}" passed all pre-checks. Processing...`);
 
-      // ═══ BUILD TIMETABLE ═══
       const timetable = {};
       JHS_DAYS.forEach(d => { timetable[d] = {}; });
 
@@ -762,7 +740,6 @@ async function generateJHSMaster(payload) {
         return available[0];
       }
 
-      // ═══ AM SHIFT ═══
       const amSubjCount = {};
       subjNames.forEach(n => amSubjCount[n] = 0);
       let amCursor = 0;
@@ -775,14 +752,10 @@ async function generateJHSMaster(payload) {
             continue;
           }
 
-          // ═══ MONDAY 06:00-07:00 = Flag Raising (Reserved) ═══
-          // Ito lang ang naka-reserve. Ang Tuesday-Friday 06:00-07:00
-          // ay regular teaching slot — pwede itong i-fill ng subject.
           if (isReservedSlot(day, slot.start)) {
             timetable[day][slot.time] = null;
             continue;
           }
-
 
           let picked = null;
           let attempts = 0;
@@ -827,7 +800,6 @@ async function generateJHSMaster(payload) {
         }
       }
 
-      // ═══ PM SHIFT ═══
       const pmSubjCount = {};
       subjNames.forEach(n => pmSubjCount[n] = 0);
       let pmCursor = 0;
@@ -883,10 +855,6 @@ async function generateJHSMaster(payload) {
         }
       }
 
-      // ═══════════════════════════════════════════════════════
-      // ═══ POST-CHECK: Kumpleto ba ang isang shift?     ═══
-      // ═══════════════════════════════════════════════════════
-
       let amVacantCount = 0;
       let amTotalSlots = 0;
       let pmVacantCount = 0;
@@ -895,18 +863,16 @@ async function generateJHSMaster(payload) {
       for (const day of JHS_DAYS) {
         for (const slot of JHS_AM_SLOTS) {
           if (slot.isBreak) continue;
-          
-          // ═══ I-EXCLUDE LANG ANG MONDAY 06:00-07:00 (Flag Raising) ═══
           if (isReservedSlot(day, slot.start)) continue;
-          
+
           amTotalSlots++;
           const slotData = timetable[day]?.[slot.time];
           if (!slotData || !slotData.teacherId) amVacantCount++;
         }
-        
+
         for (const slot of JHS_PM_SLOTS) {
           if (slot.isBreak) continue;
-          
+
           pmTotalSlots++;
           const slotData = timetable[day]?.[slot.time];
           if (!slotData || !slotData.teacherId) pmVacantCount++;
@@ -916,7 +882,6 @@ async function generateJHSMaster(payload) {
       const amFilled = amTotalSlots - amVacantCount;
       const pmFilled = pmTotalSlots - pmVacantCount;
 
-      // ═══ DYNAMIC THRESHOLD ═══
       const totalSubjects = subjNames.length;
       const expectedAmVacant = Math.max(0, amTotalSlots - (totalSubjects * 3));
       const expectedPmVacant = Math.max(0, pmTotalSlots - (totalSubjects * 3));
@@ -926,7 +891,6 @@ async function generateJHSMaster(payload) {
 
       console.log(`[JHS] ${secName}: AM ${amFilled}/${amTotalSlots} (${amVacantCount} vacant), PM ${pmFilled}/${pmTotalSlots} (${pmVacantCount} vacant)`);
 
-      // ═══ CONDITION ═══
       if (!amComplete && !pmComplete) {
         const errorMsg = `Parehong kulang ang AM at PM shift — AM ${amFilled}/${amTotalSlots}, PM ${pmFilled}/${pmTotalSlots}`;
         console.warn(`[JHS] SKIPPED: ${secName} — ${errorMsg}`);
@@ -940,20 +904,18 @@ async function generateJHSMaster(payload) {
         continue;
       }
 
-      // I-save ang section
       masterSectionSchedules[secName] = {
         details: section,
         gradeLevel: `Junior High School - Grade ${secGrade}`,
         shift: "FULL",
-        slots: JHS_FULL_DAY_SLOTS.map(s => s.time),
+        slots: [...JHS_AM_SLOTS, ...JHS_PM_SLOTS].map(s => s.time),
         timetable,
       };
 
       console.log(`[JHS] Section "${secName}" saved. AM: ${amFilled}/${amTotalSlots}, PM: ${pmFilled}/${pmTotalSlots}`);
-    } // END for (section)
-  } // END for (gradeNum)
+    }
+  }
 
-  // ═══ SAVE TO DATABASE ═══
   const slotsByTeacher = {};
   Object.values(masterSectionSchedules).forEach(secObj => {
     const secName = secObj.details.name;
@@ -1058,7 +1020,7 @@ const server = http.createServer(async (req, res) => {
           await logAuditEvent("login_failed", null, req.socket.remoteAddress, { username, reason: "invalid_password" });
           return send(res, 401, { error: "Invalid credentials." });
         }
-        
+
         let sessionVersion = user.session_version || 1;
 
         if (user.role === "admin") {
@@ -2475,9 +2437,10 @@ const server = http.createServer(async (req, res) => {
              FROM audit_logs
              WHERE user_id = $1
                AND action IN (
-                 'login_success', 'login_failed',
-                 'change_password', 'change_password_failed',
-                 'reset_password_success', 'reset_password_failed',
+                 'change_password',
+                 'change_password_failed',
+                 'reset_password_success',
+                 'reset_password_failed',
                  'update_profile'
                )`,
             [auth.id]
@@ -2487,57 +2450,134 @@ const server = http.createServer(async (req, res) => {
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
             .slice(0, 50);
 
-          return send(res, 200, { history: merged });
+          const sanitized = merged.map(row => {
+            const ip = row.ip_address || "";
+            const isLocal = !ip || /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip);
+
+            return {
+              source: row.source,
+              change_type: row.change_type,
+              old_value: row.old_value,
+              new_value: row.new_value,
+              device: parseUserAgentServer(row.user_agent),
+              location: isLocal ? "Local Network" : "Your Network",
+              timestamp: row.timestamp,
+            };
+          });
+
+          return send(res, 200, { history: sanitized });
         } catch (err) {
           console.error("[teacher] get profile history error:", err.message);
           return send(res, 500, { error: "Failed to load history." });
         }
       }
 
+      // ═══════════════════════════════════════════════════════
+      // ═══ TEACHER SCHEDULE — FIXED VERSION              ═══
+      // ═══════════════════════════════════════════════════════
       if (pathname === "/api/teacher/schedule" && req.method === "GET") {
         try {
-          let targetTeacherId = null;
+          // ── Step 1: Resolve this teacher's user row ──
           const { rows: userRows } = await db.query(
-            "SELECT id, name, teacher_id FROM public.users WHERE id = $1",
+            "SELECT id, username, name, display_name, teacher_id FROM public.users WHERE id = $1",
             [auth.id]
           );
 
-          if (userRows.length > 0) {
-            targetTeacherId = userRows[0].teacher_id;
-            if (!targetTeacherId && userRows[0].name) {
+          if (userRows.length === 0) {
+            return send(res, 404, { error: "User not found." });
+          }
+
+          const user = userRows[0];
+          let targetTeacherId = user.teacher_id;
+          let targetTeacherName = null;
+
+          console.log(`[teacher/schedule] Resolving for user: ${user.username} (teacher_id=${targetTeacherId})`);
+
+          // ── Step 2: If teacher_id exists, look up their name ──
+          if (targetTeacherId) {
+            const { rows: t } = await db.query(
+              "SELECT id, first_name, last_name FROM teachers WHERE id = $1",
+              [targetTeacherId]
+            );
+            if (t.length > 0) {
+              targetTeacherName = `${t[0].first_name || ""} ${t[0].last_name || ""}`.trim();
+            }
+          }
+
+          // ── Step 3: If no teacher_id, try to match by name ──
+          if (!targetTeacherId) {
+            const nameToTry = user.display_name || user.name;
+            console.log(`[teacher/schedule] No teacher_id, trying name match: "${nameToTry}"`);
+
+            if (nameToTry) {
               const { rows: byName } = await db.query(
-                "SELECT id FROM teachers WHERE (first_name || ' ' || last_name) = $1 LIMIT 1",
-                [userRows[0].name]
+                `SELECT id, first_name, last_name FROM teachers
+                 WHERE LOWER(first_name || ' ' || last_name) = LOWER($1)
+                    OR LOWER(COALESCE(name, '')) = LOWER($1)
+                 LIMIT 1`,
+                [nameToTry]
               );
               if (byName.length > 0) {
                 targetTeacherId = String(byName[0].id);
-                await db.query("UPDATE public.users SET teacher_id = $1 WHERE id = $2", [targetTeacherId, auth.id]);
+                targetTeacherName = `${byName[0].first_name || ""} ${byName[0].last_name || ""}`.trim();
+
+                // Persist for next time
+                await db.query(
+                  "UPDATE public.users SET teacher_id = $1 WHERE id = $2",
+                  [targetTeacherId, auth.id]
+                );
+                console.log(`[teacher/schedule] Matched by name → teacher_id=${targetTeacherId}`);
               }
             }
           }
 
-          if (!targetTeacherId) return send(res, 404, { error: "No teacher profile associated." });
+          if (!targetTeacherId) {
+            console.log(`[teacher/schedule] No teacher profile for user ${user.username}`);
+            return send(res, 200, {
+              schedule: { teacher_id: null, teacher_name: null, slots: [] },
+              teacher: null,
+              message: "No teacher profile linked to this account.",
+            });
+          }
 
-          const { rows: teacherRows } = await db.query(
-            "SELECT * FROM teachers WHERE id = $1",
-            [targetTeacherId]
-          );
-
+          // ── Step 4: Fetch ALL schedules and filter slots ──
           const { rows: allSchedules } = await db.query("SELECT * FROM schedules");
 
           const mySlots = [];
+          const normalizedTargetName = normalizeTeacherName(targetTeacherName);
+
           allSchedules.forEach(sched => {
             const slots = safeJsonParse(sched.slots, []);
             slots.forEach(slot => {
+              // Match #1 — by teacherId (from slot OR row owner)
               const slotTeacherId = slot.teacherId != null ? slot.teacherId : sched.teacher_id;
-              if (String(slotTeacherId) === String(targetTeacherId)) {
+              const idMatch = String(slotTeacherId) === String(targetTeacherId);
+
+              // Match #2 — by teacherName (fallback safety net)
+              const slotName = slot.teacherName || slot.teacher || "";
+              const nameMatch = normalizedTargetName &&
+                normalizeTeacherName(slotName) === normalizedTargetName;
+
+              if (idMatch || nameMatch) {
                 mySlots.push(slot);
               }
             });
           });
 
+          console.log(`[teacher/schedule] Returning ${mySlots.length} slots for teacher ${targetTeacherId} ("${targetTeacherName}")`);
+
+          // ── Step 5: Get teacher details ──
+          const { rows: teacherRows } = await db.query(
+            "SELECT * FROM teachers WHERE id = $1",
+            [targetTeacherId]
+          );
+
           return send(res, 200, {
-            schedule: { teacher_id: targetTeacherId, slots: mySlots },
+            schedule: {
+              teacher_id: targetTeacherId,
+              teacher_name: targetTeacherName,
+              slots: mySlots,
+            },
             teacher: teacherRows[0] || null,
           });
         } catch (err) {

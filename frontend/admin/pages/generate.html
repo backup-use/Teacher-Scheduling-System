@@ -10,12 +10,19 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/generate.css">
-
+    <link rel="stylesheet" href="../css/mobile-function.css">
     <!-- PDF Export Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
+    <!-- ═══ MOBILE MENU BUTTON ═══ -->
+    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu" type="button">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <!-- ═══ MOBILE OVERLAY ═══ -->
+    <div class="mobile-overlay" id="mobile-overlay"></div>
     <!-- ═══ SIDEBAR ═══ -->
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
@@ -179,5 +186,6 @@
     </script>
     <script src="/auth/logout.js" defer></script>
     <script src="../js/generate.js?v=1004"></script>
+    <script src="../js/mobile-function.js"></script>
 </body>
 </html>
