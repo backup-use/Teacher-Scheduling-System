@@ -5,7 +5,6 @@ const path = require("path");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const nodemailer = require("nodemailer");
 const db = require("./db");
 
 const PORT = process.env.PORT || 3000;
@@ -151,17 +150,9 @@ function normalizeTeacherName(name) {
     .trim();
 }
 
-// ── Mail transport ──
-const mailer = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
+// ═══════════════════════════════════════════════════════
+// ═══ EMAIL SENDING — BREVO HTTP API (RENDER SAFE)    ═══
+// ═══════════════════════════════════════════════════════
 async function sendCredentialsEmail({ to, name, username, password }) {
   const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/auth/login.html`;
 
@@ -201,13 +192,30 @@ async function sendCredentialsEmail({ to, name, username, password }) {
     `Sign in: ${loginUrl}\n\n` +
     `Please change your password after first login.`;
 
-  await mailer.sendMail({
-    from: process.env.SMTP_FROM,
-    to,
-    subject: "Your MIS Scheduler account",
-    text,
-    html,
+  // ── Use Brevo HTTP API instead of SMTP (Render blocks SMTP ports) ──
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "accept": "application/json",
+      "content-type": "application/json",
+      "api-key": process.env.BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: "MIS Scheduler",
+        email: process.env.BREVO_SENDER_EMAIL,
+      },
+      to: [{ email: to, name: name }],
+      subject: "Your MIS Scheduler account",
+      htmlContent: html,
+      textContent: text,
+    }),
   });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Brevo API error (${response.status}): ${error}`);
+  }
 }
 
 // ── JWT & authentication ──
@@ -2426,8 +2434,7 @@ const server = http.createServer(async (req, res) => {
           );
 
           const { rows: auditEvents } = await db.query(
-            `SELECT
-               'audit' AS source,
+            `SELECT               'audit' AS source,
                action AS change_type,
                NULL AS old_value,
                NULL AS new_value,
