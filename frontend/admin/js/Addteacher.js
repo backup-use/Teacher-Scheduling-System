@@ -311,13 +311,18 @@ function setupSubjectCombobox() {
 
     document.addEventListener('click', (e) => {
         const parentGroup = input.closest('.input-group');
-        if (parentGroup && !parentGroup.contains(e.target)) {
+        const isInsideInput = parentGroup && parentGroup.contains(e.target);
+        const isInsideMenu = menu.contains(e.target);
+        
+        if (!isInsideInput && !isInsideMenu) {
             closeMenu();
         }
     });
 
+    // NOTE: Removed e.stopPropagation() here so clicks on checkboxes 
+    // still allow the document listener to run if needed.
     menu.addEventListener('click', (e) => {
-        e.stopPropagation();
+        // Do nothing, just let it bubble up
     });
 }
 
