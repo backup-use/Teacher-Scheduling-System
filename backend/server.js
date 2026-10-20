@@ -2739,7 +2739,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Static files ──
-  const frontendBase = path.join(process.cwd(), "frontend");
+  const frontendBase = path.resolve(__dirname, "../frontend");
 
   if (pathname === "/" || pathname === "/login.html") {
     res.writeHead(302, { Location: "/auth/login.html" });
