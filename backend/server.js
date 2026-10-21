@@ -154,7 +154,7 @@ function normalizeTeacherName(name) {
 // ═══ EMAIL SENDING — BREVO HTTP API (RENDER SAFE)    ═══
 // ═══════════════════════════════════════════════════════
 async function sendCredentialsEmail({ to, name, username, password }) {
-  const loginUrl = `${process.env.APP_URL || "https://lectura-mdvz.onrender.com"}/auth/login.html`;
+  const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/auth/login.html`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
