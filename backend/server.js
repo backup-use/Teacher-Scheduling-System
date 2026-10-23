@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const db = require("./db");
+const nodemailer = require('nodemailer');
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -150,12 +151,32 @@ function normalizeTeacherName(name) {
     .trim();
 }
 
-// ═══════════════════════════════════════════════════════
-// ═══ EMAIL SENDING — BREVO HTTP API (RENDER SAFE)    ═══
-// ═══════════════════════════════════════════════════════
+// === EMAIL SENDING - GMAIL SMTP (NODEMAILER) ===
 async function sendCredentialsEmail({ to, name, username, password }) {
-  const loginUrl = `${process.env.APP_URL || "https://lectura-mdvz.onrender.com"}/auth/login.html`;
+  // 1. Setup the Gmail Transporter
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Use SSL
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD
+    }
+  });
 
+  // 2. Verify SMTP connection (for debugging)
+  try {
+    await transporter.verify();
+    console.log("SMTP Connection: Ready to send messages.");
+  } catch (verifyError) {
+    console.error("SMTP Connection Error: Failed to connect to Gmail.");
+    console.error(verifyError);
+    return false; // Stop execution if connection fails
+  }
+
+  const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/auth/login.html`;
+
+  // 3. Email HTML Template
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
       <h2 style="color: #111827;">Your MIS Scheduler account</h2>
@@ -163,58 +184,32 @@ async function sendCredentialsEmail({ to, name, username, password }) {
       <p>An administrator created an account for you. Use the credentials below to sign in:</p>
       <table style="border-collapse: collapse; margin: 16px 0;">
         <tr>
-          <td style="padding: 6px 12px; background: #f3f4f6;"><strong>Username</strong></td>
+          <td style="padding: 6px 12px;"><strong>Username:</strong></td>
           <td style="padding: 6px 12px;">${username}</td>
         </tr>
         <tr>
-          <td style="padding: 6px 12px; background: #f3f4f6;"><strong>Password</strong></td>
+          <td style="padding: 6px 12px;"><strong>Password:</strong></td>
           <td style="padding: 6px 12px;">${password}</td>
         </tr>
       </table>
-      <p>
-        <a href="${loginUrl}"
-           style="display:inline-block; padding:10px 20px; background:#2563eb; color:#fff;
-                  text-decoration:none; border-radius:6px;">
-          Sign in
-        </a>
-      </p>
-      <p style="color:#6b7280; font-size: 13px;">
-        For your security, please change this password after your first login.
-      </p>
+      <p><a href="${loginUrl}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Sign In</a></p>
+      <p>For your security, please change this password after your first login.</p>
     </div>
   `;
 
-  const text =
-    `Hi ${name},\n\n` +
-    `Your MIS Scheduler account:\n` +
-    `Username: ${username}\n` +
-    `Password: ${password}\n\n` +
-    `Sign in: ${loginUrl}\n\n` +
-    `Please change your password after first login.`;
-
-  // ── Use Brevo HTTP API instead of SMTP (Render blocks SMTP ports) ──
-  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "accept": "application/json",
-      "content-type": "application/json",
-      "api-key": process.env.BREVO_API_KEY,
-    },
-    body: JSON.stringify({
-      sender: {
-        name: "MIS Scheduler",
-        email: process.env.BREVO_SENDER_EMAIL,
-      },
-      to: [{ email: to, name: name }],
-      subject: "Your MIS Scheduler account",
-      htmlContent: html,
-      textContent: text,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Brevo API error (${response.status}): ${error}`);
+  // 4. Send the email
+  try {
+    const info = await transporter.sendMail({
+      from: `"MIS Scheduler" <${process.env.GMAIL_USER}>`,
+      to: to,
+      subject: "Your MIS Scheduler Account",
+      html: html
+    });
+    console.log("Email sent successfully:", info.messageId);
+    return true;
+  } catch (error) {
+    console.error("Error sending email via Gmail:", error);
+    return false;
   }
 }
 
