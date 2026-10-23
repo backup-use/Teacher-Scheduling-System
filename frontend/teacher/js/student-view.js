@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!token || role !== 'teacher') {
         alert('Unauthorized access! Redirecting to login.');
-        window.location.href = '/index.html';
+        window.location.href = '/auth/login.html';
         return;
     }
 

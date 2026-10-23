@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!token || role !== 'teacher') {
         alert('Unauthorized access! Redirecting to login.');
-        window.location.href = '/index.html';
+        window.location.href = '/auth/login.html';
         return;
     }
 
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.clear();
-            window.location.href = '/index.html?logout=success';
+            window.location.href = '/auth/login.html?logout=success';
         });
     }
 

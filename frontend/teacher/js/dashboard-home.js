@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!token || role !== 'teacher') {
         alert('Unauthorized access! Please login to your teacher account.');
-        window.location.href = '/index.html';
+        window.location.href = '/auth/login.html';
         return;
     }
 
