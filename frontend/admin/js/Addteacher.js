@@ -309,6 +309,7 @@ function setupSubjectCombobox() {
         filterSubjectList(input.value);
     });
 
+    // ✅ FIX 1: Close menu when clicking OUTSIDE the input and menu
     document.addEventListener('click', (e) => {
         const parentGroup = input.closest('.input-group');
         const isInsideInput = parentGroup && parentGroup.contains(e.target);
@@ -319,10 +320,17 @@ function setupSubjectCombobox() {
         }
     });
 
-    // NOTE: Removed e.stopPropagation() here so clicks on checkboxes 
-    // still allow the document listener to run if needed.
+    // ✅ FIX 2: Auto-close menu after selecting a subject (checkbox change)
+    menu.addEventListener('change', (e) => {
+        if (e.target.type === 'checkbox') {
+            // Wait 150ms so user sees the checkmark, then close
+            setTimeout(closeMenu, 150);
+        }
+    });
+
+    // ✅ FIX 3: Prevent click from closing menu when interacting with it
     menu.addEventListener('click', (e) => {
-        // Do nothing, just let it bubble up
+        e.stopPropagation();
     });
 }
 
