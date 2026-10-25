@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const db = require("./db");
 const nodemailer = require('nodemailer');
 
@@ -458,21 +458,9 @@ async function initAdmin() {
       return;
     }
 
-    const matches = await bcrypt.compare(ADMIN_PASSWORD, rows[0].password).catch(() => false);
-    if (!matches) {
-      const sha = crypto.createHash("sha256").update(ADMIN_PASSWORD).digest("hex");
-      const isLegacy = rows[0].password === sha;
-      const newHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
-      await db.query(
-        "UPDATE public.users SET password = $1 WHERE username = $2",
-        [newHash, ADMIN_USERNAME]
-      );
-      dlog(isLegacy
-        ? "[init] migrated admin password to bcrypt"
-        : "[init] admin password healed");
-    } else {
-      dlog("[init] admin account verified");
-    }
+    dlog("[init] Admin account already exists — skipping password reset.");
+    return;
+
   } catch (err) {
     console.error("[init] admin initialization failed:", err.message);
   }
