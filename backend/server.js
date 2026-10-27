@@ -151,32 +151,22 @@ function normalizeTeacherName(name) {
     .trim();
 }
 
-// === EMAIL SENDING - GMAIL SMTP (NODEMAILER) ===
+// === EMAIL SENDING - BREVO SMTP (NODEMAILER) ===
 async function sendCredentialsEmail({ to, name, username, password }) {
-  // 1. Setup the Gmail Transporter
+  // 1. Setup the Brevo Transporter
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Use SSL
+    host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+    port: parseInt(process.env.BREVO_SMTP_PORT || "587"),
+    secure: false, // true for 465, false for 587
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD
+      user: process.env.BREVO_SMTP_USER,
+      pass: process.env.BREVO_SMTP_PASS
     }
   });
 
-  // 2. Verify SMTP connection (for debugging)
-  try {
-    await transporter.verify();
-    console.log("SMTP Connection: Ready to send messages.");
-  } catch (verifyError) {
-    console.error("SMTP Connection Error: Failed to connect to Gmail.");
-    console.error(verifyError);
-    return false; // Stop execution if connection fails
-  }
+  const loginUrl = `${process.env.APP_URL || "https://lectura-mdvz.onrender.com"}/auth/login.html`;
 
-  const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/auth/login.html`;
-
-  // 3. Email HTML Template
+  // 2. Email HTML Template
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
       <h2 style="color: #111827;">Your MIS Scheduler account</h2>
@@ -197,18 +187,18 @@ async function sendCredentialsEmail({ to, name, username, password }) {
     </div>
   `;
 
-  // 4. Send the email
+  // 3. Send the email
   try {
     const info = await transporter.sendMail({
-      from: `"MIS Scheduler" <${process.env.GMAIL_USER}>`,
+      from: `"MIS Scheduler" <${process.env.BREVO_SENDER_EMAIL}>`, // Brevo requires a verified sender email
       to: to,
       subject: "Your MIS Scheduler Account",
       html: html
     });
-    console.log("Email sent successfully:", info.messageId);
+    console.log("Email sent successfully via Brevo:", info.messageId);
     return true;
   } catch (error) {
-    console.error("Error sending email via Gmail:", error);
+    console.error("Error sending email via Brevo:", error);
     return false;
   }
 }
@@ -250,7 +240,7 @@ async function getAuthWithSessionCheck(req) {
 
   try {
     const { rows } = await db.query(
-      "SELECT session_version FROM public.users WHERE id = $1",
+      "SELECT session_version, must_change_password FROM public.users WHERE id = $1",
       [decoded.id]
     );
     if (rows.length === 0) return null;
@@ -259,7 +249,9 @@ async function getAuthWithSessionCheck(req) {
     const tokenVersion = decoded.sessionVersion || 1;
 
     if (currentVersion !== tokenVersion) return null;
-    return decoded;
+
+    // Sync the flag from DB in case it changed after token issuance
+    return { ...decoded, mustChangePassword: rows[0].must_change_password === true };
   } catch (err) {
     console.error("[auth] session check failed:", err.message);
     return null;
@@ -388,6 +380,25 @@ async function initAdmin() {
     }
     dlog("[init] user columns verified");
 
+    // ── First-login password enforcement column + backfill ──
+    try {
+      await db.query(
+        "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;"
+      );
+      // Backfill: teachers who never changed their password are still on the
+      // admin-generated temporary password.
+      await db.query(
+        `UPDATE public.users
+         SET must_change_password = TRUE
+         WHERE role = 'teacher'
+           AND last_password_change IS NULL
+           AND must_change_password = FALSE;`
+      );
+      dlog("[init] must_change_password column ready + backfill applied");
+    } catch (err) {
+      console.warn("[init] could not set up must_change_password:", err.message);
+    }
+
     try {
       await db.query("ALTER TABLE sections ADD COLUMN IF NOT EXISTS shift VARCHAR(3) DEFAULT 'AM';");
       await db.query("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;");
@@ -450,8 +461,8 @@ async function initAdmin() {
       const adminId = "usr-" + genId();
       const hashed = await bcrypt.hash(ADMIN_PASSWORD, 10);
       await db.query(
-        `INSERT INTO public.users (id, username, password, role, name, display_name, teacher_id, email, session_version)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1)`,
+        `INSERT INTO public.users (id, username, password, role, name, display_name, teacher_id, email, session_version, must_change_password)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, FALSE)`,
         [adminId, ADMIN_USERNAME, hashed, "admin", ADMIN_NAME, ADMIN_NAME, null, null]
       );
       dlog(`[init] admin account created: ${ADMIN_USERNAME}`);
@@ -985,7 +996,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         const { rows } = await db.query(
-          "SELECT id, username, role, name, display_name, teacher_id, password, session_version FROM public.users WHERE username = $1",
+          "SELECT id, username, role, name, display_name, teacher_id, password, session_version, must_change_password FROM public.users WHERE username = $1",
           [username]
         );
 
@@ -1029,9 +1040,10 @@ const server = http.createServer(async (req, res) => {
             role: user.role,
             teacherId: user.teacher_id,
             sessionVersion,
+            mustChangePassword: user.must_change_password === true,
           },
           JWT_SECRET,
-          { expiresIn: "8h" }
+          { expiresIn: "15m" }
         );
 
         await logAuditEvent("login_success", user.id, req.socket.remoteAddress, { role: user.role });
@@ -1041,7 +1053,7 @@ const server = http.createServer(async (req, res) => {
           "HttpOnly",
           "SameSite=Strict",
           "Path=/",
-          "Max-Age=28800",
+          "Max-Age=900",
         ];
         if (process.env.NODE_ENV === "production") cookieOptions.push("Secure");
 
@@ -1050,12 +1062,14 @@ const server = http.createServer(async (req, res) => {
           200,
           {
             token,
+            mustChangePassword: user.must_change_password === true,
             user: {
               id: user.id,
               username: user.username,
               role: user.role,
               name: user.display_name || user.name,
               teacher_id: user.teacher_id,
+              mustChangePassword: user.must_change_password === true,
             },
           },
           { "Set-Cookie": cookieOptions.join("; ") }
@@ -1079,7 +1093,52 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // ── Reset password ──
+    // ── Idle refresh: slide the 15-minute window on genuine activity ──
+    if (pathname === "/api/auth/refresh" && req.method === "POST") {
+      const auth = getAuth(req);
+      if (!auth) return send(res, 401, { error: "Session expired." });
+
+      // Re-check session version to prevent refresh after a password reset
+      try {
+        const { rows } = await db.query(
+          "SELECT session_version, must_change_password FROM public.users WHERE id = $1",
+          [auth.id]
+        );
+        if (rows.length === 0) return send(res, 401, { error: "Session expired." });
+        const currentVersion = rows[0].session_version || 1;
+        const tokenVersion = auth.sessionVersion || 1;
+        if (currentVersion !== tokenVersion) {
+          return send(res, 401, { error: "Session expired." });
+        }
+      } catch {
+        return send(res, 401, { error: "Session expired." });
+      }
+
+      const token = jwt.sign(
+        {
+          id: auth.id,
+          username: auth.username,
+          role: auth.role,
+          teacherId: auth.teacherId,
+          sessionVersion: auth.sessionVersion,
+          mustChangePassword: auth.mustChangePassword === true,
+        },
+        JWT_SECRET,
+        { expiresIn: "15m" }
+      );
+
+      return send(res, 200, { refreshed: true }, {
+        "Set-Cookie": [
+          `lectura_token=${token}`,
+          "HttpOnly",
+          "SameSite=Strict",
+          "Path=/",
+          "Max-Age=900",
+        ].join("; "),
+      });
+    }
+
+    // ── Reset password (Master Key path) ──
     if (pathname === "/api/auth/reset-password" && req.method === "POST") {
       if (!rateLimit(req, res, { windowMs: 15 * 60_000, maxRequests: 10, keyPrefix: "reset-pw" })) return;
 
@@ -1120,7 +1179,8 @@ const server = http.createServer(async (req, res) => {
            SET password = $1,
                last_password_change = NOW(),
                updated_at = NOW(),
-               session_version = COALESCE(session_version, 1) + 1
+               session_version = COALESCE(session_version, 1) + 1,
+               must_change_password = FALSE
            WHERE id = $2`,
           [newHashedPassword, user.id]
         );
@@ -1164,6 +1224,7 @@ const server = http.createServer(async (req, res) => {
             createdAt: p.created_at || new Date().toISOString(),
             updatedAt: p.updated_at || new Date().toISOString(),
             lastPasswordChange: p.last_password_change || null,
+            mustChangePassword: p.must_change_password === true,
           });
         } catch (err) {
           console.error("[admin] get profile error:", err.message);
@@ -1223,6 +1284,7 @@ const server = http.createServer(async (req, res) => {
               createdAt: p.created_at || new Date().toISOString(),
               updatedAt: p.updated_at || new Date().toISOString(),
               lastPasswordChange: p.last_password_change || null,
+              mustChangePassword: p.must_change_password === true,
             },
           });
         } catch (err) {
@@ -1321,7 +1383,8 @@ const server = http.createServer(async (req, res) => {
              SET password = $1,
                  last_password_change = NOW(),
                  updated_at = NOW(),
-                 session_version = COALESCE(session_version, 1) + 1
+                 session_version = COALESCE(session_version, 1) + 1,
+                 must_change_password = FALSE
              WHERE id = $2`,
             [newHashedPassword, auth.id]
           );
@@ -1832,7 +1895,7 @@ const server = http.createServer(async (req, res) => {
           const hashedPassword = await bcrypt.hash(password, 10);
 
           await db.query(
-            "INSERT INTO public.users (id, username, password, role, name, display_name, teacher_id, email, session_version) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1)",
+            "INSERT INTO public.users (id, username, password, role, name, display_name, teacher_id, email, session_version, must_change_password) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, TRUE)",
             [userId, username, hashedPassword, "teacher", `${firstName} ${lastName}`, `${firstName} ${lastName}`, teacherIdStr, email]
           );
 
@@ -1844,14 +1907,19 @@ const server = http.createServer(async (req, res) => {
           let emailSent = false;
           if (email) {
             try {
-              await sendCredentialsEmail({
+              const ok = await sendCredentialsEmail({
                 to: email,
                 name: `${firstName} ${lastName}`,
                 username,
                 password,
               });
-              emailSent = true;
-              await logAuditEvent("send_credentials_email", auth.id, req.socket.remoteAddress, { teacherEmail: email });
+              emailSent = ok === true;
+              await logAuditEvent(
+                emailSent ? "send_credentials_email" : "send_credentials_email_failed",
+                auth.id,
+                req.socket.remoteAddress,
+                { teacherEmail: email }
+              );
             } catch (mailErr) {
               console.error("[mail] failed to send credentials:", mailErr.message);
               await logAuditEvent("send_credentials_email_failed", auth.id, req.socket.remoteAddress, {
@@ -2255,6 +2323,17 @@ const server = http.createServer(async (req, res) => {
       const auth = await getAuthWithSessionCheck(req);
       if (!auth || auth.role !== "teacher") return send(res, 403, { error: "Forbidden" });
 
+      // Force temporary-password change on first login.
+      // Only profile and profile-password are allowed until the flag clears.
+      if (auth.mustChangePassword === true &&
+          pathname !== "/api/teacher/profile/password" &&
+          pathname !== "/api/teacher/profile") {
+        return send(res, 403, {
+          error: "Password change required before using the system.",
+          code: "MUST_CHANGE_PASSWORD",
+        });
+      }
+
       if (pathname === "/api/teacher/profile" && req.method === "GET") {
         try {
           const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
@@ -2271,6 +2350,7 @@ const server = http.createServer(async (req, res) => {
             createdAt: p.created_at || new Date().toISOString(),
             updatedAt: p.updated_at || new Date().toISOString(),
             lastPasswordChange: p.last_password_change || null,
+            mustChangePassword: p.must_change_password === true,
           });
         } catch (err) {
           console.error("[teacher] get profile error:", err.message);
@@ -2333,6 +2413,7 @@ const server = http.createServer(async (req, res) => {
               createdAt: p.created_at || new Date().toISOString(),
               updatedAt: p.updated_at || new Date().toISOString(),
               lastPasswordChange: p.last_password_change || null,
+              mustChangePassword: p.must_change_password === true,
             },
           });
         } catch (err) {
@@ -2374,7 +2455,8 @@ const server = http.createServer(async (req, res) => {
              SET password = $1,
                  last_password_change = NOW(),
                  updated_at = NOW(),
-                 session_version = COALESCE(session_version, 1) + 1
+                 session_version = COALESCE(session_version, 1) + 1,
+                 must_change_password = FALSE
              WHERE id = $2`,
             [newHashedPassword, auth.id]
           );
@@ -2417,7 +2499,8 @@ const server = http.createServer(async (req, res) => {
           );
 
           const { rows: auditEvents } = await db.query(
-            `SELECT               'audit' AS source,
+            `SELECT
+               'audit' AS source,
                action AS change_type,
                NULL AS old_value,
                NULL AS new_value,
@@ -2467,7 +2550,6 @@ const server = http.createServer(async (req, res) => {
       // ═══════════════════════════════════════════════════════
       if (pathname === "/api/teacher/schedule" && req.method === "GET") {
         try {
-          // ── Step 1: Resolve this teacher's user row ──
           const { rows: userRows } = await db.query(
             "SELECT id, username, name, display_name, teacher_id FROM public.users WHERE id = $1",
             [auth.id]
@@ -2483,7 +2565,6 @@ const server = http.createServer(async (req, res) => {
 
           console.log(`[teacher/schedule] Resolving for user: ${user.username} (teacher_id=${targetTeacherId})`);
 
-          // ── Step 2: If teacher_id exists, look up their name ──
           if (targetTeacherId) {
             const { rows: t } = await db.query(
               "SELECT id, first_name, last_name FROM teachers WHERE id = $1",
@@ -2494,7 +2575,6 @@ const server = http.createServer(async (req, res) => {
             }
           }
 
-          // ── Step 3: If no teacher_id, try to match by name ──
           if (!targetTeacherId) {
             const nameToTry = user.display_name || user.name;
             console.log(`[teacher/schedule] No teacher_id, trying name match: "${nameToTry}"`);
@@ -2511,7 +2591,6 @@ const server = http.createServer(async (req, res) => {
                 targetTeacherId = String(byName[0].id);
                 targetTeacherName = `${byName[0].first_name || ""} ${byName[0].last_name || ""}`.trim();
 
-                // Persist for next time
                 await db.query(
                   "UPDATE public.users SET teacher_id = $1 WHERE id = $2",
                   [targetTeacherId, auth.id]
@@ -2530,7 +2609,6 @@ const server = http.createServer(async (req, res) => {
             });
           }
 
-          // ── Step 4: Fetch ALL schedules and filter slots ──
           const { rows: allSchedules } = await db.query("SELECT * FROM schedules");
 
           const mySlots = [];
@@ -2539,11 +2617,9 @@ const server = http.createServer(async (req, res) => {
           allSchedules.forEach(sched => {
             const slots = safeJsonParse(sched.slots, []);
             slots.forEach(slot => {
-              // Match #1 — by teacherId (from slot OR row owner)
               const slotTeacherId = slot.teacherId != null ? slot.teacherId : sched.teacher_id;
               const idMatch = String(slotTeacherId) === String(targetTeacherId);
 
-              // Match #2 — by teacherName (fallback safety net)
               const slotName = slot.teacherName || slot.teacher || "";
               const nameMatch = normalizedTargetName &&
                 normalizeTeacherName(slotName) === normalizedTargetName;
@@ -2556,7 +2632,6 @@ const server = http.createServer(async (req, res) => {
 
           console.log(`[teacher/schedule] Returning ${mySlots.length} slots for teacher ${targetTeacherId} ("${targetTeacherName}")`);
 
-          // ── Step 5: Get teacher details ──
           const { rows: teacherRows } = await db.query(
             "SELECT * FROM teachers WHERE id = $1",
             [targetTeacherId]
@@ -2744,7 +2819,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`[server] ready: http://localhost:${PORT}`);
+  console.log(`[server] ready: https://lectura-mdvz.onrender.com`);
 
   db.initDatabase()
     .then(() => initAdmin())
