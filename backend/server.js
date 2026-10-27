@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const db = require("./db");
-const nodemailer = require('nodemailer');
+const brevo = require('@getbrevo/brevo'); // Switched to Brevo HTTP API
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -151,54 +151,52 @@ function normalizeTeacherName(name) {
     .trim();
 }
 
-// === EMAIL SENDING - BREVO SMTP (NODEMAILER) ===
+// === EMAIL SENDING - BREVO HTTP API ===
 async function sendCredentialsEmail({ to, name, username, password }) {
-  // 1. Setup the Brevo Transporter
-  const transporter = nodemailer.createTransport({
-    host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
-    port: parseInt(process.env.BREVO_SMTP_PORT || "587"),
-    secure: false, // true for 465, false for 587
-    auth: {
-      user: process.env.BREVO_SMTP_USER,
-      pass: process.env.BREVO_SMTP_PASS
-    }
-  });
+  const loginUrl = `${process.env.APP_URL || "https://lectura-mdvz.onrender.com"}/auth/login.html`;
 
-  const loginUrl = `${process.env.APP_URL || "https://mis-scheduler.onrender.com)"}/auth/login.html`;
-
-  // 2. Email HTML Template
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
-      <h2 style="color: #111827;">Your MIS Scheduler account</h2>
-      <p>Hi ${name},</p>
-      <p>An administrator created an account for you. Use the credentials below to sign in:</p>
-      <table style="border-collapse: collapse; margin: 16px 0;">
-        <tr>
-          <td style="padding: 6px 12px;"><strong>Username:</strong></td>
-          <td style="padding: 6px 12px;">${username}</td>
-        </tr>
-        <tr>
-          <td style="padding: 6px 12px;"><strong>Password:</strong></td>
-          <td style="padding: 6px 12px;">${password}</td>
-        </tr>
-      </table>
-      <p><a href="${loginUrl}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Sign In</a></p>
-      <p>For your security, please change this password after your first login.</p>
-    </div>
-  `;
-
-  // 3. Send the email
   try {
-    const info = await transporter.sendMail({
-      from: `"MIS Scheduler" <${process.env.BREVO_SENDER_EMAIL}>`, // Brevo requires a verified sender email
-      to: to,
-      subject: "Your MIS Scheduler Account",
-      html: html
-    });
-    console.log("Email sent successfully via Brevo:", info.messageId);
+    // 1. Setup the Brevo API Client
+    let apiInstance = new brevo.TransactionalEmailsApi();
+    let apiKey = apiInstance.authentications['apiKey'];
+    apiKey.apiKey = process.env.BREVO_API_KEY;
+
+    // 2. Setup the Email Content
+    let sendSmtpEmail = new brevo.SendSmtpEmail();
+    sendSmtpEmail.subject = "Your MIS Scheduler Account";
+    sendSmtpEmail.sender = { 
+      "name": "MIS Scheduler", 
+      "email": process.env.BREVO_SENDER_EMAIL 
+    };
+    sendSmtpEmail.to = [{ "email": to, "name": name }];
+    
+    // 3. Email HTML Template
+    sendSmtpEmail.htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
+        <h2 style="color: #111827;">Your MIS Scheduler account</h2>
+        <p>Hi ${name},</p>
+        <p>An administrator created an account for you. Use the credentials below to sign in:</p>
+        <table style="border-collapse: collapse; margin: 16px 0;">
+          <tr>
+            <td style="padding: 6px 12px;"><strong>Username:</strong></td>
+            <td style="padding: 6px 12px;">${username}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 12px;"><strong>Password:</strong></td>
+            <td style="padding: 6px 12px;">${password}</td>
+          </tr>
+        </table>
+        <p><a href="${loginUrl}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Sign In</a></p>
+        <p>For your security, please change this password after your first login.</p>
+      </div>
+    `;
+
+    // 4. Send the email via API
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("Email sent successfully via Brevo API:", data.messageId);
     return true;
   } catch (error) {
-    console.error("Error sending email via Brevo:", error);
+    console.error("Error sending email via Brevo API:", error.response ? error.response.body : error);
     return false;
   }
 }
@@ -385,8 +383,6 @@ async function initAdmin() {
       await db.query(
         "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;"
       );
-      // Backfill: teachers who never changed their password are still on the
-      // admin-generated temporary password.
       await db.query(
         `UPDATE public.users
          SET must_change_password = TRUE
@@ -1098,7 +1094,6 @@ const server = http.createServer(async (req, res) => {
       const auth = getAuth(req);
       if (!auth) return send(res, 401, { error: "Session expired." });
 
-      // Re-check session version to prevent refresh after a password reset
       try {
         const { rows } = await db.query(
           "SELECT session_version, must_change_password FROM public.users WHERE id = $1",
@@ -2324,7 +2319,6 @@ const server = http.createServer(async (req, res) => {
       if (!auth || auth.role !== "teacher") return send(res, 403, { error: "Forbidden" });
 
       // Force temporary-password change on first login.
-      // Only profile and profile-password are allowed until the flag clears.
       if (auth.mustChangePassword === true &&
           pathname !== "/api/teacher/profile/password" &&
           pathname !== "/api/teacher/profile") {
@@ -2545,9 +2539,6 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══════════════════════════════════════════════════════
-      // ═══ TEACHER SCHEDULE — FIXED VERSION              ═══
-      // ═══════════════════════════════════════════════════════
       if (pathname === "/api/teacher/schedule" && req.method === "GET") {
         try {
           const { rows: userRows } = await db.query(
