@@ -151,52 +151,49 @@ function normalizeTeacherName(name) {
     .trim();
 }
 
-// === EMAIL SENDING - BREVO HTTP API ===
+// === EMAIL SENDING - BREVO HTTP API (LATEST SDK) ===
 async function sendCredentialsEmail({ to, name, username, password }) {
   const loginUrl = `${process.env.APP_URL || "https://lectura-mdvz.onrender.com"}/auth/login.html`;
 
   try {
-    // 1. Setup the Brevo API Client
-    let apiInstance = new brevo.TransactionalEmailsApi();
-    let apiKey = apiInstance.authentications['apiKey'];
-    apiKey.apiKey = process.env.BREVO_API_KEY;
+    // 1. Initialize the Brevo Client (new syntax)
+    const brevoClient = new brevo.BrevoClient({
+      apiKey: process.env.BREVO_API_KEY
+    });
 
-    // 2. Setup the Email Content
-    let sendSmtpEmail = new brevo.SendSmtpEmail();
-    sendSmtpEmail.subject = "Your MIS Scheduler Account";
-    sendSmtpEmail.sender = { 
-      "name": "MIS Scheduler", 
-      "email": process.env.BREVO_SENDER_EMAIL 
-    };
-    sendSmtpEmail.to = [{ "email": to, "name": name }];
-    
-    // 3. Email HTML Template
-    sendSmtpEmail.htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
-        <h2 style="color: #111827;">Your MIS Scheduler account</h2>
-        <p>Hi ${name},</p>
-        <p>An administrator created an account for you. Use the credentials below to sign in:</p>
-        <table style="border-collapse: collapse; margin: 16px 0;">
-          <tr>
-            <td style="padding: 6px 12px;"><strong>Username:</strong></td>
-            <td style="padding: 6px 12px;">${username}</td>
-          </tr>
-          <tr>
-            <td style="padding: 6px 12px;"><strong>Password:</strong></td>
-            <td style="padding: 6px 12px;">${password}</td>
-          </tr>
-        </table>
-        <p><a href="${loginUrl}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Sign In</a></p>
-        <p>For your security, please change this password after your first login.</p>
-      </div>
-    `;
+    // 2. Send the transactional email
+    const result = await brevoClient.transactionalEmails.sendTransacEmail({
+      subject: "Your MIS Scheduler Account",
+      sender: { 
+        name: "MIS Scheduler", 
+        email: process.env.BREVO_SENDER_EMAIL 
+      },
+      to: [{ email: to, name: name }],
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
+          <h2 style="color: #111827;">Your MIS Scheduler account</h2>
+          <p>Hi ${name},</p>
+          <p>An administrator created an account for you. Use the credentials below to sign in:</p>
+          <table style="border-collapse: collapse; margin: 16px 0;">
+            <tr>
+              <td style="padding: 6px 12px;"><strong>Username:</strong></td>
+              <td style="padding: 6px 12px;">${username}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 12px;"><strong>Password:</strong></td>
+              <td style="padding: 6px 12px;">${password}</td>
+            </tr>
+          </table>
+          <p><a href="${loginUrl}" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Sign In</a></p>
+          <p>For your security, please change this password after your first login.</p>
+        </div>
+      `
+    });
 
-    // 4. Send the email via API
-    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log("Email sent successfully via Brevo API:", data.messageId);
+    console.log("Email sent successfully via Brevo API:", result.messageId);
     return true;
   } catch (error) {
-    console.error("Error sending email via Brevo API:", error.response ? error.response.body : error);
+    console.error("Error sending email via Brevo API:", error.message || error);
     return false;
   }
 }
