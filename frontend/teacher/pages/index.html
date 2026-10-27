@@ -27,6 +27,28 @@
   </head>
 
   <body>
+    <!-- ═══ 1. MOBILE TOP HEADER ═══ -->
+    <header class="mobile-header" id="mobile-header">
+      <!-- Hamburger Button -->
+      <button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open Menu">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      
+      <!-- Mobile Logo -->
+      <div class="mobile-logo">
+        <img src="/auth/makiling_logo.png" alt="Logo" width="30" height="30" />
+        <span>MIS Scheduler</span>
+      </div>
+
+      <!-- Mobile Logout Button -->
+      <button type="button" id="mobile-logout-btn" class="mobile-logout" onclick="window.location.href='/auth/logout.html'">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </button>
+    </header>
+
+    <!-- ═══ 2. SIDEBAR BACKDROP (Mobile Overlay) ═══ -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
     <!-- SIDEBAR -->
     <aside class="sidebar" id="app-sidebar">
       <div class="sidebar-top">
@@ -118,8 +140,8 @@
         </button>
       </nav>
 
-      <!-- LOGOUT -->
-      <button type="button" id="logout-btn" class="nav-item logout-btn">
+      <!-- LOGOUT (Hidden on Mobile via CSS) -->
+      <button type="button" id="logout-btn" class="nav-item logout-btn desktop-only-logout" onclick="window.location.href='/auth/logout.html'">
         <span class="nav-icon">
           <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
         </span>
@@ -212,7 +234,7 @@
       </section>
     </main>
 
-    <!-- SIDEBAR TOGGLE SCRIPT -->
+    <!-- SIDEBAR TOGGLE & MOBILE SCRIPTS -->
     <script>
       (function initSidebarToggle() {
         const sidebar = document.getElementById("app-sidebar");
@@ -221,24 +243,20 @@
         const expandBtn = document.getElementById("sidebar-expand-btn");
         const toggleIcon = toggleBtn.querySelector(".toggle-icon");
 
+        // Mobile Elements
+        const mobileNavToggle = document.getElementById('mobile-nav-toggle');
+        const backdrop = document.getElementById('sidebar-backdrop');
+
         const setCollapsedState = (collapsed) => {
           sidebar.classList.toggle("collapsed", collapsed);
-
           mainContent.classList.toggle("sidebar-collapsed", collapsed);
-
           expandBtn.classList.toggle("visible", collapsed);
 
           toggleBtn.setAttribute("aria-expanded", String(!collapsed));
-
-          toggleBtn.setAttribute(
-            "aria-label",
-            collapsed ? "Expand sidebar" : "Collapse sidebar",
-          );
-
+          toggleBtn.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
           toggleBtn.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
 
           toggleIcon.classList.toggle("fa-chevron-left", !collapsed);
-
           toggleIcon.classList.toggle("fa-chevron-right", collapsed);
         };
 
@@ -249,14 +267,11 @@
 
         function toggleSidebar() {
           if (isAnimating) return;
-
           isAnimating = true;
 
           requestAnimationFrame(() => {
             const nowCollapsed = !sidebar.classList.contains("collapsed");
-
             setCollapsedState(nowCollapsed);
-
             localStorage.setItem("sidebar-collapsed", String(nowCollapsed));
 
             window.setTimeout(() => {
@@ -267,11 +282,44 @@
 
         toggleBtn.addEventListener("click", toggleSidebar);
         expandBtn.addEventListener("click", toggleSidebar);
+
+        // Mobile Sidebar Logic
+        if (mobileNavToggle && backdrop) {
+            mobileNavToggle.addEventListener('click', () => {
+                sidebar.classList.add('mobile-open');
+                backdrop.classList.add('active');
+            });
+
+            backdrop.addEventListener('click', () => {
+                sidebar.classList.remove('mobile-open');
+                backdrop.classList.remove('active');
+            });
+        }
       })();
     </script>
 
-    <!-- Existing authentication and dashboard scripts -->
+    <!-- Authentication, Dashboard Scripts & Force Password Check -->
     <script src="/auth/logout.js" defer></script>
     <script src="../js/dashboard-home.js"></script>
+    
+    <script>
+      // Check if the user needs to change their password
+      document.addEventListener('DOMContentLoaded', async () => {
+          try {
+              const res = await fetch('/api/teacher/profile', {
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include'
+              });
+              if (res.ok) {
+                  const profile = await res.json();
+                  if (profile.mustChangePassword) {
+                      window.location.href = '/teacher/pages/profile.html?force=change';
+                  }
+              }
+          } catch (e) {
+              console.error("Profile check failed", e);
+          }
+      });
+    </script>
   </body>
 </html>

@@ -898,3 +898,106 @@ body {
     letter-spacing: 0.8px;
 }
 
+/* ═══════════════════════════════════════════════════════
+   MOBILE RESPONSIVENESS (Max Width: 768px)
+   ═══════════════════════════════════════════════════════ */
+
+/* Hide Mobile Header on Desktop by default */
+.mobile-header {
+    display: none;
+}
+
+/* Backdrop for sidebar (hidden by default) */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-backdrop.active {
+    display: block;
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    /* 1. Show Mobile Header & push content down */
+    .mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: #1a4321; /* Adjust to match your theme */
+        color: white;
+        padding: 10px 15px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .mobile-nav-toggle {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+
+    .mobile-logo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: bold;
+        font-family: 'Cinzel', serif;
+    }
+
+    .mobile-logout {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* 2. Adjust Main Content to not hide behind header */
+    .main-content {
+        padding-top: 80px !important; /* Space for the mobile header */
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    /* 3. Make Sidebar an Overlay Drawer */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px; /* Hide off-screen */
+        height: 100vh;
+        width: 260px;
+        z-index: 999;
+        transition: left 0.3s ease-in-out;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+    }
+
+    /* When sidebar has 'mobile-open' class, slide it in */
+    .sidebar.mobile-open {
+        left: 0;
+    }
+
+    /* 4. Hide Desktop Elements */
+    .sidebar-toggle, 
+    .sidebar-expand-btn,
+    .desktop-only-logout {
+        display: none !important;
+    }
+}

@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
@@ -63,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
     // 4. PHILIPPINE HOLIDAYS
-    // Fixed-date holidays only
     // ==========================================
 
     function getHoliday(date) {
@@ -118,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let startMinutes = sh * 60 + sm;
         let endMinutes = eh * 60 + em;
 
-        // Handle classes that end after midnight
         if (endMinutes < startMinutes) {
             endMinutes += 24 * 60;
         }
@@ -178,10 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         todayTitle.textContent = "Today's Schedule";
         todayDate.textContent = todayDateStr;
 
-        // ------------------------------------------
         // WEEKEND CHECK
-        // ------------------------------------------
-
         if (isWeekend()) {
 
             const dayName = getTodayDayName();
@@ -211,10 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ------------------------------------------
         // HOLIDAY CHECK
-        // ------------------------------------------
-
         const holiday = getHoliday(new Date());
 
         if (holiday) {
@@ -240,10 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ------------------------------------------
         // FILTER TODAY'S CLASSES
-        // ------------------------------------------
-
         const todayClasses = teacherClasses
             .filter(slot =>
                 (slot.day || '').toLowerCase() ===
@@ -260,10 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return aTime.localeCompare(bTime);
             });
 
-        // ------------------------------------------
         // NO CLASSES TODAY
-        // ------------------------------------------
-
         if (todayClasses.length === 0) {
 
             todayBody.innerHTML = `
@@ -289,35 +274,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ------------------------------------------
         // CALCULATE TOTAL CLASS DURATION
-        // ------------------------------------------
-
         const totalMinutes = todayClasses.reduce((sum, slot) => {
-
-            return sum + calculateDuration(
-                slot.startTime,
-                slot.endTime
-            );
-
+            return sum + calculateDuration(slot.startTime, slot.endTime);
         }, 0);
 
-        // ------------------------------------------
         // BUILD CLASS LIST
-        // ------------------------------------------
-
         const classListHTML = todayClasses.map(slot => {
 
-            const duration = calculateDuration(
-                slot.startTime,
-                slot.endTime
-            );
+            const duration = calculateDuration(slot.startTime, slot.endTime);
 
-            const roomText =
-                slot.room && slot.room !== 'N/A'
-                    ? slot.room
-                    : null;
-
+            const roomText = slot.room && slot.room !== 'N/A' ? slot.room : null;
             const sectionText = slot.section || '';
 
             return `
@@ -345,29 +312,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         <div class="class-meta">
 
-                            ${
-                                sectionText
-                                    ? `
-                                        <span class="meta-item">
-                                            <i class="fa-solid fa-users"
-                                               aria-hidden="true"></i>
-                                            Section ${escapeHtml(sectionText)}
-                                        </span>
-                                    `
-                                    : ''
-                            }
+                            ${sectionText ? `
+                                <span class="meta-item">
+                                    <i class="fa-solid fa-users" aria-hidden="true"></i>
+                                    Section ${escapeHtml(sectionText)}
+                                </span>
+                            ` : ''}
 
-                            ${
-                                roomText
-                                    ? `
-                                        <span class="meta-item">
-                                            <i class="fa-solid fa-door-open"
-                                               aria-hidden="true"></i>
-                                            Room ${escapeHtml(roomText)}
-                                        </span>
-                                    `
-                                    : ''
-                            }
+                            ${roomText ? `
+                                <span class="meta-item">
+                                    <i class="fa-solid fa-door-open" aria-hidden="true"></i>
+                                    Room ${escapeHtml(roomText)}
+                                </span>
+                            ` : ''}
 
                         </div>
 
@@ -378,40 +335,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         }).join('');
 
-        // ------------------------------------------
         // TODAY'S TOTALS
-        // ------------------------------------------
-
         const totalHTML = `
             <div class="today-total">
 
                 <span class="total-item">
-                    <i class="fa-solid fa-book-open"
-                       aria-hidden="true"></i>
-
-                    ${todayClasses.length}
-                    ${todayClasses.length === 1 ? 'Class' : 'Classes'}
+                    <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+                    ${todayClasses.length} ${todayClasses.length === 1 ? 'Class' : 'Classes'}
                 </span>
 
                 <span class="total-item">
-                    <i class="fa-regular fa-clock"
-                       aria-hidden="true"></i>
-
+                    <i class="fa-regular fa-clock" aria-hidden="true"></i>
                     ${formatMinutes(totalMinutes)} Total
                 </span>
 
             </div>
         `;
 
-        // ------------------------------------------
-        // DISPLAY SCHEDULE
-        // ------------------------------------------
-
         todayBody.innerHTML = `
             <div class="today-classes-list">
                 ${classListHTML}
             </div>
-
             ${totalHTML}
         `;
     }
@@ -428,104 +372,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const response = await fetch('/api/teacher/schedule', {
                 method: 'GET',
-
                 headers: {
                     'Authorization': `Bearer ${sessionToken}`,
                     'Content-Type': 'application/json'
                 }
             });
 
+            // Catch forced password change
+            if (response.status === 403) {
+                const errData = await response.json();
+                if (errData.code === 'MUST_CHANGE_PASSWORD') {
+                    window.location.href = '/teacher/pages/profile.html?force=change';
+                    return;
+                }
+            }
+
             if (!response.ok) {
                 throw new Error('Unable to retrieve teacher schedule.');
             }
 
             const data = await response.json();
-
             const schedule = data.schedule;
+            const slots = schedule && Array.isArray(schedule.slots) ? schedule.slots : [];
 
-            const slots =
-                schedule && Array.isArray(schedule.slots)
-                    ? schedule.slots
-                    : [];
-
-            // --------------------------------------
             // CALCULATE UNIQUE SUBJECTS
-            // --------------------------------------
-
             const uniqueSubjects = new Set(
-                slots
-                    .map(slot => slot.subject)
-                    .filter(Boolean)
+                slots.map(slot => slot.subject).filter(Boolean)
             );
 
-            // --------------------------------------
             // UPDATE STATISTICS
-            // --------------------------------------
-
             const statSlots = document.getElementById('stat-slots');
             const statSubjects = document.getElementById('stat-subjects');
 
-            if (statSlots) {
-                statSlots.textContent = `${slots.length} Slots`;
-            }
+            if (statSlots) statSlots.textContent = `${slots.length} Slots`;
+            if (statSubjects) statSubjects.textContent = `${uniqueSubjects.size} Subjects`;
 
-            if (statSubjects) {
-                statSubjects.textContent = `${uniqueSubjects.size} Subjects`;
-            }
-
-            // --------------------------------------
             // UPDATE WELCOME BADGE
-            // --------------------------------------
-
             const badgeText = document.getElementById('badge-text');
-
             if (badgeText) {
-
                 badgeText.textContent = slots.length > 0
                     ? `${slots.length} Classes Assigned`
                     : 'No Schedule';
             }
 
-            // --------------------------------------
             // RENDER TODAY'S SCHEDULE
-            // --------------------------------------
-
             renderTodaySchedule(slots);
 
         } catch (error) {
 
-            console.error(
-                'Error rendering teacher dashboard:',
-                error
-            );
+            console.error('Error rendering teacher dashboard:', error);
 
-            // Update the welcome badge
             const badgeText = document.getElementById('badge-text');
+            if (badgeText) badgeText.textContent = 'Schedule Unavailable';
 
-            if (badgeText) {
-                badgeText.textContent = 'Schedule Unavailable';
-            }
-
-            // Display a user-friendly error message
             const todayBody = document.getElementById('today-body');
-
             if (todayBody) {
-
                 todayBody.innerHTML = `
                     <div class="no-classes-message">
-
                         <span class="no-classes-icon" aria-hidden="true">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                         </span>
-
                         <div class="no-classes-title">
                             Unable to Load Schedule
                         </div>
-
                         <p class="no-classes-subtitle">
                             Please refresh the page or try again later.
                         </p>
-
                     </div>
                 `;
             }
@@ -535,7 +447,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 9. INITIALIZE DASHBOARD
     // ==========================================
-
     loadDashboardStats();
-
 });
