@@ -164,7 +164,7 @@ async function sendCredentialsEmail({ to, name, username, password }) {
     }
   });
 
-  const loginUrl = `${process.env.APP_URL || "https://lectura-mdvz.onrender.com"}/auth/login.html`;
+  const loginUrl = `${process.env.APP_URL || "https://mis-scheduler.onrender.com)"}/auth/login.html`;
 
   // 2. Email HTML Template
   const html = `
@@ -2819,7 +2819,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`[server] ready: https://lectura-mdvz.onrender.com`);
+  console.log(`[server] ready: http://localhost:${PORT}`);
 
   db.initDatabase()
     .then(() => initAdmin())
