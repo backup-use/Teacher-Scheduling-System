@@ -902,20 +902,19 @@ body {
    MOBILE RESPONSIVENESS (Max Width: 768px)
    ═══════════════════════════════════════════════════════ */
 
-/* Hide Mobile Header on Desktop by default */
 .mobile-header {
     display: none;
 }
 
-/* Backdrop for sidebar (hidden by default) */
 .sidebar-backdrop {
     display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6); /* Darker overlay */
     z-index: 998;
     opacity: 0;
     transition: opacity 0.3s ease;
+    backdrop-filter: blur(2px);
 }
 
 .sidebar-backdrop.active {
@@ -924,12 +923,17 @@ body {
 }
 
 @media (max-width: 768px) {
-    /* 1. Show Mobile Header & push content down */
+    /* Remove the dark green background from body on mobile */
+    body {
+        background: #f0f9f4 !important;
+    }
+
+    /* 1. Show Mobile Header */
     .mobile-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background-color: #1a4321; /* Adjust to match your theme */
+        background-color: #1a4321;
         color: white;
         padding: 10px 15px;
         position: fixed;
@@ -946,6 +950,7 @@ body {
         color: white;
         font-size: 1.5rem;
         cursor: pointer;
+        padding: 5px;
     }
 
     .mobile-logo {
@@ -970,26 +975,26 @@ body {
         gap: 5px;
     }
 
-    /* 2. Adjust Main Content to not hide behind header */
+    /* 2. Reset Main Content */
     .main-content {
-        padding-top: 80px !important; /* Space for the mobile header */
+        padding: 80px 15px 20px 15px !important;
         margin-left: 0 !important;
         width: 100% !important;
+        min-height: 100vh;
     }
 
-    /* 3. Make Sidebar an Overlay Drawer */
+    /* 3. Sidebar Drawer Fixes */
     .sidebar {
         position: fixed;
         top: 0;
-        left: -280px; /* Hide off-screen */
-        height: 100vh;
+        left: -280px;
+        height: 100dvh; /* Fixes iOS Safari 100vh bug */
         width: 260px;
         z-index: 999;
         transition: left 0.3s ease-in-out;
         box-shadow: 2px 0 10px rgba(0,0,0,0.3);
     }
 
-    /* When sidebar has 'mobile-open' class, slide it in */
     .sidebar.mobile-open {
         left: 0;
     }
