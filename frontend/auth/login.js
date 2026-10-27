@@ -76,11 +76,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('userRole', user.role || '');
                     localStorage.setItem('userName', user.name || '');
                     localStorage.setItem('userId', user.id || '');
+                    localStorage.setItem('mustChangePassword', user.mustChangePassword ? 'true' : 'false');
 
                     if (user.teacher_id) {
                         localStorage.setItem('teacherId', user.teacher_id);
                     } else {
                         localStorage.removeItem('teacherId');
+                    }
+
+                    // Forced temporary-password change (teachers only).
+                    // Master Key stays ONLY in the login-panel Forgot Password modal.
+                    if (user.role === 'teacher' && user.mustChangePassword === true) {
+                        window.location.href = '/teacher/pages/profile.html?force=change';
+                        return;
                     }
 
                     // Redirect based on role
@@ -252,7 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (res.ok) {
-                    // Hide coffee overlay, but keep modal open to show success
                     hideCoffeeLoader();
 
                     showResetMessage(
