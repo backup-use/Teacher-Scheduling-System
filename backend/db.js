@@ -12,10 +12,7 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // Automatically use SSL if we are not on localhost
-  ssl: process.env.DATABASE_URL.includes("localhost") 
-    ? false 
-    : { rejectUnauthorized: false } 
+  ssl: { rejectUnauthorized: false },
 });
 
 pool.on("error", (err) => {
