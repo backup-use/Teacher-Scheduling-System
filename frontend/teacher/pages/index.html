@@ -3,177 +3,101 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <title>Makiling IS | Teacher Dashboard</title>
     <link rel="icon" type="image/png" href="/auth/makiling_logo.png" />
-
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap"
-      rel="stylesheet"
-    />
-
-    <!-- Font Awesome Free Icons -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-      referrerpolicy="no-referrer"
-    />
-
-    <!-- Dashboard Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="../css/index.css" />
   </head>
 
   <body>
+    <!-- TOP NAVBAR -->
+    <header class="mobile-header" id="mobile-header">
+      <button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open Menu">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div class="mobile-logo">
+        <img src="/auth/makiling_logo.png" alt="Logo" width="40" height="40" />
+        <div class="logo-text-nav">
+            <span class="logo-line-1-nav">Makiling</span>
+            <span class="logo-line-2-nav">Integrated School</span>
+        </div>
+      </div>
+      <button type="button" id="mobile-logout-btn" class="mobile-logout" onclick="window.location.href='/auth/logout.html'">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </button>
+    </header>
+
+    <!-- BACKDROP (Madilim na background kapag bukas ang menu sa mobile) -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
     <!-- SIDEBAR -->
     <aside class="sidebar" id="app-sidebar">
       <div class="sidebar-top">
         <div class="logo">
-          <img
-            src="/auth/makiling_logo.png"
-            alt="Makiling IS Logo"
-            width="40"
-            height="40"
-          />
-
+          <img src="/auth/makiling_logo.png" alt="Makiling IS Logo" width="40" height="40" />
           <div class="logo-text">
             <span class="logo-line-1">Makiling</span>
             <span class="logo-line-2">Integrated School</span>
           </div>
         </div>
-
-        <button
-          type="button"
-          class="sidebar-toggle"
-          id="sidebar-toggle"
-          title="Collapse sidebar"
-          aria-label="Collapse sidebar"
-          aria-expanded="true"
-        >
-          <i
-            class="fa-solid fa-chevron-left toggle-icon"
-            aria-hidden="true"
-          ></i>
+        <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
+          <i class="fa-solid fa-chevron-left toggle-icon" aria-hidden="true"></i>
         </button>
       </div>
 
-      <!-- TEACHER NAVIGATION -->
       <nav class="nav-links-wrapper" aria-label="Teacher navigation">
-        <button
-          type="button"
-          onclick="window.location.href = 'index.html'"
-          class="nav-item active"
-          aria-current="page"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-house" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'index.html'" class="nav-item active" aria-current="page" data-title="Index">
+          <span class="nav-icon"><i class="fa-solid fa-house"></i></span>
           <span class="nav-label">Dashboard Home</span>
         </button>
-
-        <button
-          type="button"
-          onclick="window.location.href = 'my-schedule.html'"
-          class="nav-item"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'my-schedule.html'" class="nav-item" data-title="Schedules">
+          <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
           <span class="nav-label">My Timetable</span>
         </button>
-
-        <button
-          type="button"
-          onclick="window.location.href = 'rooms-view.html'"
-          class="nav-item"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-door-open" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'rooms-view.html'" class="nav-item" data-title="Rooms">
+          <span class="nav-icon"><i class="fa-solid fa-door-open"></i></span>
           <span class="nav-label">View Rooms</span>
         </button>
-
-        <button
-          type="button"
-          onclick="window.location.href = 'student-view.html'"
-          class="nav-item"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-users" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'student-view.html'" class="nav-item" data-title="Student List">
+          <span class="nav-icon"><i class="fa-solid fa-users"></i></span>
           <span class="nav-label">Student List</span>
         </button>
-
-        <button
-          type="button"
-          onclick="window.location.href = 'profile.html'"
-          class="nav-item"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-gear" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'profile.html'" class="nav-item" data-title="Profile Settings">
+          <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
           <span class="nav-label">Profile Settings</span>
         </button>
       </nav>
 
-      <!-- LOGOUT -->
-      <button type="button" id="logout-btn" class="nav-item logout-btn">
-        <span class="nav-icon">
-          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-        </span>
+      <button type="button" id="logout-btn" class="nav-item logout-btn desktop-only-logout" onclick="window.location.href='/auth/logout.html'">
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
         <span class="nav-label">Logout</span>
       </button>
     </aside>
 
-    <!-- EXPAND SIDEBAR BUTTON -->
-    <button
-      type="button"
-      class="sidebar-expand-btn"
-      id="sidebar-expand-btn"
-      title="Expand sidebar"
-      aria-label="Expand sidebar"
-    >
-      <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
-    </button>
-
     <!-- MAIN CONTENT -->
     <main class="main-content" id="main-content">
-      <!-- WELCOME HEADER -->
       <header class="welcome-header">
         <div class="welcome-text-block">
           <h1 id="welcome-text">Welcome back, Instructor!</h1>
-
-          <p class="welcome-subtitle">
-            Here's your teaching overview for today.
-          </p>
+          <p class="welcome-subtitle">Here's your teaching overview for today.</p>
         </div>
-
         <div class="welcome-badge" id="welcome-badge" role="status">
           <span class="badge-dot" aria-hidden="true"></span>
           <span id="badge-text">Loading...</span>
         </div>
       </header>
 
-      <!-- TODAY'S SCHEDULE -->
-      <section
-        class="today-schedule-card"
-        id="today-schedule-card"
-        aria-labelledby="today-title"
-      >
+      <section class="today-schedule-card" id="today-schedule-card" aria-labelledby="today-title">
         <div class="today-header">
           <div class="today-header-left">
-            <span class="today-icon">
-              <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
-            </span>
-
+            <span class="today-icon"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></span>
             <h2 id="today-title">Today's Schedule</h2>
           </div>
-
           <span class="today-date" id="today-date"> Loading... </span>
         </div>
-
         <div class="today-body" id="today-body" aria-live="polite">
           <div class="today-loading">
             <div class="loading-spinner" aria-hidden="true"></div>
@@ -182,96 +106,84 @@
         </div>
       </section>
 
-      <!-- WEEKLY STATISTICS -->
       <section class="dashboard-grid" aria-label="Teaching statistics">
-        <!-- ASSIGNED CLASSES -->
         <div class="stat-card">
-          <div class="stat-icon" aria-hidden="true">
-            <i class="fa-solid fa-book-open"></i>
-          </div>
-
+          <div class="stat-icon" aria-hidden="true"><i class="fa-solid fa-book-open"></i></div>
           <div class="stat-label">Assigned Classes</div>
-
           <div id="stat-slots" class="stat-number">--</div>
-
           <div class="stat-subtext">Periods this week</div>
         </div>
-
-        <!-- ASSIGNED SUBJECTS -->
         <div class="stat-card">
-          <div class="stat-icon" aria-hidden="true">
-            <i class="fa-solid fa-bullseye"></i>
-          </div>
-
+          <div class="stat-icon" aria-hidden="true"><i class="fa-solid fa-bullseye"></i></div>
           <div class="stat-label">Assigned Subjects</div>
-
           <div id="stat-subjects" class="stat-number">--</div>
-
           <div class="stat-subtext">Unique subjects this week</div>
         </div>
       </section>
     </main>
 
-    <!-- SIDEBAR TOGGLE SCRIPT -->
+    <!-- JAVASCRIPT LOGIC -->
     <script>
-      (function initSidebarToggle() {
+      (function initSidebar() {
         const sidebar = document.getElementById("app-sidebar");
         const mainContent = document.getElementById("main-content");
         const toggleBtn = document.getElementById("sidebar-toggle");
-        const expandBtn = document.getElementById("sidebar-expand-btn");
-        const toggleIcon = toggleBtn.querySelector(".toggle-icon");
+        const toggleIcon = toggleBtn ? toggleBtn.querySelector(".toggle-icon") : null;
+        
+        const mobileNavToggle = document.getElementById('mobile-nav-toggle');
+        const backdrop = document.getElementById('sidebar-backdrop');
 
-        const setCollapsedState = (collapsed) => {
-          sidebar.classList.toggle("collapsed", collapsed);
+        // --- DESKTOP LOGIC (I-collapse ang sidebar) ---
+        if (toggleBtn) {
+          const setCollapsedState = (collapsed) => {
+            sidebar.classList.toggle("collapsed", collapsed);
+            mainContent.classList.toggle("sidebar-collapsed", collapsed);
+            if (toggleIcon) {
+              toggleIcon.classList.toggle("fa-chevron-left", !collapsed);
+              toggleIcon.classList.toggle("fa-chevron-right", collapsed);
+            }
+          };
 
-          mainContent.classList.toggle("sidebar-collapsed", collapsed);
+          // I-load ang dating state
+          setCollapsedState(localStorage.getItem("sidebar-collapsed") === "true");
 
-          expandBtn.classList.toggle("visible", collapsed);
-
-          toggleBtn.setAttribute("aria-expanded", String(!collapsed));
-
-          toggleBtn.setAttribute(
-            "aria-label",
-            collapsed ? "Expand sidebar" : "Collapse sidebar",
-          );
-
-          toggleBtn.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
-
-          toggleIcon.classList.toggle("fa-chevron-left", !collapsed);
-
-          toggleIcon.classList.toggle("fa-chevron-right", collapsed);
-        };
-
-        // Restore saved sidebar state
-        setCollapsedState(localStorage.getItem("sidebar-collapsed") === "true");
-
-        let isAnimating = false;
-
-        function toggleSidebar() {
-          if (isAnimating) return;
-
-          isAnimating = true;
-
-          requestAnimationFrame(() => {
-            const nowCollapsed = !sidebar.classList.contains("collapsed");
-
-            setCollapsedState(nowCollapsed);
-
-            localStorage.setItem("sidebar-collapsed", String(nowCollapsed));
-
-            window.setTimeout(() => {
-              isAnimating = false;
-            }, 350);
+          toggleBtn.addEventListener("click", () => {
+            // Desktop lang ito gagana
+            if (window.innerWidth > 768) {
+              const nowCollapsed = !sidebar.classList.contains("collapsed");
+              setCollapsedState(nowCollapsed);
+              localStorage.setItem("sidebar-collapsed", String(nowCollapsed));
+            }
           });
         }
 
-        toggleBtn.addEventListener("click", toggleSidebar);
-        expandBtn.addEventListener("click", toggleSidebar);
+        // --- MOBILE LOGIC (Hamburger Menu) ---
+        if (mobileNavToggle && backdrop) {
+            mobileNavToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('mobile-open');
+                backdrop.classList.toggle('active');
+            });
+
+            backdrop.addEventListener('click', () => {
+                sidebar.classList.remove('mobile-open');
+                backdrop.classList.remove('active');
+            });
+        }
       })();
     </script>
 
-    <!-- Existing authentication and dashboard scripts -->
     <script src="/auth/logout.js" defer></script>
     <script src="../js/dashboard-home.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+          try {
+              const res = await fetch('/api/teacher/profile', { headers: { 'Content-Type': 'application/json' }, credentials: 'include' });
+              if (res.ok) {
+                  const profile = await res.json();
+                  if (profile.mustChangePassword) window.location.href = '/teacher/pages/profile.html?force=change';
+              }
+          } catch (e) {}
+      });
+    </script>
   </body>
 </html>

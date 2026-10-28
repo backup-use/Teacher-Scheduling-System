@@ -512,18 +512,27 @@ document.addEventListener("DOMContentLoaded", () => {
     // ═══════════════════════════════════════════════════════
     // ═══ RENDER FULL DAY GRID                          ═══
     // ═══════════════════════════════════════════════════════
-    FULL_DAY_SLOTS.forEach((timeSlot) => {
+FULL_DAY_SLOTS.forEach((timeSlot) => {
       const tr = document.createElement("tr");
       const isBreak = Object.prototype.hasOwnProperty.call(BREAK_SLOT_LABELS, timeSlot);
       const breakLabel = BREAK_SLOT_LABELS[timeSlot];
 
       if (isBreak) tr.className = "break-row-tr";
 
-      // Time cell — always show time
+      // ═══ TIME CELL (FIXED) ═══
       const timeCell = document.createElement("td");
       timeCell.className = "time-cell";
-      timeCell.textContent = formatTimeSlotDisplay(timeSlot);
+      
+      // Ginawa nating innerHTML at saka hinati sa <br> para bumaba ang End Time
+      const timeParts = timeSlot.split("-");
+      if (timeParts.length === 2) {
+        timeCell.innerHTML = `${to12Hour(timeParts[0])}<br>${to12Hour(timeParts[1])}`;
+      } else {
+        timeCell.textContent = formatTimeSlotDisplay(timeSlot);
+      }
+      
       tr.appendChild(timeCell);
+      // ═════════════════════════
 
       if (isBreak) {
         const breakTd = document.createElement("td");

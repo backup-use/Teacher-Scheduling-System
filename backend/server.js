@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const db = require("./db");
-const nodemailer = require('nodemailer');
+const brevo = require('@getbrevo/brevo'); // Switched to Brevo HTTP API
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -151,29 +151,32 @@ function normalizeTeacherName(name) {
     .trim();
 }
 
-// === EMAIL SENDING - GMAIL SMTP (NODEMAILER) ===
+// === EMAIL SENDING - BREVO HTTP API (LATEST SDK) ===
 async function sendCredentialsEmail({ to, name, username, password }) {
+  // 1. Setup the Gmail Transporter
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
-    secure: true,
+    secure: true, // Use SSL
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_APP_PASSWORD
     }
   });
 
+  // 2. Verify SMTP connection (for debugging)
   try {
     await transporter.verify();
     console.log("SMTP Connection: Ready to send messages.");
   } catch (verifyError) {
     console.error("SMTP Connection Error: Failed to connect to Gmail.");
     console.error(verifyError);
-    return false;
+    return false; // Stop execution if connection fails
   }
 
   const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/auth/login.html`;
 
+  // 3. Email HTML Template
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
       <h2 style="color: #111827;">Your MIS Scheduler account</h2>
@@ -194,6 +197,7 @@ async function sendCredentialsEmail({ to, name, username, password }) {
     </div>
   `;
 
+  // 4. Send the email
   try {
     const info = await transporter.sendMail({
       from: `"MIS Scheduler" <${process.env.GMAIL_USER}>`,
@@ -201,10 +205,11 @@ async function sendCredentialsEmail({ to, name, username, password }) {
       subject: "Your MIS Scheduler Account",
       html: html
     });
-    console.log("Email sent successfully:", info.messageId);
+
+    console.log("Email sent successfully via Brevo API:", result.messageId);
     return true;
   } catch (error) {
-    console.error("Error sending email via Gmail:", error);
+    console.error("Error sending email via Brevo API:", error.message || error);
     return false;
   }
 }
@@ -385,25 +390,6 @@ async function initAdmin() {
       }
     }
     dlog("[init] user columns verified");
-
-    // ── First-login password enforcement column + backfill ──
-    try {
-      await db.query(
-        "ALTER TABLE public.users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;"
-      );
-      // Backfill: teachers who never changed their password are still on the
-      // admin-generated temporary password.
-      await db.query(
-        `UPDATE public.users
-         SET must_change_password = TRUE
-         WHERE role = 'teacher'
-           AND last_password_change IS NULL
-           AND must_change_password = FALSE;`
-      );
-      dlog("[init] must_change_password column ready + backfill applied");
-    } catch (err) {
-      console.warn("[init] could not set up must_change_password:", err.message);
-    }
 
     try {
       await db.query("ALTER TABLE sections ADD COLUMN IF NOT EXISTS shift VARCHAR(3) DEFAULT 'AM';");
@@ -1025,52 +1011,7 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // ── Idle refresh: slide the 15-minute window on genuine activity ──
-    if (pathname === "/api/auth/refresh" && req.method === "POST") {
-      const auth = getAuth(req);
-      if (!auth) return send(res, 401, { error: "Session expired." });
-
-      // Re-check session version to prevent refresh after a password reset
-      try {
-        const { rows } = await db.query(
-          "SELECT session_version, must_change_password FROM public.users WHERE id = $1",
-          [auth.id]
-        );
-        if (rows.length === 0) return send(res, 401, { error: "Session expired." });
-        const currentVersion = rows[0].session_version || 1;
-        const tokenVersion = auth.sessionVersion || 1;
-        if (currentVersion !== tokenVersion) {
-          return send(res, 401, { error: "Session expired." });
-        }
-      } catch {
-        return send(res, 401, { error: "Session expired." });
-      }
-
-      const token = jwt.sign(
-        {
-          id: auth.id,
-          username: auth.username,
-          role: auth.role,
-          teacherId: auth.teacherId,
-          sessionVersion: auth.sessionVersion,
-          mustChangePassword: auth.mustChangePassword === true,
-        },
-        JWT_SECRET,
-        { expiresIn: "15m" }
-      );
-
-      return send(res, 200, { refreshed: true }, {
-        "Set-Cookie": [
-          `lectura_token=${token}`,
-          "HttpOnly",
-          "SameSite=Strict",
-          "Path=/",
-          "Max-Age=900",
-        ].join("; "),
-      });
-    }
-
-    // ── Reset password (Master Key path) ──
+    // ── Reset password ──
     if (pathname === "/api/auth/reset-password" && req.method === "POST") {
       if (!rateLimit(req, res, { windowMs: 15 * 60_000, maxRequests: 10, keyPrefix: "reset-pw" })) return;
 
@@ -2256,17 +2197,6 @@ const server = http.createServer(async (req, res) => {
       const auth = await getAuthWithSessionCheck(req);
       if (!auth || auth.role !== "teacher") return send(res, 403, { error: "Forbidden" });
 
-      // Force temporary-password change on first login.
-      // Only profile and profile-password are allowed until the flag clears.
-      if (auth.mustChangePassword === true &&
-          pathname !== "/api/teacher/profile/password" &&
-          pathname !== "/api/teacher/profile") {
-        return send(res, 403, {
-          error: "Password change required before using the system.",
-          code: "MUST_CHANGE_PASSWORD",
-        });
-      }
-
       if (pathname === "/api/teacher/profile" && req.method === "GET") {
         try {
           const { rows } = await db.query("SELECT * FROM public.users WHERE id = $1", [auth.id]);
@@ -2478,9 +2408,6 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // ═══════════════════════════════════════════════════════
-      // ═══ TEACHER SCHEDULE — FIXED VERSION              ═══
-      // ═══════════════════════════════════════════════════════
       if (pathname === "/api/teacher/schedule" && req.method === "GET") {
         try {
           const { rows: userRows } = await db.query(
