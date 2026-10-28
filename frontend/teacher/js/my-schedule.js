@@ -128,9 +128,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function formatTimeSlotDisplay(slot24) {
     if (!slot24 || !slot24.includes("-")) return slot24;
     const [start, end] = slot24.split("-");
-    return `${to12Hour(start)} - ${to12Hour(end)}`;
+    // Naglagay tayo ng <br> para pababain ang end time
+    return `${to12Hour(start)}<br>${to12Hour(end)}`;
   }
-
   // ═══ Minimal CSS injection (screen only) ═══
   if (!document.getElementById("admin-tight-layout-rules")) {
     const adminStyles = document.createElement("style");

@@ -11,198 +11,101 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Pirata+One&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" referrerpolicy="no-referrer" />
 
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Pirata+One&family=Poppins:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-
-    <!-- Font Awesome Free Icons -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-      referrerpolicy="no-referrer"
-    />
-
-    <!-- Timetable Stylesheet -->
     <link rel="stylesheet" href="../css/my-schedule.css?v=1.0.3" />
   </head>
 
   <body>
-    <!-- ==================================================
-         SIDEBAR
-         ================================================== -->
+    <!-- ═══ 1. MOBILE TOP HEADER ═══ -->
+    <header class="mobile-header" id="mobile-header">
+      <button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open Menu">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      
+      <div class="mobile-logo">
+        <img src="/auth/makiling_logo.png" alt="Logo" width="30" height="30" />
+        <span>MIS Scheduler</span>
+      </div>
 
+      <button type="button" id="mobile-logout-btn" class="mobile-logout" onclick="window.location.href='/auth/logout.html'">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </button>
+    </header>
+
+    <!-- ═══ 2. SIDEBAR BACKDROP ═══ -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="app-sidebar">
       <div class="sidebar-top">
-        <div class="logo">
-          <img
-            src="/auth/makiling_logo.png"
-            alt="Makiling Integrated School Logo"
-            width="40"
-            height="40"
-          />
-
-          <div class="logo-text">
-            <span class="logo-line-1">Makiling</span>
-            <span class="logo-line-2">Integrated School</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          class="sidebar-toggle"
-          id="sidebar-toggle"
-          title="Collapse sidebar"
-          aria-label="Collapse sidebar"
-          aria-expanded="true"
-          aria-controls="app-sidebar"
-        >
-          <i
-            class="fa-solid fa-chevron-left toggle-icon"
-            aria-hidden="true"
-          ></i>
+      
+        <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="app-sidebar">
+          <i class="fa-solid fa-chevron-left toggle-icon" aria-hidden="true"></i>
         </button>
       </div>
 
       <nav class="nav-links-wrapper" aria-label="Teacher navigation">
-        <button
-          type="button"
-          onclick="window.location.href = 'index.html'"
-          class="nav-item"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-house" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'index.html'" class="nav-item">
+          <span class="nav-icon"><i class="fa-solid fa-house" aria-hidden="true"></i></span>
           <span class="nav-label">Dashboard Home</span>
         </button>
-
-        <button
-          type="button"
-          onclick="window.location.href = 'my-schedule.html'"
-          class="nav-item active"
-          aria-current="page"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'my-schedule.html'" class="nav-item active" aria-current="page">
+          <span class="nav-icon"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></span>
           <span class="nav-label">My Timetable</span>
         </button>
-
-        <button
-          type="button"
-          onclick="window.location.href = 'rooms-view.html'"
-          class="nav-item"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-door-open" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'rooms-view.html'" class="nav-item">
+          <span class="nav-icon"><i class="fa-solid fa-door-open" aria-hidden="true"></i></span>
           <span class="nav-label">View Rooms</span>
         </button>
-
-        <button
-          type="button"
-          onclick="window.location.href = 'student-view.html'"
-          class="nav-item"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-users" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'student-view.html'" class="nav-item">
+          <span class="nav-icon"><i class="fa-solid fa-users" aria-hidden="true"></i></span>
           <span class="nav-label">Student List</span>
         </button>
-
-        <button
-          type="button"
-          onclick="window.location.href = 'profile.html'"
-          class="nav-item"
-        >
-          <span class="nav-icon">
-            <i class="fa-solid fa-gear" aria-hidden="true"></i>
-          </span>
+        <button type="button" onclick="window.location.href = 'profile.html'" class="nav-item">
+          <span class="nav-icon"><i class="fa-solid fa-gear" aria-hidden="true"></i></span>
           <span class="nav-label">Profile Settings</span>
         </button>
       </nav>
 
-      <button type="button" id="logout-btn" class="nav-item logout-btn">
-        <span class="nav-icon">
-          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-        </span>
+      <!-- Logout hidden on mobile -->
+      <button type="button" id="logout-btn" class="nav-item logout-btn desktop-only-logout" onclick="window.location.href='/auth/logout.html'">
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></span>
         <span class="nav-label">Logout</span>
       </button>
     </aside>
 
-    <button
-      type="button"
-      class="sidebar-expand-btn"
-      id="sidebar-expand-btn"
-      title="Expand sidebar"
-      aria-label="Expand sidebar"
-      aria-controls="app-sidebar"
-      aria-expanded="false"
-    >
+    <button type="button" class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar" aria-label="Expand sidebar" aria-controls="app-sidebar" aria-expanded="false">
       <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
     </button>
 
-    <!-- ==================================================
-         MAIN CONTENT
-         ================================================== -->
-
+    <!-- MAIN CONTENT -->
     <main class="main-content" id="main-content">
-      <!-- Page Header -->
       <header class="timetable-controls">
         <div class="timetable-heading">
-          <!-- ❌ Teacher Portal eyebrow removed -->
-
           <h1 id="instructor-title">Instructor: Loading...</h1>
-
-          <p class="subtitle">
-            View your weekly teaching schedule, check assigned time slots, and
-            manage personal reminders for vacant periods.
-          </p>
+          <p class="subtitle">View your weekly teaching schedule, check assigned time slots, and manage personal reminders for vacant periods.</p>
         </div>
-
         <div class="btn-group">
-          <button
-            type="button"
-            class="btn-action btn-print"
-            id="print-schedule-btn"
-          >
-            <i class="fa-solid fa-print" aria-hidden="true"></i>
-            <span>Print Schedule</span>
+          <button type="button" class="btn-action btn-print" id="print-schedule-btn">
+            <i class="fa-solid fa-print" aria-hidden="true"></i> <span>Print Schedule</span>
           </button>
-
-          <button
-            type="button"
-            class="btn-action btn-pdf"
-            id="download-pdf-btn"
-          >
-            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
-            <span>Download PDF</span>
+          <button type="button" class="btn-action btn-pdf" id="download-pdf-btn">
+            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> <span>Download PDF</span>
           </button>
         </div>
       </header>
 
-      <!-- ==================================================
-             WEEKLY TIMETABLE
-             ================================================== -->
-
-      <section
-        class="timetable-wrapper card"
-        aria-label="Weekly teaching timetable"
-      >
-        <!-- ✅ Only "Weekly Timetable" kept -->
+      <section class="timetable-wrapper card" aria-label="Weekly teaching timetable">
         <div class="timetable-section-header">
           <h2>Weekly Timetable</h2>
         </div>
-
         <div class="timetable-scroll">
           <table class="timetable-table">
             <thead>
               <tr>
-                <th scope="col" class="time-column">
-                  Time Slot
-                </th>
-
+                <th scope="col" class="time-column">Time Slot</th>
                 <th scope="col">Monday</th>
                 <th scope="col">Tuesday</th>
                 <th scope="col">Wednesday</th>
@@ -210,153 +113,95 @@
                 <th scope="col">Friday</th>
               </tr>
             </thead>
-
-            <tbody id="timetable-rows">
-              <!-- Populated dynamically by my-schedule.js -->
-            </tbody>
+            <tbody id="timetable-rows"></tbody>
           </table>
         </div>
-
       </section>
     </main>
 
-    <!-- ==================================================
-         VACANT CELL MEMO MODAL
-         ================================================== -->
-
+    <!-- MODAL -->
     <div class="vacant-modal-overlay" id="vacant-note-modal" aria-hidden="true">
-      <div
-        class="vacant-modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-cell-title"
-        aria-describedby="modal-description"
-      >
+      <div class="vacant-modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-cell-title" aria-describedby="modal-description">
         <div class="modal-header">
-          <div class="modal-icon">
-            <i class="fa-regular fa-note-sticky" aria-hidden="true"></i>
-          </div>
-
+          <div class="modal-icon"><i class="fa-regular fa-note-sticky" aria-hidden="true"></i></div>
           <div class="modal-heading">
             <h3 id="modal-cell-title">Add Cell Memo</h3>
-
-            <p class="modal-subtitle" id="modal-description">
-              Attach a personal reminder or note to this vacant time block.
-            </p>
+            <p class="modal-subtitle" id="modal-description">Attach a personal reminder or note to this vacant time block.</p>
           </div>
         </div>
-
-        <label for="modal-note-textarea" class="memo-label">
-          Personal Note
-        </label>
-
-        <textarea
-          id="modal-note-textarea"
-          placeholder="Type your note or memo here..."
-          rows="5"
-        ></textarea>
-
+        <label for="modal-note-textarea" class="memo-label">Personal Note</label>
+        <textarea id="modal-note-textarea" placeholder="Type your note or memo here..." rows="5"></textarea>
         <div class="modal-actions-row">
-          <button
-            type="button"
-            id="modal-cancel-btn"
-            class="modal-btn modal-cancel"
-          >
-            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-            <span>Cancel</span>
+          <button type="button" id="modal-cancel-btn" class="modal-btn modal-cancel">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span>Cancel</span>
           </button>
-
-          <button
-            type="button"
-            id="modal-save-btn"
-            class="modal-btn modal-save"
-          >
-            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-            <span>Save Note</span>
+          <button type="button" id="modal-save-btn" class="modal-btn modal-save">
+            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> <span>Save Note</span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ==================================================
-         SIDEBAR TOGGLE SCRIPT
-         ================================================== -->
-
+    <!-- SCRIPT -->
     <script>
       (function initSidebarToggle() {
         const sidebar = document.getElementById("app-sidebar");
         const mainContent = document.getElementById("main-content");
         const toggleBtn = document.getElementById("sidebar-toggle");
         const expandBtn = document.getElementById("sidebar-expand-btn");
+        const mobileNavToggle = document.getElementById('mobile-nav-toggle');
+        const backdrop = document.getElementById('sidebar-backdrop');
 
-        if (!sidebar || !mainContent || !toggleBtn || !expandBtn) {
-          return;
-        }
+        if (!sidebar || !mainContent || !toggleBtn || !expandBtn) return;
+        const toggleIcon = toggleBtn.querySelector(".toggle-icon");
 
         let isCollapsed = false;
-        let isAnimating = false;
-
-        try {
-          isCollapsed = localStorage.getItem("sidebar-collapsed") === "true";
-        } catch (error) {
-          console.warn("Unable to restore sidebar preference.", error);
-        }
+        try { isCollapsed = localStorage.getItem("sidebar-collapsed") === "true"; } catch (e) {}
 
         function applySidebarState(collapsed) {
           sidebar.classList.toggle("collapsed", collapsed);
-
           mainContent.classList.toggle("sidebar-collapsed", collapsed);
-
           expandBtn.classList.toggle("visible", collapsed);
-
           toggleBtn.setAttribute("aria-expanded", String(!collapsed));
-
           expandBtn.setAttribute("aria-expanded", String(collapsed));
-
-          toggleBtn.setAttribute(
-            "aria-label",
-            collapsed ? "Expand sidebar" : "Collapse sidebar",
-          );
-
-          toggleBtn.setAttribute(
-            "title",
-            collapsed ? "Expand sidebar" : "Collapse sidebar",
-          );
-
-          const toggleIcon = toggleBtn.querySelector(".toggle-icon");
-
           if (toggleIcon) {
             toggleIcon.classList.toggle("fa-chevron-left", !collapsed);
-
             toggleIcon.classList.toggle("fa-chevron-right", collapsed);
           }
-
-          try {
-            localStorage.setItem("sidebar-collapsed", String(collapsed));
-          } catch (error) {
-            console.warn("Unable to save sidebar preference.", error);
-          }
+          try { localStorage.setItem("sidebar-collapsed", String(collapsed)); } catch (e) {}
         }
 
         applySidebarState(isCollapsed);
 
+        let isAnimating = false;
         function toggleSidebar() {
-          if (isAnimating) {
-            return;
-          }
-
+          if (isAnimating) return;
           isAnimating = true;
           isCollapsed = !sidebar.classList.contains("collapsed");
-
           applySidebarState(isCollapsed);
-
-          window.setTimeout(() => {
-            isAnimating = false;
-          }, 350);
+          window.setTimeout(() => { isAnimating = false; }, 350);
         }
 
         toggleBtn.addEventListener("click", toggleSidebar);
         expandBtn.addEventListener("click", toggleSidebar);
+
+        // Mobile Toggle
+        if (mobileNavToggle && backdrop) {
+            mobileNavToggle.addEventListener('click', () => {
+                const isOpen = sidebar.classList.contains('mobile-open');
+                if (isOpen) {
+                    sidebar.classList.remove('mobile-open');
+                    backdrop.classList.remove('active');
+                } else {
+                    sidebar.classList.add('mobile-open');
+                    backdrop.classList.add('active');
+                }
+            });
+            backdrop.addEventListener('click', () => {
+                sidebar.classList.remove('mobile-open');
+                backdrop.classList.remove('active');
+            });
+        }
       })();
     </script>
 
