@@ -1185,9 +1185,16 @@ td.flag-raising-cell {
 .sidebar-backdrop.active { display: block; opacity: 1; }
 
 @media (max-width: 768px) {
-    body { background: #f0f9f4 !important; }
+    /* 1. FIX SCROLLING SA BUONG PAGE */
+    html, body {
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        background: #f0f9f4 !important;
+    }
 
-    /* Mobile Header */
+    /* 2. MOBILE HEADER */
     .mobile-header {
         display: flex; align-items: center; justify-content: space-between;
         background-color: #1a4321; color: white; padding: 10px 15px;
@@ -1198,32 +1205,33 @@ td.flag-raising-cell {
     .mobile-logo { display: flex; align-items: center; gap: 8px; font-weight: bold; font-family: 'Cinzel', serif; }
     .mobile-logout { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 5px; font-size: 0.85rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; }
 
-    /* 1. CENTER THE MAIN CONTENT */
+    /* 3. MAIN CONTENT (PABABAANG SCROLL) */
     .main-content, .main-content.sidebar-collapsed {
-        padding: 85px 15px 20px 15px !important; 
-        margin-left: 0 !important; /* Overrides desktop margin */
-        width: 100% !important; /* Forces full width */
-        min-height: 100vh;
+        padding: 85px 5px 80px 5px !important; /* Malaking padding sa baba para may espasyo */
+        margin-left: 0 !important; 
+        width: 100% !important; 
+        min-height: auto !important; /* Dapat auto para humaba pababa */
+        height: auto !important;
+        display: block !important;
+        overflow-y: visible !important;
     }
 
-    /* 2. SIDEBAR DRAWER & OVERRIDE COLLAPSED STATE */
+    /* 4. SIDEBAR DRAWER */
     .sidebar, .sidebar.collapsed {
         position: fixed !important; 
         top: 0 !important; 
         left: -280px !important; 
         height: 100dvh !important; 
-        width: 260px !important; /* Forces full width */
-        padding: 1.75rem 1.1rem !important; /* Restores padding */
+        width: 260px !important; 
+        padding: 1.75rem 1.1rem !important; 
         z-index: 999; 
         transition: left 0.3s ease-in-out !important; 
         box-shadow: 2px 0 10px rgba(0,0,0,0.3);
     }
     
-    .sidebar.mobile-open { 
-        left: 0 !important; 
-    }
-
-    /* 3. FORCE SHOW TEXT AND LOGO */
+    .sidebar.mobile-open { left: 0 !important; }
+    
+    /* 5. SIDEBAR TEXT FIXES */
     .sidebar .nav-label,
     .sidebar .logo {
         opacity: 1 !important;
@@ -1240,31 +1248,35 @@ td.flag-raising-cell {
         margin-right: 12px !important;
     }
 
-    /* Hide desktop elements */
+    /* 6. HIDE DESKTOP ELEMENTS */
     .sidebar-toggle, .sidebar-expand-btn, .desktop-only-logout {
         display: none !important;
     }
-}
 
-/* ═══════════════════════════════════════════════════════
-   TIMETABLE MOBILE RESPONSIVENESS (PERFECT FIT)
-   ═══════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-    /* 1. Ensure container doesn't scroll */
-    .timetable-scroll {
-        overflow-x: hidden !important; 
-        padding-bottom: 0;
+    /* ═══════════════════════════════════════════════════════
+       TIMETABLE MOBILE RESPONSIVENESS (PERFECT FIT)
+       ═══════════════════════════════════════════════════════ */
+    
+    /* 7. Table Container */
+    .timetable-wrapper {
+        margin-bottom: 50px !important; /* Espasyo bago matapos */
     }
 
-    /* 2. Table fits perfectly */
+    .timetable-scroll {
+        overflow-x: hidden !important; 
+        overflow-y: visible !important; /* Payagan ang vertical scroll */
+        padding-bottom: 20px;
+        height: auto !important;
+    }
+
     .timetable-table {
         width: 100% !important;
         min-width: 100% !important; 
         table-layout: fixed !important;
         border-collapse: collapse !important;
+        height: auto !important;
     }
 
-    /* 3. Force small text, tight padding, and NO OVERFLOW */
     .timetable-table th,
     .timetable-table td {
         padding: 4px 1px !important; 
@@ -1272,20 +1284,19 @@ td.flag-raising-cell {
         text-align: center !important;
         vertical-align: middle !important;
         word-wrap: break-word !important; 
-        overflow: hidden !important; /* Pinipigilan ang labas ng text */
+        overflow: hidden !important; 
         box-sizing: border-box !important; 
+        height: auto !important;
     }
 
-    /* 4. Adjust the Time Column (leftmost) */
     .timetable-table .time-cell {
-        width: 18% !important; /* Medyo pinalapad ng kaunti para magkasya ang oras */
+        width: 18% !important; 
         font-size: 0.5rem !important; 
         padding: 4px 1px !important;
-        white-space: normal !important; /* Pinapayagan ang pagbaba ng linya */
+        white-space: normal !important; 
         line-height: 1.1 !important;
     }
 
-    /* 5. Adjust the Subject Texts inside cells */
     .slot-subject {
         font-size: 0.55rem !important;
         font-weight: 800 !important;
@@ -1299,30 +1310,17 @@ td.flag-raising-cell {
         line-height: 1 !important;
     }
 
-    /* 6. Make the flag raising fit */
     .flag-raising-cell div {
         font-size: 0.55rem !important;
         line-height: 1.1 !important;
         word-break: break-word !important;
     }
 
-    /* 7. Make the "Vacant" text smaller */
-    .vacant-text {
-        font-size: 0.5rem !important;
-    }
-
-    /* 8. Hide the (+) button on mobile */
-    .add-note-btn {
-        display: none !important; 
-    }
+    .vacant-text { font-size: 0.5rem !important; }
+    .add-note-btn { display: none !important; }
+    .break-cell { font-size: 0.55rem !important; letter-spacing: 0px !important; }
     
-    /* 9. Breaks */
-    .break-cell {
-        font-size: 0.55rem !important;
-        letter-spacing: 0px !important;
-    }
-    
-    /* 10. Buttons adjustment */
+    /* 8. CONTROLS & BUTTONS */
     .timetable-controls {
         flex-direction: column;
         align-items: flex-start;
@@ -1338,8 +1336,5 @@ td.flag-raising-cell {
         justify-content: center;
         padding: 8px 4px;
         font-size: 0.7rem;
-    }
-    .main-content {
-        padding: 85px 5px 20px 5px !important;
     }
 }
