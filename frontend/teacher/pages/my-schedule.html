@@ -3,82 +3,52 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <title>Makiling IS | My Timetable</title>
-
     <link rel="icon" type="image/png" href="/auth/makiling_logo.png" />
-
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Pirata+One&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" referrerpolicy="no-referrer" />
-
     <link rel="stylesheet" href="../css/my-schedule.css?v=1.0.3" />
   </head>
 
   <body>
-    <!-- ═══ 1. MOBILE TOP HEADER ═══ -->
+        <!-- TOP NAVBAR (May Logo at Logout) -->
     <header class="mobile-header" id="mobile-header">
-      <button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open Menu">
-        <i class="fa-solid fa-bars"></i>
-      </button>
-      
+      <!-- Walang hamburger button na kailangan -->
       <div class="mobile-logo">
-        <img src="/auth/makiling_logo.png" alt="Logo" width="30" height="30" />
-        <span>MIS Scheduler</span>
+        <img src="/auth/makiling_logo.png" alt="Logo" width="40" height="40" />
+        <div class="logo-text-nav">
+            <span class="logo-line-1-nav">Makiling</span>
+            <span class="logo-line-2-nav">Integrated School</span>
+        </div>
       </div>
-
       <button type="button" id="mobile-logout-btn" class="mobile-logout" onclick="window.location.href='/auth/logout.html'">
         <i class="fa-solid fa-right-from-bracket"></i> Logout
       </button>
     </header>
 
-    <!-- ═══ 2. SIDEBAR BACKDROP ═══ -->
-    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR (Icons Only, Walang Logo) -->
     <aside class="sidebar" id="app-sidebar">
-      <div class="sidebar-top">
-      
-        <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="app-sidebar">
-          <i class="fa-solid fa-chevron-left toggle-icon" aria-hidden="true"></i>
-        </button>
-      </div>
-
+      <!-- Walang logo dito, icons lang -->
       <nav class="nav-links-wrapper" aria-label="Teacher navigation">
-        <button type="button" onclick="window.location.href = 'index.html'" class="nav-item">
-          <span class="nav-icon"><i class="fa-solid fa-house" aria-hidden="true"></i></span>
-          <span class="nav-label">Dashboard Home</span>
+        <button type="button" onclick="window.location.href = 'index.html'" class="nav-item" data-title="Dashboard Home">
+          <span class="nav-icon"><i class="fa-solid fa-house"></i></span>
         </button>
-        <button type="button" onclick="window.location.href = 'my-schedule.html'" class="nav-item active" aria-current="page">
-          <span class="nav-icon"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></span>
-          <span class="nav-label">My Timetable</span>
+        <button type="button" onclick="window.location.href = 'my-schedule.html'" class="nav-item active" data-title="My Timetable">
+          <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
         </button>
-        <button type="button" onclick="window.location.href = 'rooms-view.html'" class="nav-item">
-          <span class="nav-icon"><i class="fa-solid fa-door-open" aria-hidden="true"></i></span>
-          <span class="nav-label">View Rooms</span>
+        <button type="button" onclick="window.location.href = 'rooms-view.html'" class="nav-item" data-title="View Rooms">
+          <span class="nav-icon"><i class="fa-solid fa-door-open"></i></span>
         </button>
-        <button type="button" onclick="window.location.href = 'student-view.html'" class="nav-item">
-          <span class="nav-icon"><i class="fa-solid fa-users" aria-hidden="true"></i></span>
-          <span class="nav-label">Student List</span>
+        <button type="button" onclick="window.location.href = 'student-view.html'" class="nav-item" data-title="Student List">
+          <span class="nav-icon"><i class="fa-solid fa-users"></i></span>
         </button>
-        <button type="button" onclick="window.location.href = 'profile.html'" class="nav-item">
-          <span class="nav-icon"><i class="fa-solid fa-gear" aria-hidden="true"></i></span>
-          <span class="nav-label">Profile Settings</span>
+        <button type="button" onclick="window.location.href = 'profile.html'" class="nav-item" data-title="Profile Settings">
+          <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
         </button>
       </nav>
-
-      <!-- Logout hidden on mobile -->
-      <button type="button" id="logout-btn" class="nav-item logout-btn desktop-only-logout" onclick="window.location.href='/auth/logout.html'">
-        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></span>
-        <span class="nav-label">Logout</span>
-      </button>
     </aside>
-
-    <button type="button" class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar" aria-label="Expand sidebar" aria-controls="app-sidebar" aria-expanded="false">
-      <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
-    </button>
 
     <!-- MAIN CONTENT -->
     <main class="main-content" id="main-content">
@@ -142,50 +112,13 @@
       </div>
     </div>
 
-    <!-- SCRIPT -->
     <script>
       (function initSidebarToggle() {
         const sidebar = document.getElementById("app-sidebar");
         const mainContent = document.getElementById("main-content");
-        const toggleBtn = document.getElementById("sidebar-toggle");
-        const expandBtn = document.getElementById("sidebar-expand-btn");
         const mobileNavToggle = document.getElementById('mobile-nav-toggle');
         const backdrop = document.getElementById('sidebar-backdrop');
 
-        if (!sidebar || !mainContent || !toggleBtn || !expandBtn) return;
-        const toggleIcon = toggleBtn.querySelector(".toggle-icon");
-
-        let isCollapsed = false;
-        try { isCollapsed = localStorage.getItem("sidebar-collapsed") === "true"; } catch (e) {}
-
-        function applySidebarState(collapsed) {
-          sidebar.classList.toggle("collapsed", collapsed);
-          mainContent.classList.toggle("sidebar-collapsed", collapsed);
-          expandBtn.classList.toggle("visible", collapsed);
-          toggleBtn.setAttribute("aria-expanded", String(!collapsed));
-          expandBtn.setAttribute("aria-expanded", String(collapsed));
-          if (toggleIcon) {
-            toggleIcon.classList.toggle("fa-chevron-left", !collapsed);
-            toggleIcon.classList.toggle("fa-chevron-right", collapsed);
-          }
-          try { localStorage.setItem("sidebar-collapsed", String(collapsed)); } catch (e) {}
-        }
-
-        applySidebarState(isCollapsed);
-
-        let isAnimating = false;
-        function toggleSidebar() {
-          if (isAnimating) return;
-          isAnimating = true;
-          isCollapsed = !sidebar.classList.contains("collapsed");
-          applySidebarState(isCollapsed);
-          window.setTimeout(() => { isAnimating = false; }, 350);
-        }
-
-        toggleBtn.addEventListener("click", toggleSidebar);
-        expandBtn.addEventListener("click", toggleSidebar);
-
-        // Mobile Toggle
         if (mobileNavToggle && backdrop) {
             mobileNavToggle.addEventListener('click', () => {
                 const isOpen = sidebar.classList.contains('mobile-open');

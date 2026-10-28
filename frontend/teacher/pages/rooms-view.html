@@ -13,60 +13,43 @@
   </head>
 
   <body>
+        <!-- TOP NAVBAR (May Logo at Logout) -->
     <header class="mobile-header" id="mobile-header">
-      <button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open Menu">
-        <i class="fa-solid fa-bars"></i>
-      </button>
+      <!-- Walang hamburger button na kailangan -->
       <div class="mobile-logo">
-        <img src="/auth/makiling_logo.png" alt="Logo" width="30" height="30" />
-        <span>MIS Scheduler</span>
+        <img src="/auth/makiling_logo.png" alt="Logo" width="40" height="40" />
+        <div class="logo-text-nav">
+            <span class="logo-line-1-nav">Makiling</span>
+            <span class="logo-line-2-nav">Integrated School</span>
+        </div>
       </div>
       <button type="button" id="mobile-logout-btn" class="mobile-logout" onclick="window.location.href='/auth/logout.html'">
         <i class="fa-solid fa-right-from-bracket"></i> Logout
       </button>
     </header>
 
-    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-
+    <!-- SIDEBAR (Icons Only, Walang Logo) -->
     <aside class="sidebar" id="app-sidebar">
-      <div class="sidebar-top">
-        <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true" aria-controls="app-sidebar">
-          <i class="fa-solid fa-chevron-left toggle-icon" aria-hidden="true"></i>
-        </button>
-      </div>
-
+      <!-- Walang logo dito, icons lang -->
       <nav class="nav-links-wrapper" aria-label="Teacher navigation">
-        <button type="button" onclick="window.location.href = 'index.html'" class="nav-item">
-          <span class="nav-icon"><i class="fa-solid fa-house" aria-hidden="true"></i></span>
-          <span class="nav-label">Dashboard Home</span>
+        <button type="button" onclick="window.location.href = 'index.html'" class="nav-item" data-title="Dashboard Home">
+          <span class="nav-icon"><i class="fa-solid fa-house"></i></span>
         </button>
-        <button type="button" onclick="window.location.href = 'my-schedule.html'" class="nav-item">
-          <span class="nav-icon"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></span>
-          <span class="nav-label">My Timetable</span>
+        <button type="button" onclick="window.location.href = 'my-schedule.html'" class="nav-item " data-title="My Timetable">
+          <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
         </button>
-        <button type="button" onclick="window.location.href = 'rooms-view.html'" class="nav-item active" aria-current="page">
-          <span class="nav-icon"><i class="fa-solid fa-door-open" aria-hidden="true"></i></span>
-          <span class="nav-label">View Rooms</span>
+        <button type="button" onclick="window.location.href = 'rooms-view.html'" class="nav-item active" data-title="View Rooms">
+          <span class="nav-icon"><i class="fa-solid fa-door-open"></i></span>
         </button>
-        <button type="button" onclick="window.location.href = 'student-view.html'" class="nav-item">
-          <span class="nav-icon"><i class="fa-solid fa-users" aria-hidden="true"></i></span>
-          <span class="nav-label">Student List</span>
+        <button type="button" onclick="window.location.href = 'student-view.html'" class="nav-item" data-title="Student List">
+          <span class="nav-icon"><i class="fa-solid fa-users"></i></span>
         </button>
-        <button type="button" onclick="window.location.href = 'profile.html'" class="nav-item">
-          <span class="nav-icon"><i class="fa-solid fa-gear" aria-hidden="true"></i></span>
-          <span class="nav-label">Profile Settings</span>
+        <button type="button" onclick="window.location.href = 'profile.html'" class="nav-item" data-title="Profile Settings">
+          <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
         </button>
       </nav>
-
-      <button type="button" id="logout-btn" class="nav-item logout-btn desktop-only-logout" onclick="window.location.href='/auth/logout.html'">
-        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></span>
-        <span class="nav-label">Logout</span>
-      </button>
     </aside>
 
-    <button type="button" class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar" aria-label="Expand sidebar" aria-controls="app-sidebar" aria-expanded="false">
-      <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
-    </button>
 
     <main class="main-content" id="main-content">
       <div class="rooms-header">
