@@ -40,6 +40,25 @@ function showToastMessage(message, type = 'success') {
     toast._timeout = setTimeout(() => toast.classList.remove('show'), 2800);
 }
 
+// Helper para gawing Title Case, pero papanatilihin ang acronyms (TLE, MAPEH, ESP)
+function toTitleCase(str) {
+    if (!str) return '';
+    return str
+        .split(' ')
+        .map(word => {
+            if (word.length === 0) return word;
+            
+            // Kung puro MALAKING letra ang input (tulad ng MAPEH, TLE, SCIENCE)
+            if (word === word.toUpperCase()) {
+                return word; // Panatilihin as is
+            }
+            
+            // Kung normal na salita, i-capitalize lang ang unang letra
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        })
+        .join(' ');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // FETCH
 // ═══════════════════════════════════════════════════════════════
@@ -282,7 +301,6 @@ async function executeBatchDelete() {
             return;
         }
 
-        // Endpoint doesn't exist yet → fall back to individual deletes
         await fallbackDeleteItems(itemsToDelete);
 
     } catch (err) {
@@ -366,8 +384,12 @@ function closeDeleteSubjectModal() {
 }
 
 async function confirmDeleteSubject() {
+    // ✅ FIX: I-save muna sa local variable bago i-close ang modal
     if (!pendingDeleteSubjectName) return;
+    
     const subName = pendingDeleteSubjectName.name;
+    const gradeLevel = pendingDeleteSubjectName.gradeLevel;
+    
     closeDeleteSubjectModal();
 
     try {
@@ -383,7 +405,12 @@ async function confirmDeleteSubject() {
         }
 
         showToastMessage(`"${subName}" deleted.`, 'success');
-        selectedSubjects.delete(`${subName}::${pendingDeleteSubjectName.gradeLevel}`);
+        
+        // ✅ FIX: Gamitin ang naka-save na gradeLevel variable
+        if (gradeLevel) {
+            selectedSubjects.delete(`${subName}::${gradeLevel}`);
+        }
+        
         updateCount();
         await fetchActiveSubjects();
 
@@ -411,30 +438,70 @@ async function addNewSubject(event) {
         return;
     }
 
+    // ✅ HATIIN ANG INPUT SA PAMAMAGITAN NG KUWIT AT GAWING TITLE CASE
+    const subjectsArray = rawTitle
+        .split(',')
+        .map(sub => toTitleCase(sub.trim())) 
+        .filter(sub => sub.length > 0);
+
+    if (subjectsArray.length === 0) {
+        showToastMessage('Please enter a valid subject title.', 'error');
+        return;
+    }
+
     const addBtn = document.getElementById('add-subject-btn');
     if (addBtn) addBtn.disabled = true;
 
+    let successCount = 0;
+    let failCount = 0;
+    let errorMessages = [];
+
     try {
-        const response = await fetch('/api/admin/subjects', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subjectName: rawTitle, gradeLevel })
-        });
+        // ✅ I-LOOP ANG BAWAT SUBJECT AT I-SAVE SA DATABASE
+        for (const subjectName of subjectsArray) {
+            try {
+                const response = await fetch('/api/admin/subjects', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        name: subjectName, 
+                        subjectName: subjectName, 
+                        gradeLevel 
+                    })
+                });
 
-        const data = await response.json().catch(() => ({}));
+                const data = await response.json().catch(() => ({}));
 
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to add subject.');
+                if (!response.ok) {
+                    console.warn(`Failed to add "${subjectName}":`, data.error);
+                    failCount++;
+                    if (data.error) errorMessages.push(`${subjectName}: ${data.error}`);
+                } else {
+                    successCount++;
+                }
+            } catch (err) {
+                console.error(`Error adding "${subjectName}":`, err);
+                failCount++;
+            }
         }
 
         if (titleInput) titleInput.value = '';
-        showToastMessage('Subject(s) added successfully.', 'success');
+
+        if (successCount > 0 && failCount === 0) {
+            showToastMessage(`${successCount} subject(s) added successfully.`, 'success');
+        } else if (successCount > 0 && failCount > 0) {
+            showToastMessage(`${successCount} added, ${failCount} failed.`, 'error');
+            console.warn('Some subjects failed:', errorMessages);
+        } else {
+            showToastMessage(`Failed to add subjects. ${errorMessages.join(', ')}`, 'error');
+        }
+
         await fetchActiveSubjects();
 
     } catch (error) {
         console.error('Add error:', error);
-        showToastMessage(error.message, 'error');
+        showToastMessage(error.message || 'Failed to add subjects.', 'error');
     } finally {
         if (addBtn) addBtn.disabled = false;
     }

@@ -13,14 +13,11 @@
     <link rel="stylesheet" href="../css/mobile-function.css">
 </head>
 <body>
-    <!-- ═══ MOBILE MENU BUTTON ═══ -->
     <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu" type="button">
         <i class="fa-solid fa-bars"></i>
     </button>
-
-    <!-- ═══ MOBILE OVERLAY ═══ -->
     <div class="mobile-overlay" id="mobile-overlay"></div>
-    <!-- ═══ SIDEBAR ═══ -->
+    
     <aside class="sidebar" id="app-sidebar">
         <div class="sidebar-top">
             <div class="logo">
@@ -60,7 +57,6 @@
                 <span class="nav-icon"><i class="fa-solid fa-bolt"></i></span>
                 <span class="nav-label">Generate Timetable</span>
             </button>
-
             <button onclick="window.location.href='profile.html'" class="nav-item">
                 <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
                 <span class="nav-label">Profile Settings</span>
@@ -73,28 +69,29 @@
         </button>
     </aside>
 
-    <!-- Expand button -->
     <button class="sidebar-expand-btn" id="sidebar-expand-btn" title="Expand sidebar">
         <span><i class="fa-solid fa-chevron-right"></i></span>
     </button>
 
-    <!-- ═══ MAIN CONTENT ═══ -->
     <main class="main-content" id="main-content">
         <header class="content-header" style="margin-bottom: 30px;">
             <div class="header-title-area">
                 <h1>Section Management Setup</h1>
-                <p>Define target class sections and link home rooms to prevent double-booking sections or rooms during schedule synthesis.</p>
+                <p>Define target class sections. Rooms will be automatically assigned by the scheduling engine.</p>
             </div>
         </header>
 
         <div class="dashboard-card-panel">
             <div class="workspace-grid">
-
                 <!-- LEFT COLUMN: FORM -->
                 <div class="panel-col">
                     <div class="form-group">
                         <label class="input-label" for="sectionName">Section Name</label>
-                        <input type="text" id="sectionName" placeholder="e.g., Grade 7 - Sapphire" class="custom-input-box">
+                        <input type="text" id="sectionName" placeholder="e.g., Grade 7 - Sapphire, Grade 7 - Ruby" class="custom-input-box">
+                        <small style="display: block; margin-top: 6px; color: #64748b; font-size: 0.8rem;">
+                            <i class="fa-solid fa-lightbulb" style="color: #ca8a04;"></i> 
+                            Tip: Separate multiple sections with commas to batch add in one click.
+                        </small>
                     </div>
 
                     <div class="form-group">
@@ -109,11 +106,11 @@
                         </select>
                     </div>
 
-                    <div class="form-group">
-                        <label class="input-label" for="assignedRoom">Assigned Home Room</label>
-                        <select id="assignedRoom" class="custom-input-box">
-                            <option value="">Select Room...</option>
-                        </select>
+                    <div style="background: rgba(2, 132, 199, 0.08); border: 1px solid rgba(2, 132, 199, 0.2); border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+                        <small style="color: #0284c7; font-size: 0.8rem; line-height: 1.4; display: block;">
+                            <i class="fa-solid fa-circle-info"></i> 
+                            <strong>Note:</strong> Room assignments are handled automatically by the Scheduling Engine. You only need to define the section names here.
+                        </small>
                     </div>
 
                     <button type="button" id="add-section-btn" class="btn-add-subject">
@@ -124,17 +121,18 @@
 
                 <!-- RIGHT COLUMN: SECTIONS LIST -->
                 <div class="panel-col">
-                    <label class="input-label" style="display: block; margin-bottom: 10px;">Configured Sections</label>
+                    <label class="input-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        Configured Sections
+                        <span id="sections-count" style="background: rgba(34, 197, 94, 0.15); color: #166534; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">0 Sections</span>
+                    </label>
 
-                    <div class="subject-display-box">
-                        <div id="sections-list-container"></div>
-                    </div>
+                    <!-- ✅ CONTAINER FOR FOLDERS -->
+                    <div class="subject-display-box" id="sections-folders-container"></div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- ═══ Sidebar Toggle Script ═══ -->
     <script>
         (function initSidebarToggle() {
             const sidebar = document.getElementById('app-sidebar');
@@ -152,26 +150,21 @@
             }
 
             let isAnimating = false;
-
             function toggleSidebar() {
                 if (isAnimating) return;
                 isAnimating = true;
-
                 requestAnimationFrame(() => {
                     const nowCollapsed = sidebar.classList.toggle('collapsed');
                     mainContent.classList.toggle('sidebar-collapsed', nowCollapsed);
                     expandBtn.classList.toggle('visible', nowCollapsed);
                     localStorage.setItem('sidebar-collapsed', nowCollapsed);
-
                     const icon = toggleBtn.querySelector('.toggle-icon');
                     if (icon) icon.innerHTML = nowCollapsed
                         ? '<i class="fa-solid fa-chevron-right"></i>'
                         : '<i class="fa-solid fa-chevron-left"></i>';
-
                     setTimeout(() => { isAnimating = false; }, 350);
                 });
             }
-
             toggleBtn.addEventListener('click', toggleSidebar);
             expandBtn.addEventListener('click', toggleSidebar);
         })();

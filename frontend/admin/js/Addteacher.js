@@ -1,14 +1,88 @@
+/* ═══════════════════════════════════════════════════════
+   MAKILING INTEGRATED SCHOOL — TEACHER MANAGEMENT
+   ═══════════════════════════════════════════════════════ */
+
 let rawPartitions = { junior: [], grade11: [], grade12: [] };
 let catalogSubjects = [];
 let selectedSubjectsArray = [];
 let existingTeachers = []; // Store existing teachers to check for duplicates
 
+/* ═══════════════════════════════════════════════════════
+   LOADING SCREEN HELPERS
+   ═══════════════════════════════════════════════════════ */
+let loadingCount = 0; // supports nested/parallel calls
+
+function showLoading(subtitle) {
+    loadingCount++;
+    const overlay = document.getElementById('loading-overlay');
+    const sub = document.getElementById('loading-subtitle');
+    if (sub && subtitle) sub.textContent = subtitle;
+    if (overlay) {
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+    // Block scrolling + keyboard navigation
+    document.body.style.overflow = 'hidden';
+}
+
+function hideLoading() {
+    loadingCount = Math.max(0, loadingCount - 1);
+    if (loadingCount > 0) return; // still busy elsewhere
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+    document.body.style.overflow = '';
+}
+
+/**
+ * Stop sidebar nav / logout / submit clicks from firing while loading is active.
+ * The overlay physically covers the screen, but this is belt-and-suspenders
+ * for keyboard users and anything with a higher z-index.
+ */
+function guardNavigationDuringLoad() {
+    const overlay = document.getElementById('loading-overlay');
+    if (!overlay) return;
+
+    document.addEventListener('click', (e) => {
+        if (!overlay.classList.contains('active')) return;
+
+        const target = e.target.closest(
+            '.nav-item, .sidebar-toggle, .sidebar-expand-btn, #logout-btn, ' +
+            '.mobile-menu-btn, a[href], button[type="submit"]'
+        );
+        if (target) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true); // capture phase — runs before your nav handlers
+
+    // Also block Enter/Space triggering nav buttons while loading
+    document.addEventListener('keydown', (e) => {
+        if (!overlay.classList.contains('active')) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+            const el = document.activeElement;
+            if (el && el.closest('.nav-item, #logout-btn, a[href]')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    }, true);
+}
+
+/* ═══════════════════════════════════════════════════════
+   BOOTSTRAP
+   ═══════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
     // Replace time inputs with standard single 12-hour dropdowns
     replaceTimeInputsWithChoices();
 
     // Remove Saturday and Sunday checkboxes from DOM
     removeWeekendCheckboxes();
+
+    // Install navigation guard for the loading overlay
+    guardNavigationDuringLoad();
 
     // 1. Sidebar Navigation handlers
     document.querySelectorAll('.nav-links-wrapper .nav-item').forEach(btn => {
@@ -314,7 +388,7 @@ function setupSubjectCombobox() {
         const parentGroup = input.closest('.input-group');
         const isInsideInput = parentGroup && parentGroup.contains(e.target);
         const isInsideMenu = menu.contains(e.target);
-        
+
         if (!isInsideInput && !isInsideMenu) {
             closeMenu();
         }
@@ -410,21 +484,12 @@ async function handleFormSubmit(e) {
     }
     // ---------------------------------------------------------------------
 
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerText = "⏳ Saving...";
-    }
-
     // Get and clean subjects
     const subjectsRaw = document.getElementById('t-subjects').value;
     const subjectsArray = subjectsRaw.split(',').map(s => s.trim()).filter(Boolean);
 
     if (subjectsArray.length === 0) {
         showTopToast("Please enter or select at least one subject!", "error");
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerText = "✨ ADD TEACHERS & CREATE ACCOUNT";
-        }
         return;
     }
 
@@ -432,10 +497,6 @@ async function handleFormSubmit(e) {
     const selectedDays = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
     if (selectedDays.length === 0) {
         showTopToast("Please select at least one working day!", "error");
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerText = "✨ ADD TEACHERS & CREATE ACCOUNT";
-        }
         return;
     }
 
@@ -461,6 +522,15 @@ async function handleFormSubmit(e) {
         endTime: endTime,
         availability: availability
     };
+
+    // ═══════════════════════════════════════════════════
+    // ✅ SHOW LOADING SCREEN + LOCK UI
+    // ═══════════════════════════════════════════════════
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "⏳ Saving...";
+    }
+    showLoading(`Creating account for ${firstName} ${lastName}...`);
 
     try {
         const token = localStorage.getItem('token');
@@ -504,9 +574,13 @@ async function handleFormSubmit(e) {
         console.error("Teacher registration error:", err);
         showTopToast("Network error. Could not register teacher.", "error");
     } finally {
+        // ═══════════════════════════════════════════════
+        // ✅ ALWAYS HIDE LOADING + RESTORE UI
+        // ═══════════════════════════════════════════════
+        hideLoading();
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerText = "✨ ADD TEACHERS & CREATE ACCOUNT";
+            submitBtn.innerText = "ADD TEACHER & CREATE ACCOUNT";
         }
     }
 }
@@ -588,6 +662,7 @@ async function triggerAutoSchedule() {
     const btn = document.getElementById('btn-run-generator');
     btn.innerHTML = "⚡ Optimizing Constraints...";
     btn.disabled = true;
+    showLoading("Optimizing schedule constraints...");
 
     try {
         const response = await fetch('/api/admin/generate-master', {
@@ -612,6 +687,7 @@ async function triggerAutoSchedule() {
     } finally {
         btn.innerHTML = "🚀 Run Optimization & Generate Master Schedule";
         btn.disabled = false;
+        hideLoading();
     }
 }
 
@@ -668,7 +744,7 @@ function showTopToast(message, type = 'success') {
         toast.style.borderRadius = '8px';
         toast.style.fontWeight = '600';
         toast.style.fontSize = '0.9rem';
-        toast.style.zIndex = '9999';
+        toast.style.zIndex = '99999'; // bumped above overlay so success/error is visible
         toast.style.boxShadow = '0 6px 16px rgba(0,0,0,0.4)';
         toast.style.transition = 'all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55)';
         toast.style.textAlign = 'center';

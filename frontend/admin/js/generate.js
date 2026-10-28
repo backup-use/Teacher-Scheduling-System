@@ -229,11 +229,15 @@ function buildTeacherLoadMap(masterSectionSchedules) {
             teacherName: slotData.teacher,
             totalSlots: 0,
             sections: new Set(),
+            subjects: new Set(),
           };
         }
 
         loadMap[tid].totalSlots++;
         loadMap[tid].sections.add(sectionName);
+        if (slotData.subject) {
+          loadMap[tid].subjects.add(slotData.subject);
+        }
       });
     });
   });
@@ -242,62 +246,148 @@ function buildTeacherLoadMap(masterSectionSchedules) {
 }
 
 // ═══════════════════════════════════════════════════════
-// ═══ SKIPPED SECTIONS BANNER (MINIMALIST)             ═══
+// ═══ CONSOLIDATED SCHEDULING SUMMARY (SIMPLE)        ═══
 // ═══════════════════════════════════════════════════════
-function renderSkippedSectionsBanner(skippedSections) {
-  document.querySelectorAll('#skipped-sections-banner').forEach(el => el.remove());
+function renderSkippedSectionsBanner(skippedSections, unassignedTeachers, auditSummary) {
+  // Remove old banners
+  document.querySelectorAll('#skipped-sections-banner, #unassigned-teachers-banner, #consolidated-summary').forEach(el => el.remove());
 
-  if (!skippedSections || skippedSections.length === 0) {
-    return;
+  const hasSkipped = skippedSections && skippedSections.length > 0;
+  const hasUnassigned = unassignedTeachers && unassignedTeachers.length > 0;
+
+  // Collect all missing subjects from auditSummary
+  const missingSubjects = [];
+  if (auditSummary && auditSummary.gradeAuditMap) {
+    Object.entries(auditSummary.gradeAuditMap).forEach(([grade, data]) => {
+      if (data.missingSubjects && data.missingSubjects.length > 0) {
+        data.missingSubjects.forEach(sub => {
+          missingSubjects.push({ grade, subject: sub });
+        });
+      }
+    });
   }
 
-  const container = document.getElementById("timetable-matrix-output-body") ||
-                    document.querySelector('.main-content') ||
-                    document.body;
+  const hasMissing = missingSubjects.length > 0;
 
+  if (!hasSkipped && !hasUnassigned && !hasMissing) {
+    return; // No issues, no banner
+  }
+
+  const outputBody = document.getElementById("timetable-matrix-output-body");
+  if (!outputBody) return;
+
+  const totalIssues = (hasSkipped ? skippedSections.length : 0) + 
+                      (hasUnassigned ? unassignedTeachers.length : 0) + 
+                      (hasMissing ? missingSubjects.length : 0);
+
+  // ─── BUILD DETAILS HTML ───
+  let detailsHTML = '';
+
+  // Skipped Sections
+  if (hasSkipped) {
+    detailsHTML += `
+      <div style="padding: 10px 14px; border-bottom: 1px solid #fee2e2;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <i class="fa-solid fa-circle-xmark" style="color: #dc2626; font-size: 0.8rem;"></i>
+          <strong style="color: #991b1b; font-size: 0.82rem;">Skipped Sections (${skippedSections.length})</strong>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          ${skippedSections.map(s => `
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; padding: 4px 8px; background: #ffffff; border-radius: 4px; flex-wrap: wrap;">
+              <strong style="color: #991b1b;">${escapeHtml(s.section)}</strong>
+              <span style="color: #94a3b8;">(${escapeHtml(s.grade || '')})</span>
+              <span style="color: #6b7280; font-size: 0.7rem;">— ${escapeHtml(s.reason || '')}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Unassigned Teachers
+  if (hasUnassigned) {
+    detailsHTML += `
+      <div style="padding: 10px 14px; border-bottom: 1px solid #fef3c7;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <i class="fa-solid fa-user-xmark" style="color: #d97706; font-size: 0.8rem;"></i>
+          <strong style="color: #92400e; font-size: 0.82rem;">Unassigned Teachers (${unassignedTeachers.length})</strong>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          ${unassignedTeachers.map(t => `
+            <span style="
+              background: #ffffff;
+              border: 1px solid #fcd34d;
+              color: #78350f;
+              padding: 4px 10px;
+              border-radius: 6px;
+              font-size: 0.75rem;
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+            ">
+              <i class="fa-solid fa-user" style="font-size: 0.65rem; color: #d97706;"></i>
+              <strong>${escapeHtml(t.name)}</strong>
+              <span style="color: #a16207; font-size: 0.7rem;">(${escapeHtml((t.subjects || []).join(', ') || 'No subjects')})</span>
+            </span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Missing Subjects
+  if (hasMissing) {
+    detailsHTML += `
+      <div style="padding: 10px 14px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <i class="fa-solid fa-book-bookmark" style="color: #dc2626; font-size: 0.8rem;"></i>
+          <strong style="color: #991b1b; font-size: 0.82rem;">Missing Subjects (${missingSubjects.length})</strong>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          ${missingSubjects.map(m => `
+            <span style="
+              background: #fef2f2;
+              border: 1px solid #fecaca;
+              color: #991b1b;
+              padding: 4px 10px;
+              border-radius: 6px;
+              font-size: 0.75rem;
+            ">
+              <strong>${escapeHtml(m.subject)}</strong>
+              <span style="color: #7f1d1d; font-size: 0.7rem;">(${escapeHtml(m.grade)})</span>
+            </span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // ─── CONSOLIDATED BANNER ───
   const banner = document.createElement('div');
-  banner.id = 'skipped-sections-banner';
+  banner.id = 'consolidated-summary';
   banner.className = 'no-print';
   banner.style.cssText = `
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
     border-left: 3px solid #dc2626;
     border-radius: 6px;
-    margin: 12px 0 16px 0;
+    margin: 12px 0;
     font-family: 'Inter', sans-serif;
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   `;
-
-  const itemsHTML = skippedSections.map(s => `
-    <div style="
-      padding: 6px 12px;
-      border-bottom: 1px solid #fecaca;
-      font-size: 0.78rem;
-      color: #7f1d1d;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    ">
-      <i class="fa-solid fa-circle-xmark" style="color: #dc2626; flex-shrink: 0; font-size: 0.7rem;"></i>
-      <span style="font-weight: 700; color: #991b1b; flex-shrink: 0;">${escapeHtml(s.section)}</span>
-      <span style="color: #94a3b8; flex-shrink: 0;">(Grade ${s.grade || 'N/A'})</span>
-      <span style="color: #6b7280; font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-        ${escapeHtml(s.reason || 'Unknown reason')}
-      </span>
-    </div>
-  `).join('');
 
   banner.innerHTML = `
     <div style="
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
-      background: #fee2e2;
+      padding: 10px 14px;
+      background: #fef2f2;
       cursor: pointer;
       user-select: none;
     " onclick="
-      const body = this.nextElementSibling;
+      const body = document.getElementById('summary-details-body');
       const chevron = this.querySelector('.chevron');
       if (body.style.display === 'none') {
         body.style.display = 'block';
@@ -307,28 +397,25 @@ function renderSkippedSectionsBanner(skippedSections) {
         chevron.style.transform = 'rotate(-90deg)';
       }
     ">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <i class="fa-solid fa-triangle-exclamation" style="color: #dc2626; font-size: 0.9rem;"></i>
-        <span style="font-size: 0.82rem; font-weight: 700; color: #991b1b;">
-          ${skippedSections.length} section${skippedSections.length !== 1 ? 's' : ''} skipped
-        </span>
-        <span style="font-size: 0.72rem; color: #7f1d1d; font-weight: 400;">
-          — kulang sa teachers
-        </span>
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <i class="fa-solid fa-triangle-exclamation" style="color: #dc2626; font-size: 1rem;"></i>
+        <strong style="font-size: 0.88rem; color: #991b1b;">
+          ${totalIssues} issue${totalIssues !== 1 ? 's' : ''} found
+        </strong>
+        <div style="display: flex; gap: 8px; font-size: 0.75rem; flex-wrap: wrap;">
+          ${hasSkipped ? `<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 10px;">${skippedSections.length} skipped</span>` : ''}
+          ${hasUnassigned ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px;">${unassignedTeachers.length} unassigned teachers</span>` : ''}
+          ${hasMissing ? `<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 10px;">${missingSubjects.length} missing subjects</span>` : ''}
+        </div>
       </div>
       <i class="fa-solid fa-chevron-down chevron" style="color: #dc2626; font-size: 0.75rem; transition: transform 0.2s; transform: rotate(0deg);"></i>
     </div>
-    <div style="max-height: 200px; overflow-y: auto;">
-      ${itemsHTML}
+    <div id="summary-details-body" style="display: block; max-height: 300px; overflow-y: auto; background: #ffffff;">
+      ${detailsHTML}
     </div>
   `;
 
-  const outputBody = document.getElementById("timetable-matrix-output-body");
-  if (outputBody) {
-    outputBody.insertBefore(banner, outputBody.firstChild);
-  } else if (container) {
-    container.insertBefore(banner, container.firstChild);
-  }
+  outputBody.insertBefore(banner, outputBody.firstChild);
 }
 
 // ═══ TOGGLE FUNCTION (global scope) ═══
@@ -1069,7 +1156,11 @@ async function generateNewSchedule() {
 
     await loadExistingSchedule();
 
-    renderSkippedSectionsBanner(data.skippedSections || []);
+    renderSkippedSectionsBanner(
+      data.skippedSections || [], 
+      data.unassignedTeachers || [],
+      data.auditSummary || null
+    );
 
   } catch (err) {
     console.error("JHS generation failed:", err);
@@ -1680,24 +1771,41 @@ function renderMasterSectionScheduleDashboard(container, masterSectionSchedules,
   `;
 
   const loadEntries = Object.values(teacherLoadMap).sort((a, b) => b.totalSlots - a.totalSlots);
-  const teacherLoadItemsHTML = loadEntries.length > 0
+    const teacherLoadItemsHTML = loadEntries.length > 0
     ? loadEntries.map(t => `
         <div style="
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 5px 12px;
+          padding: 8px 12px;
           border-bottom: 1px solid #bbf7d0;
           font-size: 0.78rem;
+          gap: 10px;
         ">
-          <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden;">
-            <i class="fa-solid fa-chalkboard-user" style="color: #16a34a; font-size: 0.75rem; flex-shrink: 0;"></i>
-            <span style="font-weight: 700; color: #166534; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-              ${escapeHtml(t.teacherName)}
-            </span>
-            <span style="color: #64748b; font-size: 0.7rem; white-space: nowrap; flex-shrink: 0;">
-              (${t.sections.size} section${t.sections.size !== 1 ? 's' : ''})
-            </span>
+          <div style="display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-chalkboard-user" style="color: #16a34a; font-size: 0.75rem; flex-shrink: 0;"></i>
+              <span style="font-weight: 700; color: #166534; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${escapeHtml(t.teacherName)}
+              </span>
+              <span style="color: #64748b; font-size: 0.7rem; white-space: nowrap; flex-shrink: 0;">
+                (${t.sections.size} section${t.sections.size !== 1 ? 's' : ''})
+              </span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-left: 22px;">
+              ${Array.from(t.subjects || []).map(sub => `
+                <span style="
+                  background: #dcfce7;
+                  color: #166534;
+                  padding: 1px 8px;
+                  border-radius: 8px;
+                  font-size: 0.68rem;
+                  font-weight: 600;
+                ">
+                  ${escapeHtml(sub)}
+                </span>
+              `).join('')}
+            </div>
           </div>
           <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
             <span style="

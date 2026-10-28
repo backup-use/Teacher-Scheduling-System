@@ -13,6 +13,19 @@
     <link rel="stylesheet" href="../css/mobile-function.css">
 </head>
 <body>
+    <!-- ═══ GLOBAL LOADING OVERLAY ═══ -->
+    <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
+        <div class="loading-card">
+            <div class="loading-spinner">
+                <div class="spinner-ring"></div>
+                <img src="/auth/makiling_logo.png" alt="" class="spinner-logo">
+            </div>
+            <h3 class="loading-title">Creating Teacher Account</h3>
+            <p class="loading-subtitle" id="loading-subtitle">Saving faculty information to the system...</p>
+            <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+            <p class="loading-hint">Please wait — do not close or navigate away.</p>
+        </div>
+    </div>
     <!-- ═══ MOBILE MENU BUTTON ═══ -->
     <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu" type="button">
         <i class="fa-solid fa-bars"></i>

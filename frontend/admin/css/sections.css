@@ -559,12 +559,18 @@ select.custom-input-box option {
     border-radius: 12px;
     padding: 16px;
     min-height: 280px;
-    max-height: 450px;
-    overflow-y: auto;
+    max-height: 450px;     
+    overflow-y: auto;       
+    overflow-x: hidden;
     box-sizing: border-box;
+    display: block;         
+}
+
+#sections-folders-container {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    width: 100%;
 }
 
 .subject-display-box::-webkit-scrollbar {
@@ -938,4 +944,244 @@ select.custom-input-box option {
     text-transform: uppercase;
     line-height: 1;
     white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FOLDER STYLES (COPY FROM SUBJECT.CSS)
+   ═══════════════════════════════════════════════════════ */
+
+/* Grade Folder Card */
+.grade-folder-card {
+    background: #ffffff;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.grade-folder-card:hover {
+    border-color: rgba(34, 197, 94, 0.45);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.08);
+}
+
+/* Folder Header */
+.folder-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(240, 249, 244, 0.9);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+}
+
+.folder-header:hover {
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.folder-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.folder-icon {
+    color: #16a34a;
+    font-size: 0.95rem;
+    width: 18px;
+    text-align: center;
+}
+
+.folder-header h4 {
+    color: #0c2f6b;
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.folder-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.folder-count {
+    background: rgba(34, 197, 94, 0.15);
+    color: #166534;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.folder-arrow {
+    color: #64748b;
+    font-size: 0.75rem;
+    transition: transform 0.25s ease;
+}
+
+.folder-arrow.open {
+    transform: rotate(180deg);
+    color: #16a34a;
+}
+
+/* Folder Body */
+.folder-body {
+    padding: 8px 12px !important;
+    background: rgba(248, 252, 250, 0.9) !important;
+    border-top: 1px solid rgba(34, 197, 94, 0.15) !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+}
+
+.folder-body[style*="display: none"] {
+    display: none !important;
+}
+
+.folder-body[style*="display: block"] {
+    display: flex !important;
+}
+
+.folder-empty {
+    color: #94a3b8;
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 8px 12px;
+    text-align: center;
+}
+
+/* Subject Row (Inside Folder) */
+.subject-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(34, 197, 94, 0.15);
+    transition: all 0.15s ease;
+    gap: 12px;
+}
+
+.subject-row:hover {
+    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(240, 249, 244, 0.5);
+}
+
+.subject-row-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    color: #0f172a;
+}
+
+.subject-row-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: #334155;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.subject-row-name i {
+    color: #16a34a;
+    font-size: 0.85em;
+    flex-shrink: 0;
+}
+
+.subject-row-delete {
+    background: rgba(185, 28, 28, 0.08);
+    border: 1px solid rgba(185, 28, 28, 0.15);
+    color: #b91c1c;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.subject-row-delete:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: #ffffff;
+    transform: scale(1.05);
+}
+
+/* ═══════════════════════════════════════════════════════
+   FINAL SCROLL FIX (IDAGDAG SA PINAKABABA)
+   ═══════════════════════════════════════════════════════ */
+
+/* 1. Force the container to have scroll */
+.subject-display-box,
+#sections-folders-container {
+    display: block !important;
+    max-height: 480px !important;
+    height: 480px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+}
+
+/* 2. Ensure folders stack properly */
+#sections-folders-container > .grade-folder-card {
+    margin-bottom: 10px !important;
+    width: 100% !important;
+    display: block !important;
+}
+
+#sections-folders-container > .grade-folder-card:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* 3. Make sure folder body doesn't collapse */
+.folder-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    padding: 8px 12px !important;
+}
+
+/* 4. Ensure rows don't overflow */
+.subject-row {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+}
+
+/* 5. Custom scrollbar */
+.subject-display-box::-webkit-scrollbar,
+#sections-folders-container::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.subject-display-box::-webkit-scrollbar-track,
+#sections-folders-container::-webkit-scrollbar-track {
+    background: rgba(34, 197, 94, 0.05) !important;
+    border-radius: 4px !important;
+}
+
+.subject-display-box::-webkit-scrollbar-thumb,
+#sections-folders-container::-webkit-scrollbar-thumb {
+    background: rgba(34, 197, 94, 0.35) !important;
+    border-radius: 4px !important;
+}
+
+.subject-display-box::-webkit-scrollbar-thumb:hover,
+#sections-folders-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(34, 197, 94, 0.55) !important;
 }

@@ -41,6 +41,14 @@ function showToastMessage(message, type = 'success') {
     }, 2500);
 }
 
+function toTitleCase(str) {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => {
+        if (word.length > 0 && word === word.toUpperCase()) return word; 
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // RENDER ROOMS
 // ═══════════════════════════════════════════════════════════════
@@ -77,6 +85,12 @@ async function renderRoomsUIList() {
             : (responseData.rooms || []);
 
         roomsCache = savedRooms;
+
+        // ✅ UPDATE COUNT
+        const countEl = document.getElementById('rooms-count');
+        if (countEl) {
+            countEl.textContent = `${savedRooms.length} Room${savedRooms.length !== 1 ? 's' : ''}`;
+        }
 
         if (savedRooms.length === 0) {
             listContainer.innerHTML = `
@@ -129,7 +143,7 @@ async function renderRoomsUIList() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ADD ROOM
+// ADD ROOM (BATCH SUPPORT)
 // ═══════════════════════════════════════════════════════════════
 async function addNewRoom(event) {
     if (event) event.preventDefault();
@@ -139,17 +153,45 @@ async function addNewRoom(event) {
 
     if (!nameField) return;
 
-    const nameValue = nameField.value.trim();
-    const capacityValue = capacityField ? parseInt(capacityField.value, 10) : 0;
+    const rawNameInput = nameField.value.trim();
+    const rawCapacityInput = capacityField ? capacityField.value.trim() : '';
 
-    if (!nameValue) {
-        showToastMessage('Please provide a room name.', 'error');
+    if (!rawNameInput) {
+        showToastMessage('Please provide at least one room name.', 'error');
         nameField.focus();
         return;
     }
 
-    if (isNaN(capacityValue) || capacityValue <= 0) {
-        showToastMessage('Capacity must be a positive number.', 'error');
+    // ✅ Hatiin ang room names base sa kuwit
+    const roomNamesArray = rawNameInput
+        .split(',')
+        .map(name => toTitleCase(name.trim()))
+        .filter(name => name.length > 0);
+
+    if (roomNamesArray.length === 0) {
+        showToastMessage('Please provide a valid room name.', 'error');
+        return;
+    }
+
+    // ✅ Hatiin din ang capacities base sa kuwit (kung marami)
+    let capacitiesArray = [];
+    if (rawCapacityInput) {
+        capacitiesArray = rawCapacityInput.split(',').map(c => parseInt(c.trim(), 10));
+        
+        if (capacitiesArray.some(c => isNaN(c) || c <= 0)) {
+            showToastMessage('All capacities must be positive numbers.', 'error');
+            capacityField?.focus();
+            return;
+        }
+        
+        if (capacitiesArray.length === 1) {
+            capacitiesArray = Array(roomNamesArray.length).fill(capacitiesArray[0]);
+        } else if (capacitiesArray.length !== roomNamesArray.length) {
+            showToastMessage('The number of rooms and capacities do not match. Please separate with commas.', 'error');
+            return;
+        }
+    } else {
+        showToastMessage('Please provide a capacity.', 'error');
         capacityField?.focus();
         return;
     }
@@ -157,34 +199,57 @@ async function addNewRoom(event) {
     const submitBtn = document.getElementById('btn-register-room');
     if (submitBtn) submitBtn.disabled = true;
 
+    let successCount = 0;
+    let failCount = 0;
+
     try {
-        const response = await fetch('/api/admin/rooms', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: nameValue,
-                roomName: nameValue,
-                capacity: capacityValue
-            })
-        });
+        for (let i = 0; i < roomNamesArray.length; i++) {
+            const roomName = roomNamesArray[i];
+            const capacity = capacitiesArray[i];
 
-        const result = await response.json().catch(() => ({}));
+            try {
+                const response = await fetch('/api/admin/rooms', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: roomName,
+                        roomName: roomName,
+                        capacity: capacity
+                    })
+                });
 
-        if (!response.ok) {
-            throw new Error(result.error || 'Failed to save room.');
+                const result = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    console.warn(`Failed to add "${roomName}":`, result.error);
+                    failCount++;
+                } else {
+                    successCount++;
+                }
+            } catch (err) {
+                console.error(`Error adding "${roomName}":`, err);
+                failCount++;
+            }
         }
 
         nameField.value = '';
         if (capacityField) capacityField.value = '';
         nameField.focus();
 
-        showToastMessage('Room registered successfully.', 'success');
+        if (successCount > 0 && failCount === 0) {
+            showToastMessage(`${successCount} room(s) registered successfully.`, 'success');
+        } else if (successCount > 0 && failCount > 0) {
+            showToastMessage(`${successCount} added, ${failCount} failed.`, 'error');
+        } else {
+            showToastMessage(`Failed to add rooms.`, 'error');
+        }
+
         await renderRoomsUIList();
 
     } catch (error) {
-        console.error("Error adding room:", error);
-        showToastMessage(error.message || 'Could not save the room.', 'error');
+        console.error("Error adding rooms:", error);
+        showToastMessage(error.message || 'Could not save the rooms.', 'error');
     } finally {
         if (submitBtn) submitBtn.disabled = false;
     }
