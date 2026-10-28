@@ -302,3 +302,40 @@ body {
         opacity: 1;
     }
 }
+
+/* ═══════════════════════════════════════════════════════
+   DESKTOP VIEW FIX (Para mawala ang Hamburger at mag-align ang Logo)
+   ═══════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+    
+    /* 1. Itago ang Hamburger Button sa Desktop */
+    .mobile-nav-toggle {
+        display: none !important;
+    }
+
+    /* 2. Gawing flex container ang header */
+    .mobile-header {
+        justify-content: flex-start !important; /* Isandal sa kaliwa ang logo */
+        padding: 0 30px !important; /* Bigyan ng magandang spacing sa gilid */
+    }
+
+    /* 3. Ipakita at i-center ang logo at text */
+    .mobile-logo {
+        display: flex !important;
+        align-items: center;
+        gap: 12px;
+        margin-right: auto; /* Para mapunta sa gitna ang logout button sa kanan */
+    }
+
+    /* 4. Siguraduhing naka-flex at maayos ang text sa tabi ng logo */
+    .logo-text-nav {
+        display: flex !important;
+        flex-direction: column !important;
+        line-height: 1.1 !important;
+    }
+
+    /* 5. I-align pakanan ang Logout Button */
+    .mobile-logout {
+        margin-left: auto;
+    }
+}
