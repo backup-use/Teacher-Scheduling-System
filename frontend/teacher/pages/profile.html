@@ -14,9 +14,11 @@
   </head>
 
   <body>
-        <!-- TOP NAVBAR (May Logo at Logout) -->
+     <!-- TOP NAVBAR -->
     <header class="mobile-header" id="mobile-header">
-      <!-- Walang hamburger button na kailangan -->
+      <button type="button" class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Open Menu">
+        <i class="fa-solid fa-bars"></i>
+      </button>
       <div class="mobile-logo">
         <img src="/auth/makiling_logo.png" alt="Logo" width="40" height="40" />
         <div class="logo-text-nav">
@@ -29,26 +31,51 @@
       </button>
     </header>
 
-    <!-- SIDEBAR (Icons Only, Walang Logo) -->
+    <!-- BACKDROP (Madilim na background kapag bukas ang menu sa mobile) -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- SIDEBAR -->
     <aside class="sidebar" id="app-sidebar">
-      <!-- Walang logo dito, icons lang -->
+      <div class="sidebar-top">
+        <div class="logo">
+          <img src="/auth/makiling_logo.png" alt="Makiling IS Logo" width="40" height="40" />
+          <div class="logo-text">
+            <span class="logo-line-1">Makiling</span>
+            <span class="logo-line-2">Integrated School</span>
+          </div>
+        </div>
+        <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Collapse sidebar">
+          <i class="fa-solid fa-chevron-left toggle-icon" aria-hidden="true"></i>
+        </button>
+      </div>
+
       <nav class="nav-links-wrapper" aria-label="Teacher navigation">
-        <button type="button" onclick="window.location.href = 'index.html'" class="nav-item" data-title="Dashboard Home">
+        <button type="button" onclick="window.location.href = 'index.html'" class="nav-item " data-title="Index">
           <span class="nav-icon"><i class="fa-solid fa-house"></i></span>
+          <span class="nav-label">Dashboard Home</span>
         </button>
-        <button type="button" onclick="window.location.href = 'my-schedule.html'" class="nav-item " data-title="My Timetable">
+        <button type="button" onclick="window.location.href = 'my-schedule.html'" class="nav-item" data-title="Schedules">
           <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
+          <span class="nav-label">My Timetable</span>
         </button>
-        <button type="button" onclick="window.location.href = 'rooms-view.html'" class="nav-item" data-title="View Rooms">
+        <button type="button" onclick="window.location.href = 'rooms-view.html'" class="nav-item" data-title="Rooms">
           <span class="nav-icon"><i class="fa-solid fa-door-open"></i></span>
+          <span class="nav-label">View Rooms</span>
         </button>
         <button type="button" onclick="window.location.href = 'student-view.html'" class="nav-item" data-title="Student List">
           <span class="nav-icon"><i class="fa-solid fa-users"></i></span>
+          <span class="nav-label">Student List</span>
         </button>
-        <button type="button" onclick="window.location.href = 'profile.html'" class="nav-item active" data-title="Profile Settings">
+        <button type="button" onclick="window.location.href = 'profile.html'" class="nav-item active" aria-current="page" data-title="Profile Settings">
           <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
+          <span class="nav-label">Profile Settings</span>
         </button>
       </nav>
+
+      <button type="button" id="logout-btn" class="nav-item logout-btn desktop-only-logout" onclick="window.location.href='/auth/logout.html'">
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+        <span class="nav-label">Logout</span>
+      </button>
     </aside>
 
     <!-- MAIN CONTENT -->
@@ -160,50 +187,12 @@
       </div>
     </main>
 
-    <!-- SIDEBAR TOGGLE & MOBILE SCRIPTS -->
     <script>
       (function initSidebarToggle() {
         const sidebar = document.getElementById("app-sidebar");
-        const mainContent = document.getElementById("main-content");
-        const toggleBtn = document.getElementById("sidebar-toggle");
-        const expandBtn = document.getElementById("sidebar-expand-btn");
         const mobileNavToggle = document.getElementById('mobile-nav-toggle');
         const backdrop = document.getElementById('sidebar-backdrop');
 
-        if (!sidebar || !mainContent || !toggleBtn || !expandBtn) return;
-        const toggleIcon = toggleBtn.querySelector(".toggle-icon");
-
-        let isCollapsed = false;
-        try { isCollapsed = localStorage.getItem("sidebar-collapsed") === "true"; } catch (e) {}
-
-        function applySidebarState(collapsed) {
-          sidebar.classList.toggle("collapsed", collapsed);
-          mainContent.classList.toggle("sidebar-collapsed", collapsed);
-          expandBtn.classList.toggle("visible", collapsed);
-          toggleBtn.setAttribute("aria-expanded", String(!collapsed));
-          expandBtn.setAttribute("aria-expanded", String(collapsed));
-          if (toggleIcon) {
-            toggleIcon.classList.toggle("fa-chevron-left", !collapsed);
-            toggleIcon.classList.toggle("fa-chevron-right", collapsed);
-          }
-          try { localStorage.setItem("sidebar-collapsed", String(collapsed)); } catch (e) {}
-        }
-
-        applySidebarState(isCollapsed);
-
-        let isAnimating = false;
-        function toggleSidebar() {
-          if (isAnimating) return;
-          isAnimating = true;
-          isCollapsed = !sidebar.classList.contains("collapsed");
-          applySidebarState(isCollapsed);
-          window.setTimeout(() => { isAnimating = false; }, 350);
-        }
-
-        toggleBtn.addEventListener("click", toggleSidebar);
-        expandBtn.addEventListener("click", toggleSidebar);
-
-        // Mobile Toggle
         if (mobileNavToggle && backdrop) {
             mobileNavToggle.addEventListener('click', () => {
                 const isOpen = sidebar.classList.contains('mobile-open');
@@ -224,7 +213,6 @@
     </script>
 
     <script>
-      // Password Eye Toggle Function
       function togglePasswordVisibility(inputId, iconId) {
         const input = document.getElementById(inputId);
         const icon = document.getElementById(iconId);
